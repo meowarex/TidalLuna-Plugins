@@ -1,5 +1,6 @@
+// Marker: Core Setup
 import { LunaUnload, Tracer, ftch } from "@luna/core";
-import { StyleTag, PlayState } from "@luna/lib";
+import { StyleTag, PlayState, observePromise, observe } from "@luna/lib";
 import { settings, Settings } from "./Settings";
 
 // Import CSS files directly using Luna's file:// syntax - Took me a while to figure out <3
@@ -8,33 +9,73 @@ import playerBarHidden from "file://player-bar-hidden.css?minify";
 import lyricsGlow from "file://lyrics-glow.css?minify";
 import coverEverywhereCss from "file://cover-everywhere.css?minify";
 
+// Core tracer and exports
 export const { trace } = Tracer("[Radiant Lyrics]");
 export { Settings };
 
 // clean up resources
 export const unloads = new Set<LunaUnload>();
 
+
+
+
+// Marker: Styles and Settings Integration
 // StyleTag instances for different CSS modules
 const lyricsStyleTag = new StyleTag("RadiantLyrics-lyrics", unloads);
 const baseStyleTag = new StyleTag("RadiantLyrics-base", unloads);
 const playerBarStyleTag = new StyleTag("RadiantLyrics-player-bar", unloads);
 const lyricsGlowStyleTag = new StyleTag("RadiantLyrics-lyrics-glow", unloads);
 
-let globalSpinningBgStyleTag: StyleTag | null = null;
-
-// Performance optimized variables for cover everywhere
-let globalBackgroundContainer: HTMLElement | null = null;
-let globalBackgroundImage: HTMLImageElement | null = null;
-let globalBlackBg: HTMLElement | null = null;
-let currentGlobalCoverSrc: string | null = null;
-let lastUpdateTime = 0;
-const UPDATE_THROTTLE = 500; // Throttle updates to max once per 500ms
-
 // Apply lyrics glow styles if enabled
 if (settings.lyricsGlowEnabled) {
     lyricsGlowStyleTag.css = lyricsGlow;
 }
 
+
+// Function to update styles when settings change
+const updateRadiantLyricsStyles = function(): void {
+    if (isHidden) {
+        // Apply only base styles (button hiding), NOT separated lyrics styles
+        // to avoid affecting lyrics scrolling behavior
+        baseStyleTag.css = baseStyles;
+        
+        // Apply player bar styles based on setting
+        if (!settings.playerBarVisible) {
+            playerBarStyleTag.css = playerBarHidden;
+        } else {
+            playerBarStyleTag.remove();
+        }
+    }
+
+    // Update lyrics glow based on setting (only if UI is not hidden to avoid interference)
+    const lyricsContainer = document.querySelector('[class^="_lyricsContainer"]');
+    if (lyricsContainer && !isHidden) {
+        if (settings.lyricsGlowEnabled) {
+            lyricsContainer.classList.remove('lyrics-glow-disabled');
+            lyricsGlowStyleTag.css = lyricsGlow;
+        } else {
+            lyricsContainer.classList.add('lyrics-glow-disabled');
+            lyricsGlowStyleTag.remove();
+        }
+    } else if (!isHidden) {
+        observePromise<HTMLElement>(unloads, '[class^="_lyricsContainer"]').then(el => {
+            if (!el) return;
+            if (settings.lyricsGlowEnabled) {
+                el.classList.remove('lyrics-glow-disabled');
+                lyricsGlowStyleTag.css = lyricsGlow;
+            } else {
+                el.classList.add('lyrics-glow-disabled');
+                lyricsGlowStyleTag.remove();
+            }
+        }).catch(() => {});
+    }
+};
+
+
+
+
+// Marker: UI Visibility Control
+// UI state shared across features
 var isHidden = false;
 let unhideButtonAutoFadeTimeout: number | null = null;
 
@@ -100,306 +141,52 @@ const updateButtonStates = function(): void {
     }
 };
 
-// Function to update styles when settings change
-const updateRadiantLyricsStyles = function(): void {
-    if (isHidden) {
-        // Apply only base styles (button hiding), NOT separated lyrics styles
-        // to avoid affecting lyrics scrolling behavior
-        baseStyleTag.css = baseStyles;
-        
-        // Apply player bar styles based on setting
-        if (!settings.playerBarVisible) {
-            playerBarStyleTag.css = playerBarHidden;
-        } else {
-            playerBarStyleTag.remove();
-        }
-    }
 
-    // Update lyrics glow based on setting (only if UI is not hidden to avoid interference)
-    const lyricsContainer = document.querySelector('[class^="_lyricsContainer"]');
-    if (lyricsContainer && !isHidden) {
-        if (settings.lyricsGlowEnabled) {
-            lyricsContainer.classList.remove('lyrics-glow-disabled');
-            lyricsGlowStyleTag.css = lyricsGlow;
-        } else {
-            lyricsContainer.classList.add('lyrics-glow-disabled');
-            lyricsGlowStyleTag.remove();
-        }
-    }
-};
-
-// Function to apply spinning background to the entire app (cover everywhere)
-const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
-    const appContainer = document.querySelector('[data-test="main"]') as HTMLElement;
-    
-    if (!settings.spinningCoverEverywhere) {
-        cleanUpGlobalSpinningBackground();
-        return;
-    }
-
-    // Throttle updates to prevent excessive DOM manipulation
-    const now = Date.now();
-    if (now - lastUpdateTime < UPDATE_THROTTLE && currentGlobalCoverSrc === coverArtImageSrc) {
-        return;
-    }
-    lastUpdateTime = now;
-    currentGlobalCoverSrc = coverArtImageSrc;
-
-    // Add StyleTag if not present
-    if (!globalSpinningBgStyleTag) {
-        globalSpinningBgStyleTag = new StyleTag("RadiantLyrics-global-spinning-bg", unloads, coverEverywhereCss);
-    }
-
-    if (!appContainer) return;
-
-    // Create container structure if it doesn't exist (REUSE DOM ELEMENTS)
-    if (!globalBackgroundContainer) {
-        globalBackgroundContainer = document.createElement('div');
-        globalBackgroundContainer.className = 'global-background-container';
-        globalBackgroundContainer.style.cssText = `
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -3;
-            pointer-events: none;
-            overflow: hidden;
-        `;
-        appContainer.appendChild(globalBackgroundContainer);
-
-        // Create black background layer
-        globalBlackBg = document.createElement('div');
-        globalBlackBg.className = 'global-spinning-black-bg';
-        globalBackgroundContainer.appendChild(globalBlackBg);
-
-        // Create image element
-        globalBackgroundImage = document.createElement('img');
-        globalBackgroundImage.className = 'global-spinning-image';
-        globalBackgroundImage.style.cssText = `
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            object-fit: cover;
-            z-index: -1;
-            will-change: transform;
-            transform-origin: center center;
-        `;
-        globalBackgroundContainer.appendChild(globalBackgroundImage);
-    }
-
-    // Update image source efficiently
-    if (globalBackgroundImage && globalBackgroundImage.src !== coverArtImageSrc) {
-        globalBackgroundImage.src = coverArtImageSrc;
-    }
-
-    // Apply performance-optimized settings
-    if (globalBackgroundImage) {
-        // Performance mode optimizations
-        if (settings.performanceMode) {
-            // Performance mode with spinning enabled
-            globalBackgroundImage.style.width = '120vw';
-            globalBackgroundImage.style.height = '120vh';
-            globalBackgroundImage.style.filter = `blur(${Math.min(settings.backgroundBlur, 20)}px) brightness(${settings.backgroundBrightness / 100}) contrast(${Math.min(settings.backgroundContrast, 150)}%)`;
-            if (settings.spinningArtEnabled) {
-                globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
-                globalBackgroundImage.style.willChange = 'transform';
-            }
-            else {
-                globalBackgroundImage.style.animation = 'none';
-                globalBackgroundImage.style.willChange = 'auto';
-            }
-            globalBackgroundImage.classList.remove('performance-mode-static');
-        } else {
-            // Normal mode
-            globalBackgroundImage.style.width = '150vw';
-            globalBackgroundImage.style.height = '150vh';
-            globalBackgroundImage.style.filter = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
-            if (settings.spinningArtEnabled) {
-                globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
-                globalBackgroundImage.style.willChange = 'transform';
-            }
-            else {
-                globalBackgroundImage.style.animation = 'none';
-                globalBackgroundImage.style.willChange = 'auto';
-            }
-            globalBackgroundImage.classList.remove('performance-mode-static');
-        }
-    }
-};
-
-// Optimized cleanup function
-const cleanUpGlobalSpinningBackground = function(): void {
-    if (globalBackgroundContainer && globalBackgroundContainer.parentNode) {
-        globalBackgroundContainer.parentNode.removeChild(globalBackgroundContainer);
-    }
-    globalBackgroundContainer = null;
-    globalBackgroundImage = null;
-    globalBlackBg = null;
-    currentGlobalCoverSrc = null;
-    
-    if (globalSpinningBgStyleTag) {
-        globalSpinningBgStyleTag.remove();
-        globalSpinningBgStyleTag = null;
-    }
-};
-
-// Function to update global background when settings change
-const updateRadiantLyricsGlobalBackground = function(): void {
-    // Apply performance mode class to document body
-    if (settings.performanceMode) {
-        document.body.classList.add('performance-mode');
-    } else {
-        document.body.classList.remove('performance-mode');
-    }
-    
-    if (settings.spinningCoverEverywhere) {
-        // Get current cover art and apply global background
-        updateCoverArtBackground();
-    } else {
-        cleanUpGlobalSpinningBackground();
-    }
-};
-
-// Function to update Now Playing background when settings change - PERFORMANCE OPTIMIZED
-const updateRadiantLyricsNowPlayingBackground = function(): void {
-    const nowPlayingBackgroundImages = document.querySelectorAll('.now-playing-background-image');
-    nowPlayingBackgroundImages.forEach((img: Element) => {
-        const imgElement = img as HTMLElement;
-        
-        // Default values when settings don't affect Now Playing
-        const defaultBlur = 80;
-        const defaultBrightness = 40;
-        const defaultContrast = 120;
-        const defaultSpinSpeed = 45;
-        
-        let blur, brightness, contrast, spinSpeed;
-        
-        if (settings.settingsAffectNowPlaying) {
-            blur = settings.backgroundBlur;
-            brightness = settings.backgroundBrightness;
-            contrast = settings.backgroundContrast;
-            spinSpeed = settings.spinSpeed;
-        } else {
-            blur = defaultBlur;
-            brightness = defaultBrightness;
-            contrast = defaultContrast;
-            spinSpeed = defaultSpinSpeed;
-        }
-        
-        // Performance mode optimizations
-        if (settings.performanceMode) {
-            // Reduce blur and effects for better performance, but keep spinning
-            blur = Math.min(blur, 20);
-            contrast = Math.min(contrast, 150);
-            if (settings.spinningArtEnabled) {
-            imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
-            imgElement.style.willChange = 'transform';
-            }
-            else {
-                imgElement.style.animation = 'none';
-                imgElement.style.willChange = 'auto';
-            }
-            imgElement.classList.remove('performance-mode-static');
-        } else {
-            if (settings.spinningArtEnabled) {
-            imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
-            imgElement.style.willChange = 'transform';
-            }
-            else {
-                imgElement.style.animation = 'none';
-                imgElement.style.willChange = 'auto';
-            }
-            imgElement.classList.remove('performance-mode-static');
-        }
-        
-        imgElement.style.filter = `blur(${blur}px) brightness(${brightness / 100}) contrast(${contrast}%)`;
-    });
-};
-
-// Make these functions available globally so Settings can call them
-(window as any).updateRadiantLyricsStyles = updateRadiantLyricsStyles;
-(window as any).updateRadiantLyricsGlobalBackground = updateRadiantLyricsGlobalBackground;
-(window as any).updateRadiantLyricsNowPlayingBackground = updateRadiantLyricsNowPlayingBackground;
-
+// Toggle hide/unhide UI
 const toggleRadiantLyrics = function(): void {
     const nowPlayingContainer = document.querySelector('[class*="_nowPlayingContainer"]') as HTMLElement;
-    
     if (isHidden) {
-        // currently hidden, so we're about to show UI
-        // Add a class to immediately hide the unhide button with CSS
         const unhideButton = document.querySelector('.unhide-ui-button') as HTMLElement;
-        if (unhideButton) {
-            unhideButton.classList.add('hide-immediately'); // actually uses fade out but.. still
-        }
-        
-        // Toggle the state
+        if (unhideButton) unhideButton.classList.add('hide-immediately');
         isHidden = !isHidden;
-        
-        // Don't remove StyleTags completely, just remove the class to show elements again
-        if (nowPlayingContainer) {
-            nowPlayingContainer.classList.remove('radiant-lyrics-ui-hidden');
-        }
+        if (nowPlayingContainer) nowPlayingContainer.classList.remove('radiant-lyrics-ui-hidden');
         document.body.classList.remove('radiant-lyrics-ui-hidden');
-        // Remove styles after animation completes (I think this is needed.. but not sure)
         setTimeout(() => {
             if (!isHidden) {
                 lyricsStyleTag.remove();
                 baseStyleTag.remove();
                 playerBarStyleTag.remove();
             }
-        }, 500); // Wait for fade animation to complete
-        
-        // Update button states normally
+        }, 500);
         updateButtonStates();
     } else {
-        // We're currently visible, so we're about to hide UI
-        // Toggle the state first
         isHidden = !isHidden;
-        
-        // Update button states immediately to start Hide UI button fade-out
         updateButtonStates();
-        
-        // Delay adding the CSS class to allow Hide UI button to fade out first - (Had issues with the fade out.. so I removed it)
         setTimeout(() => {
-            // Apply clean view styles
             updateRadiantLyricsStyles();
-            // Add a class to the container to trigger CSS animations
-            if (nowPlayingContainer) {
-                nowPlayingContainer.classList.add('radiant-lyrics-ui-hidden');
-            }
+            if (nowPlayingContainer) nowPlayingContainer.classList.add('radiant-lyrics-ui-hidden');
             document.body.classList.add('radiant-lyrics-ui-hidden');
-        }, 50); // Small delay to let Hide UI button start its fade transition - (Had issues with the fade out.. so I removed it)
+        }, 50);
     }
 };
 
+
+// Create buttons
 const createHideUIButton = function(): void {
     setTimeout(() => {
-        // Only create button if Hide UI is enabled in settings
         if (!settings.hideUIEnabled) return;
-        
-        // Look for the fullscreen button's parent container
         const fullscreenButton = document.querySelector('[data-test="request-fullscreen"]');
         if (!fullscreenButton || !fullscreenButton.parentElement) {
-            // Retry if fullscreen button not found yet
             setTimeout(() => createHideUIButton(), 1000);
             return;
         }
-
-        // Check if our button already exists
         if (document.querySelector('.hide-ui-button')) return;
-
         const buttonContainer = fullscreenButton.parentElement;
-        
-        // Create our hide UI button
         const hideUIButton = document.createElement("button");
         hideUIButton.className = 'hide-ui-button';
         hideUIButton.setAttribute('aria-label', 'Hide UI');
         hideUIButton.setAttribute('title', 'Hide UI');
         hideUIButton.textContent = 'Hide UI';
-        
-        // Style to match Tidal's buttons
         hideUIButton.style.backgroundColor = 'var(--wave-color-solid-accent-fill)';
         hideUIButton.style.color = 'black';
         hideUIButton.style.border = 'none';
@@ -418,213 +205,58 @@ const createHideUIButton = function(): void {
         hideUIButton.style.opacity = '0';
         hideUIButton.style.visibility = 'hidden';
         hideUIButton.style.pointerEvents = 'none';
-        
-        // Add hover effect
-        hideUIButton.addEventListener('mouseenter', () => {
-            hideUIButton.style.backgroundColor = 'lightgray';
-        });
-        
-        hideUIButton.addEventListener('mouseleave', () => {
-            hideUIButton.style.backgroundColor = 'var(--wave-color-solid-accent-fill)';
-        });
-        
+        hideUIButton.addEventListener('mouseenter', () => { hideUIButton.style.backgroundColor = 'lightgray'; });
+        hideUIButton.addEventListener('mouseleave', () => { hideUIButton.style.backgroundColor = 'var(--wave-color-solid-accent-fill)'; });
         hideUIButton.onclick = toggleRadiantLyrics;
-
-        // Insert after the fullscreen button
         buttonContainer.insertBefore(hideUIButton, fullscreenButton.nextSibling);
-        
-        // Fade in the button after a small delay
         setTimeout(() => {
             if (settings.hideUIEnabled && !isHidden) {
                 hideUIButton.style.opacity = '1';
                 hideUIButton.style.visibility = 'visible';
                 hideUIButton.style.pointerEvents = 'auto';
             }
-        }, 100); // Small delay to ensure DOM insertion is complete
-        
-        //trace.msg.log("Hide UI button added next to fullscreen button");
+        }, 100);
     }, 1000);
 };
 
+
 const createUnhideUIButton = function(): void {
     setTimeout(() => {
-        // Only create button if Hide UI is enabled in settings
         if (!settings.hideUIEnabled) return;
-        
-        // Check if our button already exists
         if (document.querySelector('.unhide-ui-button')) return;
-
-        // Find the Now Playing container to place the button within it
         const nowPlayingContainer = document.querySelector('[class*="_nowPlayingContainer"]') as HTMLElement;
         if (!nowPlayingContainer) {
-            // Retry if container not found yet
             setTimeout(() => createUnhideUIButton(), 1000);
             return;
         }
-
-        // Create unhide UI button
         const unhideUIButton = document.createElement("button");
         unhideUIButton.className = 'unhide-ui-button';
         unhideUIButton.setAttribute('aria-label', 'Unhide UI');
         unhideUIButton.setAttribute('title', 'Unhide UI');
         unhideUIButton.textContent = 'Unhide';
-        
-        // Style for top-right positioning within the Now Playing container (is a pain)
-        unhideUIButton.style.cssText = `
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            height: 40px;
-            padding: 0 12px;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.5s ease-in-out;
-            font-size: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            z-index: 1000;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        `;
-        
-        // Add hover effect with auto-fade handling
-        unhideUIButton.addEventListener('mouseenter', () => {
-            unhideUIButton.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-            unhideUIButton.style.transform = 'scale(1.05)';
-            unhideUIButton.classList.remove('auto-faded');
-        });
-        
-        unhideUIButton.addEventListener('mouseleave', () => {
-            unhideUIButton.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-            unhideUIButton.style.transform = 'scale(1)';
-            // Re-add auto-fade after a short delay if still in hidden mode
-            window.setTimeout(() => {
-                if (isHidden && !unhideUIButton.matches(':hover')) {
-                    unhideUIButton.classList.add('auto-faded');
-                }
-            }, 2000);
-        });
-        
+        unhideUIButton.style.cssText = `position: absolute; top: 10px; right: 10px; background-color: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; height: 40px; padding: 0 12px; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.5s ease-in-out; font-size: 12px; font-weight: 600; white-space: nowrap; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; visibility: hidden; pointer-events: none;`;
+        unhideUIButton.addEventListener('mouseenter', () => { unhideUIButton.style.backgroundColor = 'rgba(255,255,255,0.3)'; unhideUIButton.style.transform = 'scale(1.05)'; unhideUIButton.classList.remove('auto-faded'); });
+        unhideUIButton.addEventListener('mouseleave', () => { unhideUIButton.style.backgroundColor = 'rgba(255,255,255,0.2)'; unhideUIButton.style.transform = 'scale(1)'; window.setTimeout(() => { if (isHidden && !unhideUIButton.matches(':hover')) { unhideUIButton.classList.add('auto-faded'); } }, 2000); });
         unhideUIButton.onclick = toggleRadiantLyrics;
-
-        // Append to the Now Playing container so it only shows there
         nowPlayingContainer.appendChild(unhideUIButton);
-        
-        //trace.msg.log("Unhide UI button added to top-right of Now Playing container");
         updateButtonStates();
-    }, 1500); // Slight delay after hide button
+    }, 1500);
 };
 
-// PERFORMANCE OPTIMIZED track change observer
-const observeTrackChanges = (): void => {
-    let lastTrackId: string | null = null;
-    let checkCount = 0;
-    let currentInterval = 500; // Start with slower checks
-    
-    const checkTrackChange = () => {
-        const currentTrackId = PlayState.playbackContext?.actualProductId;
-        if (currentTrackId && currentTrackId !== lastTrackId) {
-            //trace.msg.log(`Track changed: ${lastTrackId} -> ${currentTrackId}`);
-            lastTrackId = currentTrackId;
-            // Immediate update for better responsiveness, but throttled by the update function
-            updateCoverArtBackground();
-            
-            // Reset to faster checking for a short period after a change
-            checkCount = 0;
-            currentInterval = 250;
-        }
-        
-        // Gradually slow down checking if no changes
-        checkCount++;
-        if (checkCount > 10 && currentInterval < 1000) {
-            currentInterval = Math.min(currentInterval * 1.2, 1000);
-        }
-    };
-    
-    // Adaptive interval - faster when changes are happening, slower when stable
-    const startAdaptiveInterval = () => {
-        const intervalId = setInterval(() => {
-            checkTrackChange();
-        }, currentInterval);
-        
-        unloads.add(() => clearInterval(intervalId));
-        return intervalId;
-    };
-    
-    startAdaptiveInterval();
 
-    // Initial background application (if a track is already loaded)
-    const currentTrackId = PlayState.playbackContext?.actualProductId;
-    if (currentTrackId) {
-        lastTrackId = currentTrackId;
-        // Immediate initial load for better UX
-        setTimeout(() => {
-            updateCoverArtBackground();
-        }, 100);
-    }
-};
 
-// Button observer using polling (instead of Stupid Bloated MutationObserver)
-function observeForButtons(): void {
-    const buttonCheckInterval = setInterval(() => {
-        // Only observe for buttons if Hide UI is enabled
-        if (!settings.hideUIEnabled) return;
-        
-        const fullscreenButton = document.querySelector('[data-test="request-fullscreen"]');
-        if (fullscreenButton && !document.querySelector('.hide-ui-button')) {
-            createHideUIButton();
-        }
-        
-        // Create unhide button if it doesn't exist
-        if (!document.querySelector('.unhide-ui-button')) {
-            createUnhideUIButton();
-        }
-        
-        // Fix unhide button visibility if UI is hidden but button isn't showing
-        if (isHidden) {
-            const unhideButton = document.querySelector('.unhide-ui-button') as HTMLElement;
-            if (unhideButton && (unhideButton.style.display === 'none' || unhideButton.style.opacity === '0')) {
-                // Force update button states to fix visibility
-                updateButtonStates();
-            }
-        }
-    }, 500); // Check every 500ms (much more efficient than MutationObserver)
-    
-    unloads.add(() => clearInterval(buttonCheckInterval));
-}
 
-// Also observe for lyrics container changes to apply the setting 
-function observeLyricsContainer(): void {
-    const observer = new MutationObserver(() => {
-        const lyricsContainer = document.querySelector('[class^="_lyricsContainer"]');
-        if (lyricsContainer) {
-            if (settings.lyricsGlowEnabled) {
-                lyricsContainer.classList.remove('lyrics-glow-disabled');
-            } else {
-                lyricsContainer.classList.add('lyrics-glow-disabled');
-            }
-        }
-    });
-    
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-    
-    unloads.add(() => observer.disconnect());
-}
+// Marker: Background Rendering
+// Variable setup
+let globalSpinningBgStyleTag: StyleTag | null = null;
+let globalBackgroundContainer: HTMLElement | null = null;
+let globalBackgroundImage: HTMLImageElement | null = null;
+let globalBlackBg: HTMLElement | null = null;
+let currentGlobalCoverSrc: string | null = null;
+let lastUpdateTime = 0;
+const getUpdateThrottle = () => (settings.performanceMode ? 1500 : 500);
 
-// Optimized DOM element caching for Now Playing
+// Now Playing background caching
 let nowPlayingBackgroundContainer: HTMLElement | null = null;
 let nowPlayingBackgroundImage: HTMLImageElement | null = null;
 let nowPlayingBlackBg: HTMLElement | null = null;
@@ -632,7 +264,9 @@ let nowPlayingGradientOverlay: HTMLElement | null = null;
 let currentNowPlayingCoverSrc: string | null = null;
 let spinAnimationAdded = false;
 
-const updateCoverArtBackground = function (method: number = 0): void {
+
+// Update Cover Art background for Now Playing and Global
+function updateCoverArtBackground(method: number = 0): void {
     if (method === 1) {
         setTimeout(() => {
             updateCoverArtBackground();
@@ -750,31 +384,27 @@ const updateCoverArtBackground = function (method: number = 0): void {
             if (nowPlayingBackgroundImage) {
                 if (settings.performanceMode) {
                     // Performance mode with spinning enabled
-                    nowPlayingBackgroundImage.style.width = '80vw';
-                    nowPlayingBackgroundImage.style.height = '80vh';
                     const blur = Math.min(settings.backgroundBlur, 20);
                     const contrast = Math.min(settings.backgroundContrast, 150);
-                    nowPlayingBackgroundImage.style.filter = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
-                    if (settings.spinningArtEnabled) {
-                        nowPlayingBackgroundImage.style.animation = `spin ${settings.spinSpeed}s linear infinite`;
-                        nowPlayingBackgroundImage.style.willChange = 'transform';
-                    } else {
-                        nowPlayingBackgroundImage.style.animation = 'none';
-                        nowPlayingBackgroundImage.style.willChange = 'auto';
-                    }
+                    if (nowPlayingBackgroundImage.style.width !== '70vw') nowPlayingBackgroundImage.style.width = '70vw';
+                    if (nowPlayingBackgroundImage.style.height !== '70vh') nowPlayingBackgroundImage.style.height = '70vh';
+                    const filt = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
+                    if (nowPlayingBackgroundImage.style.filter !== filt) nowPlayingBackgroundImage.style.filter = filt;
+                    const anim = settings.spinningArtEnabled ? `spin ${settings.spinSpeed}s linear infinite` : 'none';
+                    const wc = settings.spinningArtEnabled ? 'transform' : 'auto';
+                    if (nowPlayingBackgroundImage.style.animation !== anim) nowPlayingBackgroundImage.style.animation = anim;
+                    if (nowPlayingBackgroundImage.style.willChange !== wc) nowPlayingBackgroundImage.style.willChange = wc;
                     nowPlayingBackgroundImage.classList.remove('performance-mode-static');
                 } else {
                     // Normal mode
-                    nowPlayingBackgroundImage.style.width = '90vw';
-                    nowPlayingBackgroundImage.style.height = '90vh';
-                    nowPlayingBackgroundImage.style.filter = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
-                    if (settings.spinningArtEnabled) {
-                        nowPlayingBackgroundImage.style.animation = `spin ${settings.spinSpeed}s linear infinite`;
-                        nowPlayingBackgroundImage.style.willChange = 'transform';
-                    } else {
-                        nowPlayingBackgroundImage.style.animation = 'none';
-                        nowPlayingBackgroundImage.style.willChange = 'auto';
-                    }
+                    if (nowPlayingBackgroundImage.style.width !== '90vw') nowPlayingBackgroundImage.style.width = '90vw';
+                    if (nowPlayingBackgroundImage.style.height !== '90vh') nowPlayingBackgroundImage.style.height = '90vh';
+                    const filt = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
+                    if (nowPlayingBackgroundImage.style.filter !== filt) nowPlayingBackgroundImage.style.filter = filt;
+                    const anim = settings.spinningArtEnabled ? `spin ${settings.spinSpeed}s linear infinite` : 'none';
+                    const wc = settings.spinningArtEnabled ? 'transform' : 'auto';
+                    if (nowPlayingBackgroundImage.style.animation !== anim) nowPlayingBackgroundImage.style.animation = anim;
+                    if (nowPlayingBackgroundImage.style.willChange !== wc) nowPlayingBackgroundImage.style.willChange = wc;
                     nowPlayingBackgroundImage.classList.remove('performance-mode-static');
                 }
             }
@@ -794,7 +424,207 @@ const updateCoverArtBackground = function (method: number = 0): void {
             }
         }
     }
+}
+
+
+// Function to apply spinning background to the entire app (cover everywhere)
+const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
+    const appContainer = document.querySelector('[data-test="main"]') as HTMLElement;
+    
+    if (!settings.spinningCoverEverywhere) {
+        cleanUpGlobalSpinningBackground();
+        return;
+    }
+
+    // Throttle updates to prevent excessive DOM manipulation
+    const now = Date.now();
+    if (now - lastUpdateTime < getUpdateThrottle() && currentGlobalCoverSrc === coverArtImageSrc) {
+        return;
+    }
+    lastUpdateTime = now;
+    currentGlobalCoverSrc = coverArtImageSrc;
+
+    // Add StyleTag if not present
+    if (!globalSpinningBgStyleTag) {
+        globalSpinningBgStyleTag = new StyleTag("RadiantLyrics-global-spinning-bg", unloads, coverEverywhereCss);
+    }
+
+    if (!appContainer) return;
+
+    // Create container structure if it doesn't exist (REUSE DOM ELEMENTS)
+    if (!globalBackgroundContainer) {
+        globalBackgroundContainer = document.createElement('div');
+        globalBackgroundContainer.className = 'global-background-container';
+        globalBackgroundContainer.style.cssText = `
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -3;
+            pointer-events: none;
+            overflow: hidden;
+        `;
+        appContainer.appendChild(globalBackgroundContainer);
+
+        // Create black background layer
+        globalBlackBg = document.createElement('div');
+        globalBlackBg.className = 'global-spinning-black-bg';
+        globalBackgroundContainer.appendChild(globalBlackBg);
+
+        // Create image element
+        globalBackgroundImage = document.createElement('img');
+        globalBackgroundImage.className = 'global-spinning-image';
+        globalBackgroundImage.style.cssText = `
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+            z-index: -1;
+            will-change: transform;
+            transform-origin: center center;
+        `;
+        globalBackgroundContainer.appendChild(globalBackgroundImage);
+    }
+
+    // Update image source efficiently
+    if (globalBackgroundImage && globalBackgroundImage.src !== coverArtImageSrc) {
+        globalBackgroundImage.src = coverArtImageSrc;
+    }
+
+    // Apply performance-optimized settings
+    if (globalBackgroundImage) {
+        // Performance mode optimizations
+        if (settings.performanceMode) {
+            // Performance mode with spinning enabled
+            globalBackgroundImage.style.width = '100vw';
+            globalBackgroundImage.style.height = '100vh';
+            globalBackgroundImage.style.filter = `blur(${Math.min(settings.backgroundBlur, 20)}px) brightness(${settings.backgroundBrightness / 100}) contrast(${Math.min(settings.backgroundContrast, 150)}%)`;
+            if (settings.spinningArtEnabled) {
+                globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
+                globalBackgroundImage.style.willChange = 'transform';
+            }
+            else {
+                globalBackgroundImage.style.animation = 'none';
+                globalBackgroundImage.style.willChange = 'auto';
+            }
+            globalBackgroundImage.classList.remove('performance-mode-static');
+        } else {
+            // Normal mode
+            globalBackgroundImage.style.width = '150vw';
+            globalBackgroundImage.style.height = '150vh';
+            globalBackgroundImage.style.filter = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
+            if (settings.spinningArtEnabled) {
+                globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
+                globalBackgroundImage.style.willChange = 'transform';
+            }
+            else {
+                globalBackgroundImage.style.animation = 'none';
+                globalBackgroundImage.style.willChange = 'auto';
+            }
+            globalBackgroundImage.classList.remove('performance-mode-static');
+        }
+    }
 };
+
+
+// cleanup function
+const cleanUpGlobalSpinningBackground = function(): void {
+    if (globalBackgroundContainer && globalBackgroundContainer.parentNode) {
+        globalBackgroundContainer.parentNode.removeChild(globalBackgroundContainer);
+    }
+    globalBackgroundContainer = null;
+    globalBackgroundImage = null;
+    globalBlackBg = null;
+    currentGlobalCoverSrc = null;
+    
+    if (globalSpinningBgStyleTag) {
+        globalSpinningBgStyleTag.remove();
+        globalSpinningBgStyleTag = null;
+    }
+};
+
+
+// Function to update global background when settings change
+const updateRadiantLyricsGlobalBackground = function(): void {
+    // Apply performance mode class to document body
+    if (settings.performanceMode) {
+        document.body.classList.add('performance-mode');
+    } else {
+        document.body.classList.remove('performance-mode');
+    }
+    
+    if (settings.spinningCoverEverywhere) {
+        // Get current cover art and apply global background
+        updateCoverArtBackground();
+    } else {
+        cleanUpGlobalSpinningBackground();
+    }
+};
+
+
+// Function to update Now Playing background when settings change
+const updateRadiantLyricsNowPlayingBackground = function(): void {
+    const nowPlayingBackgroundImages = document.querySelectorAll('.now-playing-background-image');
+    nowPlayingBackgroundImages.forEach((img: Element) => {
+        const imgElement = img as HTMLElement;
+        
+        // Default values when settings don't affect Now Playing
+        const defaultBlur = 80;
+        const defaultBrightness = 40;
+        const defaultContrast = 120;
+        const defaultSpinSpeed = 45;
+        
+        let blur, brightness, contrast, spinSpeed;
+        
+        if (settings.settingsAffectNowPlaying) {
+            blur = settings.backgroundBlur;
+            brightness = settings.backgroundBrightness;
+            contrast = settings.backgroundContrast;
+            spinSpeed = settings.spinSpeed;
+        } else {
+            blur = defaultBlur;
+            brightness = defaultBrightness;
+            contrast = defaultContrast;
+            spinSpeed = defaultSpinSpeed;
+        }
+        
+        // Performance mode optimizations
+        if (settings.performanceMode) {
+            // Reduce blur and effects for better performance, but keep spinning
+            blur = Math.min(blur, 20);
+            contrast = Math.min(contrast, 150);
+            if (settings.spinningArtEnabled) {
+            imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
+            imgElement.style.willChange = 'transform';
+            }
+            else {
+                imgElement.style.animation = 'none';
+                imgElement.style.willChange = 'auto';
+            }
+            imgElement.classList.remove('performance-mode-static');
+        } else {
+            if (settings.spinningArtEnabled) {
+            imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
+            imgElement.style.willChange = 'transform';
+            }
+            else {
+                imgElement.style.animation = 'none';
+                imgElement.style.willChange = 'auto';
+            }
+            imgElement.classList.remove('performance-mode-static');
+        }
+        
+        imgElement.style.filter = `blur(${blur}px) brightness(${brightness / 100}) contrast(${contrast}%)`;
+    });
+};
+
+// Make these functions available globally so Settings can call them
+(window as any).updateRadiantLyricsStyles = updateRadiantLyricsStyles;
+(window as any).updateRadiantLyricsGlobalBackground = updateRadiantLyricsGlobalBackground;
+(window as any).updateRadiantLyricsNowPlayingBackground = updateRadiantLyricsNowPlayingBackground;
+
 
 const cleanUpDynamicArt = function (): void {
     // Clean up cached Now Playing elements
@@ -817,10 +647,25 @@ const cleanUpDynamicArt = function (): void {
     cleanUpGlobalSpinningBackground();
 };
 
-// Initialize the button creation and observers
-observeForButtons();
-observeTrackChanges();
-observeLyricsContainer();
+
+// Reduce work when tab hidden: pause animations; restore on visible
+document.addEventListener('visibilitychange', () => {
+    const isHiddenDoc = document.hidden;
+    const images = document.querySelectorAll('.global-spinning-image, .now-playing-background-image');
+    images.forEach(img => {
+        const el = img as HTMLElement;
+        if (isHiddenDoc) {
+            // Pause animation but keep state
+            if (el.style.animationPlayState !== 'paused') el.style.animationPlayState = 'paused';
+            if (el.style.willChange !== 'auto') el.style.willChange = 'auto';
+        } else {
+            if (el.style.animationPlayState !== 'running') el.style.animationPlayState = 'running';
+            if (el.classList.contains('global-spinning-image') || el.classList.contains('now-playing-background-image')) {
+                if (el.style.willChange !== 'transform') el.style.willChange = 'transform';
+            }
+        }
+    });
+});
 
 // Apply initial performance mode class
 if (settings.performanceMode) {
@@ -858,4 +703,56 @@ unloads.add(() => {
     
     // Clean up global spinning backgrounds
     cleanUpGlobalSpinningBackground();
-}); 
+});
+
+
+
+
+// Marker: Observers
+// Shared observer-based hooks and polling fallbacks
+const observeTrackChanges = (): void => {
+    let lastTrackId: string | null = null;
+    let checkCount = 0;
+    let currentInterval = 500;
+    const checkTrackChange = () => {
+        const currentTrackId = PlayState.playbackContext?.actualProductId;
+        if (currentTrackId && currentTrackId !== lastTrackId) {
+            lastTrackId = currentTrackId;
+            updateCoverArtBackground();
+            checkCount = 0;
+            currentInterval = 250;
+        }
+        checkCount++;
+        if (checkCount > 10 && currentInterval < 1000) currentInterval = Math.min(currentInterval * 1.2, 1000);
+    };
+    const intervalId = setInterval(() => checkTrackChange(), currentInterval);
+    unloads.add(() => clearInterval(intervalId));
+    const currentTrackId = PlayState.playbackContext?.actualProductId;
+    if (currentTrackId) {
+        lastTrackId = currentTrackId;
+        setTimeout(() => updateCoverArtBackground(), 100);
+    }
+};
+
+
+function setupHeaderObserver(): void {
+    const existing = document.querySelector('[data-test="header-container"]');
+    if (existing && !document.querySelector('.hide-ui-button')) createHideUIButton();
+    observe<HTMLElement>(unloads, '[data-test="header-container"]', () => {
+        if (!document.querySelector('.hide-ui-button')) createHideUIButton();
+    });
+}
+
+
+function setupNowPlayingObserver(): void {
+    const existing = document.querySelector('[class*="_nowPlayingContainer"]');
+    if (existing && !document.querySelector('.unhide-ui-button')) createUnhideUIButton();
+    observe<HTMLElement>(unloads, '[class*="_nowPlayingContainer"]', () => {
+        if (!document.querySelector('.unhide-ui-button')) createUnhideUIButton();
+    });
+}
+
+// Initialize the button creation and observers (non-polling)
+setupHeaderObserver();
+setupNowPlayingObserver();
+observeTrackChanges();

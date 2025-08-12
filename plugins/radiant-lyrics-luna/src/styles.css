@@ -11,13 +11,13 @@
 
 /* Tab items stay hidden - no hover functionality (if the song changes and it doesnt have lyrics.. and ya want them back.. you can unhide the UI <3) */
 
-.radiant-lyrics-ui-hidden [data-test="header-container"]:not(:has(.hide-ui-button)) {
+.radiant-lyrics-ui-hidden [data-test="header-container"]:not(.rl-header-has-hide-btn) {
     opacity: 0 !important;
     transition: opacity 0.4s ease-in-out;
 }
 
 /* Keep header visible if it contains the Hide UI button, but hide its other children */
-.radiant-lyrics-ui-hidden [data-test="header-container"]:has(.hide-ui-button) > *:not(.hide-ui-button) {
+.radiant-lyrics-ui-hidden [data-test="header-container"].rl-header-has-hide-btn > *:not(.hide-ui-button) {
     opacity: 0 !important;
     transition: opacity 0.4s ease-in-out;
 }
