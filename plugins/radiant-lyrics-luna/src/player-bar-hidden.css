@@ -9,7 +9,7 @@
 }
 
 /* Also show player bar when hovering over the bottom area - only when UI is hidden */
-.radiant-lyrics-ui-hidden:has([data-test="footer-player"]:hover) [data-test="footer-player"],
+.radiant-lyrics-ui-hidden body.rl-footer-hover [data-test="footer-player"],
 .radiant-lyrics-ui-hidden [data-test="footer-player"]:hover {
     opacity: 1 !important;
 } 
