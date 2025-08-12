@@ -4,6 +4,7 @@ import React from "react";
 
 export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	hideUIEnabled: true,
+	trackTitleGlow: false,
     playerBarVisible: false,
 	lyricsGlowEnabled: true,
 	textGlow: 20,
@@ -14,7 +15,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
     backgroundBlur: 80,
 	backgroundBrightness: 40,
 	spinSpeed: 45,
-	settingsAffectNowPlaying: true,
+    settingsAffectNowPlaying: true
 });
 
 export const Settings = () => {
@@ -30,6 +31,7 @@ export const Settings = () => {
 	const [backgroundBrightness, setBackgroundBrightness] = React.useState(settings.backgroundBrightness);
 	const [spinSpeed, setSpinSpeed] = React.useState(settings.spinSpeed);
 	const [settingsAffectNowPlaying, setSettingsAffectNowPlaying] = React.useState(settings.settingsAffectNowPlaying);
+    const [trackTitleGlow, setTrackTitleGlow] = React.useState(settings.trackTitleGlow);
 	
 	return (
 		<LunaSettings>
@@ -45,6 +47,17 @@ export const Settings = () => {
 					}
 				}}
 			/>
+			<LunaSwitchSetting
+                title="Track Title Glow"
+                desc="Apply glow to the track title"
+                checked={trackTitleGlow}
+                onChange={(_: unknown, checked: boolean) => {
+                    setTrackTitleGlow((settings.trackTitleGlow = checked));
+                    if ((window as any).updateRadiantLyricsStyles) {
+                        (window as any).updateRadiantLyricsStyles();
+                    }
+                }}
+            />
 			<LunaSwitchSetting
 				title="Hide UI Feature"
 				desc="Enable hide/unhide UI functionality with toggle buttons"

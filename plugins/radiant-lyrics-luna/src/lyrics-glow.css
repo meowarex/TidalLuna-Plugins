@@ -25,7 +25,7 @@
 
 /* Enhanced lyrics styling with glow effects */
 [class*="_lyricsText"] > div > span[data-current="true"] {
-    text-shadow: 0 0 var(--rl-glow-inner, 2px) #fff, 0 0 var(--rl-glow-outer, 20px) #fff !important;
+    text-shadow: 0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #fff), 0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #fff) !important;
     padding-left: 20px;
     transition-duration: 0.7s;
     font-size: 55px;
@@ -52,7 +52,17 @@
 
 /* Track title glow */
 [data-test="now-playing-track-title"] {
-    text-shadow: 0 0 1px #fff, 0 0 var(--rl-glow-outer, 30px) #fff !important;
+    /* Title text color/gradient is left to default app styling; only glow is customized. */
+    text-shadow: 0 0 var(--rl-glow-inner, 1px) var(--cl-glow1, #fff), 0 0 var(--rl-glow-outer, 30px) #fff !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: initial !important;
+    color: inherit !important;
+}
+
+/* When track title glow setting is disabled, remove glow regardless of Colorama */
+.rl-title-glow-disabled[data-test="now-playing-track-title"] {
+    text-shadow: none !important;
 }
 
 /* Current line transitions */
