@@ -4,14 +4,14 @@ import React from "react";
 
 export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	hideUIEnabled: true,
-	playerBarVisible: true,
+    playerBarVisible: false,
 	lyricsGlowEnabled: true,
 	textGlow: 20,
-	spinningCoverEverywhere: false,
+    spinningCoverEverywhere: true,
 	performanceMode: false,
 	spinningArtEnabled: true,
 	backgroundContrast: 120,
-	backgroundBlur: 80,
+    backgroundBlur: 80,
 	backgroundBrightness: 40,
 	spinSpeed: 45,
 	settingsAffectNowPlaying: true,
