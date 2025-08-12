@@ -78,6 +78,16 @@ const updateRadiantLyricsStyles = function(): void {
             }
         }).catch(() => {});
     }
+
+    // Track title glow toggle
+    const trackTitleEl = document.querySelector('[data-test="now-playing-track-title"]') as HTMLElement | null;
+    if (trackTitleEl) {
+        if (settings.trackTitleGlow && settings.lyricsGlowEnabled) {
+            trackTitleEl.classList.remove('rl-title-glow-disabled');
+        } else {
+            trackTitleEl.classList.add('rl-title-glow-disabled');
+        }
+    }
 };
 
 
