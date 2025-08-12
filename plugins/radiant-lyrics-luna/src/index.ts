@@ -31,6 +31,13 @@ if (settings.lyricsGlowEnabled) {
     lyricsGlowStyleTag.css = lyricsGlow;
 }
 
+// Update CSS variables for lyrics text glow based on settings
+const updateRadiantLyricsTextGlow = function(): void {
+    const root = document.documentElement;
+    root.style.setProperty('--rl-glow-outer', `${settings.textGlow}px`);
+    root.style.setProperty('--rl-glow-inner', '2px');
+};
+
 
 // Function to update styles when settings change
 const updateRadiantLyricsStyles = function(): void {
@@ -53,6 +60,7 @@ const updateRadiantLyricsStyles = function(): void {
         if (settings.lyricsGlowEnabled) {
             lyricsContainer.classList.remove('lyrics-glow-disabled');
             lyricsGlowStyleTag.css = lyricsGlow;
+            updateRadiantLyricsTextGlow();
         } else {
             lyricsContainer.classList.add('lyrics-glow-disabled');
             lyricsGlowStyleTag.remove();
@@ -63,6 +71,7 @@ const updateRadiantLyricsStyles = function(): void {
             if (settings.lyricsGlowEnabled) {
                 el.classList.remove('lyrics-glow-disabled');
                 lyricsGlowStyleTag.css = lyricsGlow;
+                updateRadiantLyricsTextGlow();
             } else {
                 el.classList.add('lyrics-glow-disabled');
                 lyricsGlowStyleTag.remove();
@@ -624,6 +633,7 @@ const updateRadiantLyricsNowPlayingBackground = function(): void {
 (window as any).updateRadiantLyricsStyles = updateRadiantLyricsStyles;
 (window as any).updateRadiantLyricsGlobalBackground = updateRadiantLyricsGlobalBackground;
 (window as any).updateRadiantLyricsNowPlayingBackground = updateRadiantLyricsNowPlayingBackground;
+(window as any).updateRadiantLyricsTextGlow = updateRadiantLyricsTextGlow;
 
 
 const cleanUpDynamicArt = function (): void {
@@ -671,6 +681,9 @@ document.addEventListener('visibilitychange', () => {
 if (settings.performanceMode) {
     document.body.classList.add('performance-mode');
 }
+
+// Initialize text glow CSS variables on load
+updateRadiantLyricsTextGlow();
 
 updateCoverArtBackground(1);
 

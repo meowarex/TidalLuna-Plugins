@@ -6,6 +6,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	hideUIEnabled: true,
 	playerBarVisible: true,
 	lyricsGlowEnabled: true,
+	textGlow: 20,
 	spinningCoverEverywhere: false,
 	performanceMode: false,
 	spinningArtEnabled: true,
@@ -20,6 +21,7 @@ export const Settings = () => {
 	const [hideUIEnabled, setHideUIEnabled] = React.useState(settings.hideUIEnabled);
 	const [playerBarVisible, setPlayerBarVisible] = React.useState(settings.playerBarVisible);
 	const [lyricsGlowEnabled, setLyricsGlowEnabled] = React.useState(settings.lyricsGlowEnabled);
+	const [textGlow, setTextGlow] = React.useState(settings.textGlow);
 	const [spinningCoverEverywhere, setSpinningCoverEverywhere] = React.useState(settings.spinningCoverEverywhere);
 	const [performanceMode, setPerformanceMode] = React.useState(settings.performanceMode);
 	const [spinningArtEnabled, setSpinningArtEnabled] = React.useState(settings.spinningArtEnabled);
@@ -65,7 +67,7 @@ export const Settings = () => {
 				}}
 			/>
 			<LunaSwitchSetting
-				title="Cover Everywhere | Experimental"
+				title="Cover Everywhere"
 				desc="Apply the spinning Cover Art background to the entire app, not just the Now Playing view, Heavily Inspired by Cover-Theme by @Inrixia"
 				checked={spinningCoverEverywhere}
 				onChange={(_, checked: boolean) => {
@@ -78,8 +80,8 @@ export const Settings = () => {
 				}}
 			/>
 			<LunaSwitchSetting
-				title="Performance Mode"
-				desc="Performance mode: Reduces blur effects (20px), uses smaller image sizes, to optimize GPU usage"
+				title="Performance Mode | Experimental"
+				desc="Performance mode: Reduces blur effects & uses smaller image sizes, to optimize GPU usage"
 				checked={performanceMode}
 				onChange={(_, checked: boolean) => {
 					console.log("Performance Mode:", checked ? "enabled" : "disabled");
@@ -108,6 +110,21 @@ export const Settings = () => {
 					}
 				}}
 			/>
+			<LunaNumberSetting
+                title="Text Glow"
+                desc="Adjust the glow size of lyrics (0-100, default: 20)"
+                min={0}
+                max={100}
+                step={1}
+                value={textGlow}
+                onNumber={(value: number) => {
+                    setTextGlow((settings.textGlow = value));
+                    // Update variables immediately when setting changes
+                    if ((window as any).updateRadiantLyricsTextGlow) {
+                        (window as any).updateRadiantLyricsTextGlow();
+                    }
+                }}
+            />
 			<LunaNumberSetting
 				title="Background Contrast"
 				desc="Adjust the contrast of the spinning background (0-200, default: 120)"
