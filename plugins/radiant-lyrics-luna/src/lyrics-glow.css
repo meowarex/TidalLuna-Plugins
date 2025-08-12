@@ -25,7 +25,7 @@
 
 /* Enhanced lyrics styling with glow effects */
 [class*="_lyricsText"] > div > span[data-current="true"] {
-    text-shadow: 0 0 2px #fff, 0 0 20px #fff !important;
+    text-shadow: 0 0 var(--rl-glow-inner, 2px) #fff, 0 0 var(--rl-glow-outer, 20px) #fff !important;
     padding-left: 20px;
     transition-duration: 0.7s;
     font-size: 55px;
@@ -44,7 +44,7 @@
 }
 
 [class*="_lyricsText"] > div > span:hover {
-    text-shadow: 0 0 2px lightgray, 0 0 20px lightgray !important;
+    text-shadow: 0 0 var(--rl-glow-inner, 2px) lightgray, 0 0 var(--rl-glow-outer, 20px) lightgray !important;
     color: lightgray !important;
     padding-left: 20px;
     transition-duration: 0.7s;
@@ -52,7 +52,7 @@
 
 /* Track title glow */
 [data-test="now-playing-track-title"] {
-    text-shadow: 0 0 1px #fff, 0 0 30px #fff !important;
+    text-shadow: 0 0 1px #fff, 0 0 var(--rl-glow-outer, 30px) #fff !important;
 }
 
 /* Current line transitions */
