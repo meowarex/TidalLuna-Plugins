@@ -83,6 +83,25 @@ export const Settings = () => {
 
   const hexColorRegex = /^#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})$/i;
 
+  const applyCustomInputColor = (raw: string, updateInput: boolean): void => {
+    const trimmed = raw.trim();
+    if (!hexColorRegex.test(trimmed)) return;
+    if (mode === "single") {
+      const next = normalizeToRGB(trimmed);
+      setSingleColor((settings.singleColor = next));
+      if (updateInput) setCustomInput(next);
+    } else if (mode === "gradient-experimental") {
+      const norm = normalizeToRGB(trimmed);
+      if (activeEndpoint === 'end') {
+        setGradientEnd((settings.gradientEnd = norm));
+      } else {
+        setGradientStart((settings.gradientStart = norm));
+      }
+      if (updateInput) setCustomInput(norm);
+    }
+    requestApply();
+  };
+
   const addCustomColor = () => {
     const trimmed = customInput.trim();
     if (
@@ -317,23 +336,7 @@ export const Settings = () => {
                     onChange={(e) => setCustomInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        const trimmed = customInput.trim();
-                        if (hexColorRegex.test(trimmed)) {
-                          if (mode === "single") {
-                            const next = normalizeToRGB(trimmed);
-                            setSingleColor((settings.singleColor = next));
-                            setCustomInput(next);
-                          } else if (mode === "gradient-experimental") {
-                            const norm = normalizeToRGB(trimmed);
-                            if (activeEndpoint === 'end') {
-                              setGradientEnd((settings.gradientEnd = norm));
-                            } else {
-                              setGradientStart((settings.gradientStart = norm));
-                            }
-                            setCustomInput(norm);
-                          }
-                          requestApply();
-                        }
+                        applyCustomInputColor(customInput, true);
                         addCustomColor();
                       }
                     }}
@@ -352,20 +355,7 @@ export const Settings = () => {
                   />
                   <button
                     onClick={() => {
-                      const trimmed = customInput.trim();
-                      if (hexColorRegex.test(trimmed)) {
-                        if (mode === "single") {
-                          setSingleColor((settings.singleColor = normalizeToRGB(trimmed))); 
-                        } else if (mode === "gradient-experimental") {
-                          const norm = normalizeToRGB(trimmed);
-                          if (activeEndpoint === 'end') {
-                            setGradientEnd((settings.gradientEnd = norm));
-                          } else {
-                            setGradientStart((settings.gradientStart = norm));
-                          }
-                        }
-                        requestApply();
-                      }
+                      applyCustomInputColor(customInput, false);
                       addCustomColor();
                     }}
                     style={{

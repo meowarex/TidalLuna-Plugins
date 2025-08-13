@@ -79,6 +79,8 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
     const b = parseInt(v.slice(5, 7), 16);
     return { r, g, b };
   }
+  // 8-digit hex expects #AARRGGBB. Indices 1-3 are the alpha byte (ignored here),
+  // so r/g/b are extracted from v.slice(3,5), v.slice(5,7), v.slice(7,9) respectively.
   if (/^#([0-9a-fA-F]{8})$/.test(v)) {
     const r = parseInt(v.slice(3, 5), 16);
     const g = parseInt(v.slice(5, 7), 16);
