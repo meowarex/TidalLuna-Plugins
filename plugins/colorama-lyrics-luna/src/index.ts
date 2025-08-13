@@ -124,10 +124,10 @@ function applyGradient(start: string, end: string, angle: number) {
 }
 
 function resetModeClasses(): void {
-  document.body.classList.remove('colorama-single', 'colorama-gradient', 'colorama-rainbow');
+  document.body.classList.remove('colorama-single', 'colorama-gradient');
 }
 
-async function applyAutoColors(gradient: boolean) {
+async function applyCoverColors(gradient: boolean) {
   const img = await getCoverArtElement();
   if (!img) return;
   const colors = getDominantColorsFromImage(img, gradient ? 2 : 1);
@@ -143,7 +143,7 @@ async function applyAutoColors(gradient: boolean) {
 
 function applyColoramaLyrics(): void {
   if (!settings.enabled) {
-    document.body.classList.remove('colorama-single', 'colorama-gradient', 'colorama-rainbow');
+    document.body.classList.remove('colorama-single', 'colorama-gradient');
     return;
   }
 
@@ -158,17 +158,14 @@ function applyColoramaLyrics(): void {
     case "single":
       applySingleColor(settings.singleColor);
       break;
-    case "gradient":
+    case "gradient-experimental":
       applyGradient(settings.gradientStart, settings.gradientEnd, settings.gradientAngle);
       break;
-    case "rainbow":
-      // no-op: rainbow mode disabled
+    case "cover":
+      applyCoverColors(false);
       break;
-    case "auto-single":
-      applyAutoColors(false);
-      break;
-    case "auto-gradient":
-      applyAutoColors(true);
+    case "cover-gradient":
+      applyCoverColors(true);
       break;
   }
 }
@@ -182,7 +179,7 @@ function observeTrackChanges(): void {
     const currentTrackId = PlayState.playbackContext?.actualProductId;
     if (currentTrackId && currentTrackId !== lastTrackId) {
       lastTrackId = currentTrackId;
-      if (settings.mode.startsWith("auto")) {
+      if (settings.mode === 'cover' || settings.mode === 'cover-gradient') {
         setTimeout(() => applyColoramaLyrics(), 200);
       }
     }
@@ -220,7 +217,6 @@ function hookRadiantUpdates(): void {
 
 setTimeout(() => hookRadiantUpdates(), 0);
 
-// Observe active lyric span changes and restart rainbow animation to avoid freezes
-// Rainbow mode disabled: no lyrics observer needed
+// Rainbow mode removed
 
 

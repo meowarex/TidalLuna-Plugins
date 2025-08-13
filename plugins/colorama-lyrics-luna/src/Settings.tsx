@@ -2,7 +2,7 @@ import { ReactiveStore } from "@luna/core";
 import { LunaSettings, LunaNumberSetting, LunaSwitchSetting, LunaTextSetting } from "@luna/ui";
 import React from "react";
 
-export type ColoramaMode = "single" | "gradient" | "auto-single" | "auto-gradient" | "rainbow";
+export type ColoramaMode = "single" | "gradient-experimental" | "cover" | "cover-gradient";
 
 export const settings = await ReactiveStore.getPluginStorage("ColoramaLyrics", {
   enabled: true,
@@ -15,7 +15,6 @@ export const settings = await ReactiveStore.getPluginStorage("ColoramaLyrics", {
   gradientEnd: "#AAFFFF",
   gradientEndAlpha: 100,
   gradientAngle: 0,
-  rainbowSpeed: 8,
   customColors: [] as string[],
   excludeInactive: false
 });
@@ -30,7 +29,6 @@ export const Settings = () => {
   const [gradientEnd, setGradientEnd] = React.useState(settings.gradientEnd);
   const [gradientEndAlpha, setGradientEndAlpha] = React.useState<number>(settings.gradientEndAlpha ?? 100);
   const [gradientAngle, setGradientAngle] = React.useState(settings.gradientAngle);
-  const [rainbowSpeed, setRainbowSpeed] = React.useState<number>(settings.rainbowSpeed ?? 8);
   const [customInput, setCustomInput] = React.useState(settings.singleColor);
   const [customColors, setCustomColors] = React.useState(settings.customColors);
   const [showPicker, setShowPicker] = React.useState(false);
@@ -129,8 +127,10 @@ export const Settings = () => {
 
       {/* Mode selection via dropdown (aligned right) */}
       <div style={{ padding: "8px 0", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ fontWeight: "normal", fontSize: "1.075rem" }}>Mode</div>
-        <div style={{ opacity: 0.7, fontSize: 14 }}>Choose how lyrics are colored</div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontWeight: "normal", fontSize: "1.075rem" }}>Mode</div>
+          <div style={{ opacity: 0.7, fontSize: 14 }}>Choose how lyrics are colored</div>
+        </div>
         <select
           value={mode}
           onChange={(e) => {
@@ -150,10 +150,9 @@ export const Settings = () => {
           }}
         >
           <option value="single" style={{ color: '#000', background: '#fff' }}>Single</option>
-          <option value="gradient" style={{ color: '#000', background: '#fff' }}>Gradient</option>
-          <option value="auto-single" style={{ color: '#000', background: '#fff' }}>Auto (Cover)</option>
-          <option value="auto-gradient" style={{ color: '#000', background: '#fff' }}>Auto Gradient</option>
-          <option value="rainbow" style={{ color: '#000', background: '#fff' }}>Rainbow</option>
+          <option value="gradient-experimental" style={{ color: '#000', background: '#fff' }}>Gradient - Experimental</option>
+          <option value="cover" style={{ color: '#000', background: '#fff' }}>Cover - Experimental</option>
+          <option value="cover-gradient" style={{ color: '#000', background: '#fff' }}>Cover (Gradient) - Experimental</option>
         </select>
       </div>
 
@@ -161,7 +160,7 @@ export const Settings = () => {
       <div style={{ padding: "8px 0", display: mode === "single" ? "flex" : "none", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontWeight: "normal", fontSize: "1.075rem", marginBottom: 4 }}>Lyrics Color</div>
-          <div style={{ opacity: 0.7, fontSize: 14 }}>Solid color (configure inside picker)</div>
+          <div style={{ opacity: 0.7, fontSize: 14 }}>Set lyrics color</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", position: "relative" }}>
           <button
@@ -179,35 +178,32 @@ export const Settings = () => {
       </div>
       
 
-      {/* Gradient controls (triggers only) */}
-      <div style={{ padding: "8px 0", display: mode === "gradient" ? "block" : "none" }}>
-        <div style={{ fontWeight: "normal", fontSize: "1.075rem", marginBottom: 4 }}>Gradient</div>
-        <div style={{ opacity: 0.7, fontSize: 14, marginBottom: 8 }}>Pick start/end and angle (inside picker)</div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button
-            onClick={() => {
-              setCustomInput(gradientStart);
-              openPicker('start');
-            }}
-            title="Start Color"
-            style={{ width: 32, height: 32, border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, background: normalizeToRGB(gradientStart) }}
-          />
-          <button
-            onClick={() => {
-              setCustomInput(gradientEnd);
-              openPicker('end');
-            }}
-            title="End Color"
-            style={{ width: 32, height: 32, border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, background: normalizeToRGB(gradientEnd) }}
-          />
+      {/* Gradient controls (open picker) */}
+      <div style={{ padding: "8px 0", display: mode === "gradient-experimental" ? "flex" : "none", justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: "normal", fontSize: "1.075rem", marginBottom: 4 }}>Gradient (Experimental)</div>
+          <div style={{ opacity: 0.7, fontSize: 14 }}>Set colors & angle</div>
         </div>
+        <button
+          onClick={() => { setCustomInput(gradientStart); openPicker('start'); }}
+          style={{
+            padding: '8px 12px',
+            borderRadius: 8,
+            border: '1px solid rgba(255,255,255,0.2)',
+            background: 'rgba(255,255,255,0.08)',
+            color: '#fff',
+            cursor: 'pointer'
+          }}
+        >
+          Configure
+        </button>
       </div>
 
-      {/* Auto gradient controls (open picker for angle) */}
-      <div style={{ padding: "8px 0", display: mode === "auto-gradient" ? "flex" : "none", justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Cover gradient controls (open picker for angle) */}
+      <div style={{ padding: "8px 0", display: mode === "cover-gradient" ? "flex" : "none", justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontWeight: "normal", fontSize: "1.075rem", marginBottom: 4 }}>Auto Gradient</div>
-          <div style={{ opacity: 0.7, fontSize: 14 }}>Configure angle inside the picker</div>
+          <div style={{ fontWeight: "normal", fontSize: "1.075rem", marginBottom: 4 }}>Cover (Gradient) - Experimental</div>
+          <div style={{ opacity: 0.7, fontSize: 14 }}>Set angle</div>
         </div>
         <button
           onClick={() => openPicker('start')}
@@ -224,7 +220,7 @@ export const Settings = () => {
         </button>
       </div>
 
-      {/* Rainbow controls removed: mode exists but has no UI */}
+      {/* Rainbow mode removed */}
 
       {/* Modal for picking and managing colors (reused) */}
       {shouldRender && (
@@ -267,7 +263,7 @@ export const Settings = () => {
             <div style={{ marginBottom: 12, color: "#fff", fontWeight: "bold", fontSize: 14 }}>
               {mode === 'single' ? 'Single Color' : 'Gradient Colors'}
             </div>
-            {mode === 'gradient' && (
+              {mode === 'gradient-experimental' && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
                 <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>Editing</div>
                 <button
@@ -296,7 +292,7 @@ export const Settings = () => {
                 </button>
               </div>
             )}
-            {mode !== 'auto-gradient' && (
+            {mode !== 'cover-gradient' && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginBottom: 16 }}>
                 {allColors.map((color, index) => (
                   <button
@@ -305,7 +301,7 @@ export const Settings = () => {
                       if (mode === "single") {
                         const next = normalizeToRGB(color);
                         setSingleColor((settings.singleColor = next));
-                      } else if (mode === "gradient") {
+                      } else if (mode === "gradient-experimental") {
                         if (activeEndpoint === 'end') {
                           setGradientEnd((settings.gradientEnd = normalizeToRGB(color)));
                         } else {
@@ -327,7 +323,7 @@ export const Settings = () => {
                 ))}
               </div>
             )}
-            {mode !== 'auto-gradient' && (
+            {mode !== 'cover-gradient' && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginBottom: 6 }}>Custom Hex (#RRGGBB)</div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -343,7 +339,7 @@ export const Settings = () => {
                             const next = normalizeToRGB(trimmed);
                             setSingleColor((settings.singleColor = next));
                             setCustomInput(next);
-                          } else if (mode === "gradient") {
+                          } else if (mode === "gradient-experimental") {
                             const norm = normalizeToRGB(trimmed);
                             if (activeEndpoint === 'end') {
                               setGradientEnd((settings.gradientEnd = norm));
@@ -376,7 +372,7 @@ export const Settings = () => {
                       if (hexColorRegex.test(trimmed)) {
                         if (mode === "single") {
                           setSingleColor((settings.singleColor = normalizeToRGB(trimmed))); 
-                        } else if (mode === "gradient") {
+                        } else if (mode === "gradient-experimental") {
                           const norm = normalizeToRGB(trimmed);
                           if (activeEndpoint === 'end') {
                             setGradientEnd((settings.gradientEnd = norm));
@@ -428,7 +424,7 @@ export const Settings = () => {
               </div>
             )}
 
-            {mode === 'gradient' && (
+            {mode === 'gradient-experimental' && (
               <div style={{ marginBottom: 16, display: 'grid', gap: 16 }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -490,7 +486,7 @@ export const Settings = () => {
               </div>
             )}
 
-            {mode === 'auto-gradient' && (
+            {mode === 'cover-gradient' && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>Angle</div>
@@ -531,7 +527,7 @@ export const Settings = () => {
         </>
       )}
       <AnySwitch
-        title="Exclude Inactive | Experimental"
+        title="Exclude Inactive"
         desc="Apply color/gradient only to the currently active lyric line"
         checked={excludeInactive}
         onChange={(_: unknown, checked: boolean) => {

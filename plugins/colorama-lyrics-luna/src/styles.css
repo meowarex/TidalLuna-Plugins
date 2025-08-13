@@ -32,7 +32,6 @@
   -webkit-text-fill-color: transparent !important;
 }
 
-/* Ensure active line keeps rainbow in only-active mode */
 /* Only-active: apply container class only on the active line via JS */
 
 /* Slight emphasis on current line (uniform to single mode) */
