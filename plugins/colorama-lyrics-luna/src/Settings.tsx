@@ -1,5 +1,5 @@
 import { ReactiveStore } from "@luna/core";
-import { LunaSettings, LunaNumberSetting, LunaSwitchSetting, LunaTextSetting } from "@luna/ui";
+import { LunaSettings, LunaSwitchSetting } from "@luna/ui";
 import React from "react";
 
 export type ColoramaMode = "single" | "gradient-experimental" | "cover" | "cover-gradient";
@@ -38,8 +38,7 @@ export const Settings = () => {
   const [activeEndpoint, setActiveEndpoint] = React.useState<'single' | 'start' | 'end'>('single');
   const AnySwitch = LunaSwitchSetting as unknown as React.ComponentType<any>;
 
-  // Helpers for HEX parsing and alpha extraction
-  const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+  // Helper for HEX normalization
   const normalizeToRGB = (hex: string, fallback: string = "#FFFFFF"): string => {
     let v = hex.trim().toLowerCase();
     if (!v.startsWith('#')) v = `#${v}`;
@@ -60,19 +59,6 @@ export const Settings = () => {
     // #rrggbb
     if (/^#([0-9a-f]{6})$/.test(v)) return v.toUpperCase();
     return fallback;
-  };
-  const extractAlphaPercent = (hex: string, fallbackPercent: number = 100): number => {
-    let v = hex.trim().toLowerCase();
-    if (!v.startsWith('#')) v = `#${v}`;
-    if (/^#([0-9a-f]{4})$/.test(v)) {
-      const a = v[4];
-      return Math.round((parseInt(a + a, 16) / 255) * 100);
-    }
-    if (/^#([0-9a-f]{8})$/.test(v)) {
-      const a = v.slice(1, 3);
-      return Math.round((parseInt(a, 16) / 255) * 100);
-    }
-    return fallbackPercent;
   };
 
   const colorPresets = [
@@ -219,8 +205,6 @@ export const Settings = () => {
           Configure
         </button>
       </div>
-
-      {/* Rainbow mode removed */}
 
       {/* Modal for picking and managing colors (reused) */}
       {shouldRender && (

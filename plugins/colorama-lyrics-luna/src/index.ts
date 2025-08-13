@@ -1,4 +1,3 @@
-// NOTE: definition duplicated earlier accidentally; keep this single definition below
 import { LunaUnload, Tracer } from "@luna/core";
 import { StyleTag, PlayState } from "@luna/lib";
 import { settings, Settings } from "./Settings";
@@ -10,7 +9,7 @@ export { Settings };
 
 export const unloads = new Set<LunaUnload>();
 
-const styleTag = new StyleTag("ColoramaLyrics", unloads, styles);
+new StyleTag("ColoramaLyrics", unloads, styles);
 
 // Simple dominant color extraction from current cover art
 async function getCoverArtElement(): Promise<HTMLImageElement | null> {
@@ -64,7 +63,7 @@ function getDominantColorsFromImage(img: HTMLImageElement, count: number = 2): s
   }
 }
 
-// Utilities to build rgba() from hex + alpha percentage
+// build rgba() from hex + alpha percentage
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   let v = hex.trim();
   if (!v.startsWith('#')) v = `#${v}`;
@@ -193,7 +192,7 @@ function observeTrackChanges(): void {
 setTimeout(() => applyColoramaLyrics(), 200);
 observeTrackChanges();
 
-// Ensure compatibility: re-apply after Radiant updates its styles/backgrounds
+// for some reason, re-apply after Radiant updates its styles/backgrounds
 function hookRadiantUpdates(): void {
   const w = window as any;
   const wrap = (name: string) => {
@@ -216,7 +215,5 @@ function hookRadiantUpdates(): void {
 }
 
 setTimeout(() => hookRadiantUpdates(), 0);
-
-// Rainbow mode removed
 
 
