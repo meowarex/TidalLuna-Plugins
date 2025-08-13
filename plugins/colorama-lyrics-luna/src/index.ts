@@ -1,5 +1,6 @@
+// NOTE: definition duplicated earlier accidentally; keep this single definition below
 import { LunaUnload, Tracer } from "@luna/core";
-import { StyleTag, observe, observePromise, PlayState } from "@luna/lib";
+import { StyleTag, PlayState } from "@luna/lib";
 import { settings, Settings } from "./Settings";
 
 import styles from "file://styles.css?minify";
@@ -63,10 +64,44 @@ function getDominantColorsFromImage(img: HTMLImageElement, count: number = 2): s
   }
 }
 
+// Utilities to build rgba() from hex + alpha percentage
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  let v = hex.trim();
+  if (!v.startsWith('#')) v = `#${v}`;
+  if (/^#([0-9a-fA-F]{3})$/.test(v)) {
+    const r = parseInt(v[1] + v[1], 16);
+    const g = parseInt(v[2] + v[2], 16);
+    const b = parseInt(v[3] + v[3], 16);
+    return { r, g, b };
+  }
+  if (/^#([0-9a-fA-F]{6})$/.test(v)) {
+    const r = parseInt(v.slice(1, 3), 16);
+    const g = parseInt(v.slice(3, 5), 16);
+    const b = parseInt(v.slice(5, 7), 16);
+    return { r, g, b };
+  }
+  if (/^#([0-9a-fA-F]{8})$/.test(v)) {
+    const r = parseInt(v.slice(3, 5), 16);
+    const g = parseInt(v.slice(5, 7), 16);
+    const b = parseInt(v.slice(7, 9), 16);
+    return { r, g, b };
+  }
+  return null;
+}
+
+function rgbaFromHexAndAlpha(hex: string, alphaPercent: number | undefined): string {
+  const rgb = hexToRgb(hex);
+  const a = Math.max(0.05, Math.min(100, alphaPercent ?? 100)) / 100;
+  if (!rgb) return `rgba(255,255,255,${a})`;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`;
+}
+
 function applySingleColor(color: string) {
-  document.documentElement.style.setProperty('--cl-lyrics-color', color);
-  document.documentElement.style.setProperty('--cl-glow1', color);
-  document.documentElement.style.setProperty('--cl-glow2', color);
+  const alpha = (settings as any).singleAlpha ?? 100;
+  const rgba = rgbaFromHexAndAlpha(color, alpha);
+  document.documentElement.style.setProperty('--cl-lyrics-color', rgba);
+  document.documentElement.style.setProperty('--cl-glow1', rgba);
+  document.documentElement.style.setProperty('--cl-glow2', rgba);
   document.documentElement.style.removeProperty('--cl-grad-start');
   document.documentElement.style.removeProperty('--cl-grad-end');
   document.documentElement.style.removeProperty('--cl-grad-angle');
@@ -75,13 +110,21 @@ function applySingleColor(color: string) {
 }
 
 function applyGradient(start: string, end: string, angle: number) {
-  document.documentElement.style.setProperty('--cl-grad-start', start);
-  document.documentElement.style.setProperty('--cl-grad-end', end);
+  const startAlpha = (settings as any).gradientStartAlpha ?? 100;
+  const endAlpha = (settings as any).gradientEndAlpha ?? 100;
+  const startRgba = rgbaFromHexAndAlpha(start, startAlpha);
+  const endRgba = rgbaFromHexAndAlpha(end, endAlpha);
+  document.documentElement.style.setProperty('--cl-grad-start', startRgba);
+  document.documentElement.style.setProperty('--cl-grad-end', endRgba);
   document.documentElement.style.setProperty('--cl-grad-angle', `${angle}deg`);
-  document.documentElement.style.setProperty('--cl-glow1', start);
-  document.documentElement.style.setProperty('--cl-glow2', end);
+  document.documentElement.style.setProperty('--cl-glow1', startRgba);
+  document.documentElement.style.setProperty('--cl-glow2', endRgba);
   document.body.classList.remove('colorama-single');
   document.body.classList.add('colorama-gradient');
+}
+
+function resetModeClasses(): void {
+  document.body.classList.remove('colorama-single', 'colorama-gradient', 'colorama-rainbow');
 }
 
 async function applyAutoColors(gradient: boolean) {
@@ -100,22 +143,26 @@ async function applyAutoColors(gradient: boolean) {
 
 function applyColoramaLyrics(): void {
   if (!settings.enabled) {
-    document.body.classList.remove('colorama-single', 'colorama-gradient');
+    document.body.classList.remove('colorama-single', 'colorama-gradient', 'colorama-rainbow');
     return;
   }
 
   // Toggle only-active-line mode class
-  if (settings.onlyActiveLine) {
+  if (settings.excludeInactive) {
     document.body.classList.add('colorama-only-active');
   } else {
     document.body.classList.remove('colorama-only-active');
   }
+  resetModeClasses();
   switch (settings.mode) {
     case "single":
       applySingleColor(settings.singleColor);
       break;
     case "gradient":
       applyGradient(settings.gradientStart, settings.gradientEnd, settings.gradientAngle);
+      break;
+    case "rainbow":
+      // no-op: rainbow mode disabled
       break;
     case "auto-single":
       applyAutoColors(false);
@@ -172,5 +219,8 @@ function hookRadiantUpdates(): void {
 }
 
 setTimeout(() => hookRadiantUpdates(), 0);
+
+// Observe active lyric span changes and restart rainbow animation to avoid freezes
+// Rainbow mode disabled: no lyrics observer needed
 
 

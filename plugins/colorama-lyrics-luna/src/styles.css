@@ -32,6 +32,9 @@
   -webkit-text-fill-color: transparent !important;
 }
 
+/* Ensure active line keeps rainbow in only-active mode */
+/* Only-active: apply container class only on the active line via JS */
+
 /* Slight emphasis on current line (uniform to single mode) */
 .colorama-gradient [class*="_lyricsText"] > div > span[data-current="true"],
 .colorama-gradient [class^="_lyricsContainer"] > div > div > span[data-current="true"] {
@@ -69,12 +72,24 @@
 /* Only color active line mode */
 body.colorama-only-active.colorama-single [class*="_lyricsText"] > div > span:not([data-current="true"]),
 body.colorama-only-active.colorama-gradient [class*="_lyricsText"] > div > span:not([data-current="true"]) {
-  /* Reset non-active lines to default */
-  color: inherit !important;
+  /* Match Radiant inactive styling */
+  color: rgba(128, 128, 128, 0.4) !important;
   background: none !important;
   -webkit-background-clip: initial !important;
   background-clip: initial !important;
   -webkit-text-fill-color: initial !important;
+  text-shadow: initial !important;
+}
+
+/* In only-active mode, keep TIDAL defaults even on hover for inactive lines */
+body.colorama-only-active.colorama-single [class*="_lyricsText"] > div > span:not([data-current="true"]):hover,
+body.colorama-only-active.colorama-gradient [class*="_lyricsText"] > div > span:not([data-current="true"]):hover {
+  color: lightgray !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: initial !important;
+  text-shadow: initial !important;
 }
 
 
