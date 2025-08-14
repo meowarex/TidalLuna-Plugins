@@ -79,15 +79,15 @@ const updateRadiantLyricsStyles = function(): void {
         }).catch(() => {});
     }
 
-    // Track title glow toggle
-    const trackTitleEl = document.querySelector('[data-test="now-playing-track-title"]') as HTMLElement | null;
-    if (trackTitleEl) {
-        if (settings.trackTitleGlow && settings.lyricsGlowEnabled) {
-            trackTitleEl.classList.remove('rl-title-glow-disabled');
-        } else {
-            trackTitleEl.classList.add('rl-title-glow-disabled');
-        }
-    }
+		// Track title glow toggle based on settings
+		const trackTitleEl = document.querySelector('[data-test="now-playing-track-title"]') as HTMLElement | null;
+		if (trackTitleEl) {
+			if (settings.trackTitleGlow && settings.lyricsGlowEnabled) {
+				trackTitleEl.classList.remove('rl-title-glow-disabled');
+			} else {
+				trackTitleEl.classList.add('rl-title-glow-disabled');
+			}
+		}
 };
 
 
@@ -775,7 +775,27 @@ function setupNowPlayingObserver(): void {
     });
 }
 
+function setupTrackTitleObserver(): void {
+	const trackTitleEl = document.querySelector('[data-test="now-playing-track-title"]') as HTMLElement | null;
+	if (trackTitleEl) {
+		if (settings.trackTitleGlow && settings.lyricsGlowEnabled) {
+			trackTitleEl.classList.remove('rl-title-glow-disabled');
+		} else {
+			trackTitleEl.classList.add('rl-title-glow-disabled');
+		}
+	}
+	observe<HTMLElement>(unloads, '[data-test="now-playing-track-title"]', (el) => {
+		if (!el) return;
+		if (settings.trackTitleGlow && settings.lyricsGlowEnabled) {
+			el.classList.remove('rl-title-glow-disabled');
+		} else {
+			el.classList.add('rl-title-glow-disabled');
+		}
+	});
+}
+
 // Initialize the button creation and observers (non-polling)
 setupHeaderObserver();
 setupNowPlayingObserver();
+setupTrackTitleObserver();
 observeTrackChanges();

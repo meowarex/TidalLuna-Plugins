@@ -18,5 +18,8 @@
 		"rimraf": "^6.0.1",
 		"tsx": "^4.19.4",
 		"typescript": "^5.8.3"
+	},
+	"dependencies": {
+		"pnpm": "^10.14.0"
 	}
 }
