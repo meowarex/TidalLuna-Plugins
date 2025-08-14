@@ -1,6 +1,2 @@
 node_modules/
 dist/
-dist/itzzexcel.oled-theme.json
-dist/itzzexcel.oled-theme.mjs
-dist/itzzexcel.oled-theme.mjs.map
-dist/store.json
