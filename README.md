@@ -4,14 +4,13 @@ A collection of Luna plugins for Tidal, ported from Neptune framework.
 
 ## Plugins
 
-### 🎨 OLED Theme
-**Location:** `plugins/oled-theme-luna/`
+### 🎨 Obsidian
+**Location:** `plugins/obsidian-theme-luna/`
 
-A dark OLED-friendly theme plugin that transforms Tidal Luna's appearance.
+A dark OLED-friendly theme that transforms Tidal Luna's appearance.
 
 **Features:**
 - Applies a dark, OLED-optimized theme
-- Fetches the latest theme CSS from the GitHub repository
 - Reduces battery consumption on OLED displays.. i guess <3
 - Modern, sleek dark interface
 
@@ -34,6 +33,16 @@ Allows users to copy song lyrics by selecting them directly in the interface.
 - Automatic clipboard copying of selected lyrics
 - Smart lyric span detection
 
+### 🧽 Element Hider
+**Location:** `plugins/element-hider-luna/`
+
+Allows users to hide/remove UI elements by right clicking on them.
+
+**Features:**
+- Remove/Hide ANY UI element
+- Automagically saves hidden elements
+- Allows for elements to be restored
+
 ### 🎶 Audio Visualizer
 **Location:** `plugins/audio-visualizer-luna/`
 
@@ -50,6 +59,7 @@ Allows users to copy song lyrics by selecting them directly in the interface.
 ## Installation
 
 ### Installing from URL
+### (They are in the store by default now)
 1. Open TidalLuna after Building & Serving
 2. Navigate to Luna Settings (Top right of Tidal)
 3. Click "Plugin Store" Tab
@@ -63,7 +73,7 @@ Allows users to copy song lyrics by selecting them directly in the interface.
 git clone https://github.com/meowarex/tidalluna-plugins
 
 # Change Folder to the Repo
-cd neptune-projects-fork
+cd tidalluna-plugins
 
 # Install dependencies
 pnpm install

@@ -2,7 +2,7 @@ import { ReactiveStore } from "@luna/core";
 import { LunaSettings, LunaSwitchSetting } from "@luna/ui";
 import React from "react";
 
-export const settings = await ReactiveStore.getPluginStorage("OLEDTheme", {
+export const settings = await ReactiveStore.getPluginStorage("Obsidian", {
 	qualityColorMatchedSeekBar: true,
 	oledFriendlyButtons: true,
 	lightMode: false,
@@ -31,14 +31,14 @@ export const Settings = () => {
 						(settings.qualityColorMatchedSeekBar = checked),
 					);
 					// Update styles immediately when setting changes
-					if ((window as any).updateOLEDThemeStyles) {
-						(window as any).updateOLEDThemeStyles();
+					if ((window as any).updateObsidianStyles) {
+						(window as any).updateObsidianStyles();
 					}
 				}}
 			/>
 			<LunaSwitchSetting
 				title="OLED Friendly Buttons"
-				desc="Remove button styling from OLED theme to keep buttons with original Tidal appearance"
+				desc="Adjusts the buttons to be more OLED friendly"
 				checked={oledFriendlyButtons}
 				onChange={(_, checked) => {
 					console.log(
@@ -47,8 +47,8 @@ export const Settings = () => {
 					);
 					setOledFriendlyButtons((settings.oledFriendlyButtons = checked));
 					// Update styles immediately when setting changes
-					if ((window as any).updateOLEDThemeStyles) {
-						(window as any).updateOLEDThemeStyles();
+					if ((window as any).updateObsidianStyles) {
+						(window as any).updateObsidianStyles();
 					}
 				}}
 			/>
@@ -60,8 +60,8 @@ export const Settings = () => {
 					console.log("Light Mode:", checked ? "enabled" : "disabled");
 					setLightMode((settings.lightMode = checked));
 					// Update styles immediately when setting changes
-					if ((window as any).updateOLEDThemeStyles) {
-						(window as any).updateOLEDThemeStyles();
+					if ((window as any).updateObsidianStyles) {
+						(window as any).updateObsidianStyles();
 					}
 				}}
 			/>
