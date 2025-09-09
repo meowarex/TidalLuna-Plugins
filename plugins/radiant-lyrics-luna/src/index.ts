@@ -2,6 +2,11 @@
 import { LunaUnload, Tracer, ftch } from "@luna/core";
 import { StyleTag, PlayState, observePromise, observe } from "@luna/lib";
 import { settings, Settings } from "./Settings";
+// Interpret integer backgroundScale (1–30) strictly as 0.1–3.0 multiplier
+const getScaledMultiplier = (): number => {
+    const value = Math.round(settings.backgroundScale);
+    return Math.max(0.1, Math.min(3, value / 10));
+};
 
 // Import CSS files directly using Luna's file:// syntax - Took me a while to figure out <3
 import baseStyles from "file://styles.css?minify";
@@ -377,7 +382,9 @@ function updateCoverArtBackground(method: number = 0): void {
 					.querySelectorAll(
 						".now-playing-background-image, .now-playing-black-bg, .now-playing-gradient-overlay",
 					)
-					.forEach((el) => el.remove());
+					.forEach((el) => {
+						el.remove();
+					});
 
 				// Create container
 				nowPlayingBackgroundContainer = document.createElement("div");
@@ -455,10 +462,13 @@ function updateCoverArtBackground(method: number = 0): void {
 					// Performance mode with spinning enabled
 					const blur = Math.min(settings.backgroundBlur, 20);
 					const contrast = Math.min(settings.backgroundContrast, 150);
-					if (nowPlayingBackgroundImage.style.width !== "70vw")
-						nowPlayingBackgroundImage.style.width = "70vw";
-					if (nowPlayingBackgroundImage.style.height !== "70vh")
-						nowPlayingBackgroundImage.style.height = "70vh";
+					const scalePm = getScaledMultiplier();
+					const widthPm = `${Math.round(scalePm * 100)}vw`;
+					const heightPm = `${Math.round(scalePm * 100)}vh`;
+					if (nowPlayingBackgroundImage.style.width !== widthPm)
+						nowPlayingBackgroundImage.style.width = widthPm;
+					if (nowPlayingBackgroundImage.style.height !== heightPm)
+						nowPlayingBackgroundImage.style.height = heightPm;
 					const filt = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
 					if (nowPlayingBackgroundImage.style.filter !== filt)
 						nowPlayingBackgroundImage.style.filter = filt;
@@ -473,10 +483,13 @@ function updateCoverArtBackground(method: number = 0): void {
 					nowPlayingBackgroundImage.classList.remove("performance-mode-static");
 				} else {
 					// Normal mode
-					if (nowPlayingBackgroundImage.style.width !== "90vw")
-						nowPlayingBackgroundImage.style.width = "90vw";
-					if (nowPlayingBackgroundImage.style.height !== "90vh")
-						nowPlayingBackgroundImage.style.height = "90vh";
+					const scaleNm = getScaledMultiplier();
+					const widthNm = `${Math.round(scaleNm * 100)}vw`;
+					const heightNm = `${Math.round(scaleNm * 100)}vh`;
+					if (nowPlayingBackgroundImage.style.width !== widthNm)
+						nowPlayingBackgroundImage.style.width = widthNm;
+					if (nowPlayingBackgroundImage.style.height !== heightNm)
+						nowPlayingBackgroundImage.style.height = heightNm;
 					const filt = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
 					if (nowPlayingBackgroundImage.style.filter !== filt)
 						nowPlayingBackgroundImage.style.filter = filt;
@@ -520,16 +533,15 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 		return;
 	}
 
-	// Throttle updates to prevent excessive DOM manipulation
+	// Only throttle image src updates; style updates below always run for responsiveness
 	const now = Date.now();
-	if (
-		now - lastUpdateTime < getUpdateThrottle() &&
-		currentGlobalCoverSrc === coverArtImageSrc
-	) {
-		return;
+	const shouldUpdateImageSrc =
+		now - lastUpdateTime >= getUpdateThrottle() ||
+		currentGlobalCoverSrc !== coverArtImageSrc;
+	if (shouldUpdateImageSrc) {
+		lastUpdateTime = now;
+		currentGlobalCoverSrc = coverArtImageSrc;
 	}
-	lastUpdateTime = now;
-	currentGlobalCoverSrc = coverArtImageSrc;
 
 	// Add StyleTag if not present
 	if (!globalSpinningBgStyleTag) {
@@ -579,18 +591,25 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 		globalBackgroundContainer.appendChild(globalBackgroundImage);
 	}
 
-	// Update image source efficiently
-	if (globalBackgroundImage && globalBackgroundImage.src !== coverArtImageSrc) {
+	// Update image source efficiently (throttled)
+	if (
+		shouldUpdateImageSrc &&
+		globalBackgroundImage &&
+		globalBackgroundImage.src !== coverArtImageSrc
+	) {
 		globalBackgroundImage.src = coverArtImageSrc;
 	}
 
 	// Apply performance-optimized settings
 	if (globalBackgroundImage) {
+		const scale = getScaledMultiplier();
+		const scaledWidth = `${Math.round(scale * 100)}vw`;
+		const scaledHeight = `${Math.round(scale * 100)}vh`;
 		// Performance mode optimizations
 		if (settings.performanceMode) {
 			// Performance mode with spinning enabled
-			globalBackgroundImage.style.width = "100vw";
-			globalBackgroundImage.style.height = "100vh";
+			globalBackgroundImage.style.width = scaledWidth;
+			globalBackgroundImage.style.height = scaledHeight;
 			globalBackgroundImage.style.filter = `blur(${Math.min(settings.backgroundBlur, 20)}px) brightness(${settings.backgroundBrightness / 100}) contrast(${Math.min(settings.backgroundContrast, 150)}%)`;
 			if (settings.spinningArtEnabled) {
 				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
@@ -602,8 +621,8 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 			globalBackgroundImage.classList.remove("performance-mode-static");
 		} else {
 			// Normal mode
-			globalBackgroundImage.style.width = "150vw";
-			globalBackgroundImage.style.height = "150vh";
+			globalBackgroundImage.style.width = scaledWidth;
+			globalBackgroundImage.style.height = scaledHeight;
 			globalBackgroundImage.style.filter = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
 			if (settings.spinningArtEnabled) {
 				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
@@ -664,7 +683,7 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 		const defaultContrast = 120;
 		const defaultSpinSpeed = 45;
 
-		let blur, brightness, contrast, spinSpeed;
+		let blur: number, brightness: number, contrast: number, spinSpeed: number;
 
 		if (settings.settingsAffectNowPlaying) {
 			blur = settings.backgroundBlur;
@@ -677,6 +696,11 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 			contrast = defaultContrast;
 			spinSpeed = defaultSpinSpeed;
 		}
+
+		// Apply size based on backgroundScale
+		const scale = getScaledMultiplier();
+		imgElement.style.width = `${Math.round(scale * 100)}vw`;
+		imgElement.style.height = `${Math.round(scale * 100)}vh`;
 
 		// Performance mode optimizations
 		if (settings.performanceMode) {

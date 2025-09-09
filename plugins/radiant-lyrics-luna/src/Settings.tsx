@@ -16,6 +16,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	backgroundBrightness: 40,
 	spinSpeed: 45,
 	settingsAffectNowPlaying: true,
+	backgroundScale: 15,
 });
 
 export const Settings = () => {
@@ -52,6 +53,9 @@ export const Settings = () => {
 		React.useState(settings.settingsAffectNowPlaying);
 	const [trackTitleGlow, setTrackTitleGlow] = React.useState(
 		settings.trackTitleGlow,
+	);
+	const [backgroundScale, setBackgroundScale] = React.useState(
+		settings.backgroundScale,
 	);
 
 	// Derive props and override onChange to accept a broader first param type
@@ -154,6 +158,27 @@ export const Settings = () => {
 						checked ? "enabled" : "disabled",
 					);
 					setSpinningArtEnabled((settings.spinningArtEnabled = checked));
+					if ((window as any).updateRadiantLyricsGlobalBackground) {
+						(window as any).updateRadiantLyricsGlobalBackground();
+					}
+					if (
+						settings.settingsAffectNowPlaying &&
+						(window as any).updateRadiantLyricsNowPlayingBackground
+					) {
+						(window as any).updateRadiantLyricsNowPlayingBackground();
+					}
+				}}
+			/>
+			<LunaNumberSetting
+				title="Background Cover Scale"
+				desc="Integer scale 1–30 (10=100%, 20=200%, 30=300%)"
+				min={1}
+				max={30}
+				value={backgroundScale}
+				onNumber={(value: number) => {
+					const next = Math.max(1, Math.min(30, Math.round(value)));
+					setBackgroundScale((settings.backgroundScale = next));
+					// Immediate visual update without throttle
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
