@@ -7,209 +7,213 @@
 */
 
 ::-webkit-scrollbar {
-    display: none;
+	display: none;
 }
 
 :root {
-    --wave-color-solid-accent-fill: white;
-    --wave-color-solid-rainbow-yellow-fill: white;
-    --wave-color-solid-contrast-fill: white;
-    --wave-color-solid-base-brighter: black;
-    --wave-text-body-medium: white !important;
-    --track-vibrant-color: white !important;
-    --wave-color-opacity-contrast-fill-ultra-thin: #fffafa1a !important;
-    --wave-color-solid-rainbow-yellow-darkest: #fffafa1a !important;
-    --wave-color-solid-accent-dark: rgb(128, 128, 128);
+	--wave-color-solid-accent-fill: white;
+	--wave-color-solid-rainbow-yellow-fill: white;
+	--wave-color-solid-contrast-fill: white;
+	--wave-color-solid-base-brighter: black;
+	--wave-text-body-medium: white !important;
+	--track-vibrant-color: white !important;
+	--wave-color-opacity-contrast-fill-ultra-thin: #fffafa1a !important;
+	--wave-color-solid-rainbow-yellow-darkest: #fffafa1a !important;
+	--wave-color-solid-accent-dark: rgb(128, 128, 128);
 }
 
 /* Credits to https://github.com/surfbryce for the fonts */
 @font-face {
-    font-family: "AbyssFont";
-    font-weight: 400;
-    src: url("https://excel.lexploits.top/extra/tidal/LyricsRegular.woff2") format("woff2");
+	font-family: "AbyssFont";
+	font-weight: 400;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsRegular.woff2")
+		format("woff2");
 }
 
 @font-face {
-    font-family: "AbyssFont";
-    font-weight: 500;
-    src: url("https://excel.lexploits.top/extra/tidal/LyricsMedium.woff2") format("woff2");
+	font-family: "AbyssFont";
+	font-weight: 500;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsMedium.woff2")
+		format("woff2");
 }
 
 @font-face {
-    font-family: "AbyssFont";
-    font-weight: 600;
-    src: url("https://excel.lexploits.top/extra/tidal/LyricsSemibold.woff2") format("woff2");
+	font-family: "AbyssFont";
+	font-weight: 600;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsSemibold.woff2")
+		format("woff2");
 }
 
 @font-face {
-    font-family: "AbyssFont";
-    font-weight: 700;
-    src: url("https://excel.lexploits.top/extra/tidal/LyricsBold.woff2") format("woff2");
+	font-family: "AbyssFont";
+	font-weight: 700;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsBold.woff2")
+		format("woff2");
 }
 
 [class^="followingButton"],
 [title="Unfollow"],
 [title="Follow"],
-[title="Unfollow"]>span,
-[title="Follow"]>span {
-    background-color: var(--wave-color-solid-rainbow-yellow-fill) !important;
-    color: var(--wave-color-solid-base-brighter);
+[title="Unfollow"] > span,
+[title="Follow"] > span {
+	background-color: var(--wave-color-solid-rainbow-yellow-fill) !important;
+	color: var(--wave-color-solid-base-brighter);
 }
 
 [class^="_wave-badge-color-max"] {
-    color: black !important;
-    background-color: var(--wave-color-solid-accent-fill);
-    border-radius: 3px;
+	color: black !important;
+	background-color: var(--wave-color-solid-accent-fill);
+	border-radius: 3px;
 }
 
 [data-test="main-layout-sidebar-wrapper"] {
-    border-right: rgb(25, 25, 25) 1px solid;
+	border-right: rgb(25, 25, 25) 1px solid;
 }
 
 [class^="_wave-badge"] {
-    background-color: var(--wave-color-solid-accent-fill);
-    border-radius: 4px;
-    color: black;
+	background-color: var(--wave-color-solid-accent-fill);
+	border-radius: 4px;
+	color: black;
 }
 
 [class^="_progressBarWrapper"] {
-    color: var(--wave-color-solid-accent-fill) !important;
+	color: var(--wave-color-solid-accent-fill) !important;
 }
 
-[class^="_sidebarItem"]>span {
-    color: var(--wave-color-solid-accent-dark);
+[class^="_sidebarItem"] > span {
+	color: var(--wave-color-solid-accent-dark);
 }
 
 [data-test="main-layout-header"] {
-    border-left: 0 !important;
+	border-left: 0 !important;
 }
 
 [class^="_sidebarItem"]:hover span {
-    color: var(--wave-color-solid-contrast-fill);
+	color: var(--wave-color-solid-contrast-fill);
 }
 
-[class^="_sidebarItem"] [class^="active"]>span {
-    color: var(--wave-color-solid-accent-dark) !important;
+[class^="_sidebarItem"] [class^="active"] > span {
+	color: var(--wave-color-solid-accent-dark) !important;
 }
 
 [class^="_active"] {
-    color: var(--wave-color-solid-accent-fill) !important;
+	color: var(--wave-color-solid-accent-fill) !important;
 }
 
 [class^="ReactVirtualized__Grid"] {
-    border-radius: 10px;
-    margin: 5px;
+	border-radius: 10px;
+	margin: 5px;
 }
 
-[data-test="media-table"]>div>div>div {
-    border: 1px solid rgb(25, 25, 25) !important;
+[data-test="media-table"] > div > div > div {
+	border: 1px solid rgb(25, 25, 25) !important;
 }
 
 [class^="ReactVirtualized__Grid__innerScrollContainer"] {
-    border: none;
-    margin: 5px;
+	border: none;
+	margin: 5px;
 }
 
 [class^="_explicitBadge"] {
-    color: var(--wave-color-solid-accent-fill);
+	color: var(--wave-color-solid-accent-fill);
 }
 
 [data-test="current-media-imagery"] {
-    border: 0 !important;
-    margin: none;
+	border: 0 !important;
+	margin: none;
 }
 
 [class^="_imageBorder"] {
-    display: none;
+	display: none;
 }
 
 [data-test="feed-sidebar"] {
-    margin-top: 10px;
+	margin-top: 10px;
 }
 
 [data-test="footer-player"] {
-    width: calc(100% - 20px);
-    bottom: 10px;
-    left: 10px;
-    border: 1px solid rgb(25, 25, 25);
-    border-radius: 4px !important;
-    position: absolute !important;
+	width: calc(100% - 20px);
+	bottom: 10px;
+	left: 10px;
+	border: 1px solid rgb(25, 25, 25);
+	border-radius: 4px !important;
+	position: absolute !important;
 }
 
-[class^="_tableRow"]:hover>*,
-[data-test-is-playing="true"]>* {
-    color: var(--wave-color-solid-accent-fill) !important;
+[class^="_tableRow"]:hover > *,
+[data-test-is-playing="true"] > * {
+	color: var(--wave-color-solid-accent-fill) !important;
 }
 
-[class^="_tableRow"]>*,
-[data-test-is-playing="false"]>* {
-    color: lightgray !important;
+[class^="_tableRow"] > *,
+[data-test-is-playing="false"] > * {
+	color: lightgray !important;
 }
 
 [class*="coverColumn"] {
-    padding-left: 5px !important;
+	padding-left: 5px !important;
 }
 
 [class^="actionList"] {
-    background-color: transparent;
-    margin: 0px;
-    border-radius: 5px;
+	background-color: transparent;
+	margin: 0px;
+	border-radius: 5px;
 }
 
-.neptune-switch-checkbox:checked+.neptune-switch {
-    background-color: rgba(255, 255, 255, 0.1);
+.neptune-switch-checkbox:checked + .neptune-switch {
+	background-color: rgba(255, 255, 255, 0.1);
 }
 
 [data-test="main-layout-header"],
 [data-test="feed-sidebar"],
 [data-test="stream-metadata"],
 [data-test="footer-player"] {
-    background-color: rgba(0, 0, 0, 0.8) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
+	background-color: rgba(0, 0, 0, 0.8) !important;
+	backdrop-filter: blur(10px);
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
 }
 
-[data-wave-color=textUrl] {
-    color: var(--wave-color-solid-accent-fill);
+[data-wave-color="textUrl"] {
+	color: var(--wave-color-solid-accent-fill);
 }
 
 [class^="_smallHeader"] {
-    margin-top: 7.5px;
+	margin-top: 7.5px;
 }
 
 [class^="__NEPTUNE_PAGE"],
 [data-test="main"] {
-    margin-top: 35px;
+	margin-top: 35px;
 }
 
 #playQueueSidebar {
-    top: 50px !important;
-    border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin);
-    margin: 2px;
-    margin-right: -14px !important;
-    background-color: rgba(0, 0, 0, 0.8) !important;
-    backdrop-filter: blur(10px);
+	top: 50px !important;
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin);
+	margin: 2px;
+	margin-right: -14px !important;
+	background-color: rgba(0, 0, 0, 0.8) !important;
+	backdrop-filter: blur(10px);
 }
 
 [class^="_bottomGradient"] {
-    visibility: hidden;
+	visibility: hidden;
 }
 
 [data-test="settings-page"] {
-    padding-bottom: 60px !important;
+	padding-bottom: 60px !important;
 }
 
 [data-test="query-suggestions"],
 [data-test="recent-searches-container"] {
-    background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(10px);
+	background-color: rgba(0, 0, 0, 0.6);
+	backdrop-filter: blur(10px);
 }
 
 [data-test="contextmenu"] {
-    border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
 }
 
 [class^="_dataContainer_"]::before {
-    background-image: var(--img);
-    filter: blur(10px) brightness(0.4);
-} 
+	background-image: var(--img);
+	filter: blur(10px) brightness(0.4);
+}

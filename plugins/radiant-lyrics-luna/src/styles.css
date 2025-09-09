@@ -1,30 +1,32 @@
 /* Only apply styles when UI is hidden */
 .radiant-lyrics-ui-hidden [class*="tabItems"] {
-    opacity: 0 !important;
-    transition: opacity 0.4s ease-in-out;
+	opacity: 0 !important;
+	transition: opacity 0.4s ease-in-out;
 }
 
 /* Default state - visible */
 [class*="tabItems"] {
-    transition: opacity 0.4s ease-in-out;
+	transition: opacity 0.4s ease-in-out;
 }
 
 /* Tab items stay hidden - no hover functionality (if the song changes and it doesnt have lyrics.. and ya want them back.. you can unhide the UI <3) */
 
-.radiant-lyrics-ui-hidden [data-test="header-container"]:not(.rl-header-has-hide-btn) {
-    opacity: 0 !important;
-    transition: opacity 0.4s ease-in-out;
+.radiant-lyrics-ui-hidden
+[data-test="header-container"]:not(.rl-header-has-hide-btn) {
+	opacity: 0 !important;
+	transition: opacity 0.4s ease-in-out;
 }
 
 /* Keep header visible if it contains the Hide UI button, but hide its other children */
-.radiant-lyrics-ui-hidden [data-test="header-container"].rl-header-has-hide-btn > *:not(.hide-ui-button) {
-    opacity: 0 !important;
-    transition: opacity 0.4s ease-in-out;
+.radiant-lyrics-ui-hidden [data-test="header-container"].rl-header-has-hide-btn
+	> *:not(.hide-ui-button) {
+	opacity: 0 !important;
+	transition: opacity 0.4s ease-in-out;
 }
 
 /* Default state for header */
 [data-test="header-container"] {
-    transition: opacity 0.4s ease-in-out;
+	transition: opacity 0.4s ease-in-out;
 }
 
 /* Only prevent specific text elements in player bar from being affected by margin adjustments */
@@ -32,30 +34,30 @@
 [data-test="footer-player"] [class*="_artistName"],
 [data-test="footer-player"] [class*="_trackInfo"],
 [data-test="footer-player"] [class*="_trackContainer"] {
-    margin-top: 0 !important;
-    transform: none !important;
+	margin-top: 0 !important;
+	transform: none !important;
 }
 
 /* Immediate hide class for unhide button with smooth transition (had issues with the fade out.. so I removed it) */
 .hide-immediately {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
+	opacity: 0 !important;
+	visibility: hidden !important;
+	pointer-events: none !important;
 }
 
 [class^="_bar"] {
-    background-color: transparent;
+	background-color: transparent;
 }
 
-.radiant-lyrics-ui-hidden [class^="_bar"]>*:not(.hide-ui-button) {
-    opacity: 0 !important;
-    pointer-events: none !important;
-    transition: opacity 0.4s ease-in-out;
+.radiant-lyrics-ui-hidden [class^="_bar"] > *:not(.hide-ui-button) {
+	opacity: 0 !important;
+	pointer-events: none !important;
+	transition: opacity 0.4s ease-in-out;
 }
 
 /* Default state for bar elements */
-[class^="_bar"]>* {
-    transition: opacity 0.4s ease-in-out;
+[class^="_bar"] > * {
+	transition: opacity 0.4s ease-in-out;
 }
 
 /* Hide search box and make it non-interactive */
@@ -73,54 +75,81 @@
 .radiant-lyrics-ui-hidden [data-test="main-layout-header"] [class*="input"],
 .radiant-lyrics-ui-hidden header input,
 .radiant-lyrics-ui-hidden nav input {
-    pointer-events: none !important;
-    cursor: default !important;
-    user-select: none !important;
+	pointer-events: none !important;
+	cursor: default !important;
+	user-select: none !important;
 }
 
 /* Hide bottom left controls completely - no hover functionality */
 /* Exclude heart button in player bar and make sure hidden buttons can't be clicked */
-.radiant-lyrics-ui-hidden [data-test="add-to-playlist"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden [data-test="remove-from-playlist"]:not([data-test="footer-player"] *), 
-.radiant-lyrics-ui-hidden [data-test="like-toggle"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden [data-test="dislike-toggle"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden [data-test="favorite-toggle"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden [data-test="heart-button"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden [data-test="playlist-add"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+[data-test="add-to-playlist"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	[data-test="remove-from-playlist"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	[data-test="like-toggle"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	[data-test="dislike-toggle"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	[data-test="favorite-toggle"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	[data-test="heart-button"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	[data-test="playlist-add"]:not([data-test="footer-player"] *),
 .radiant-lyrics-ui-hidden [class*="_trackActions"],
 .radiant-lyrics-ui-hidden [class*="_bottomLeftControls"],
 .radiant-lyrics-ui-hidden [class*="_actionButtons"],
-.radiant-lyrics-ui-hidden [class*="_favoriteButton"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	[class*="_favoriteButton"]:not([data-test="footer-player"] *),
 .radiant-lyrics-ui-hidden [class*="_addToPlaylist"],
 .radiant-lyrics-ui-hidden [class*="_lowerLeft"],
 .radiant-lyrics-ui-hidden [class*="_bottomActions"],
 .radiant-lyrics-ui-hidden [class*="_mediaControls"] > div:first-child,
-.radiant-lyrics-ui-hidden button[title*="Add to"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden button[title*="Remove from"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden button[title*="Like"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden button[title*="Favorite"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden button[title*="Heart"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden button[aria-label*="Add to"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden button[aria-label*="Remove from"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden button[aria-label*="Like"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden button[aria-label*="Favorite"]:not([data-test="footer-player"] *),
-.radiant-lyrics-ui-hidden button[aria-label*="Heart"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[title*="Add to"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[title*="Remove from"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[title*="Like"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[title*="Favorite"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[title*="Heart"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[aria-label*="Add to"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[aria-label*="Remove from"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[aria-label*="Like"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[aria-label*="Favorite"]:not([data-test="footer-player"] *),
+.radiant-lyrics-ui-hidden
+	button[aria-label*="Heart"]:not([data-test="footer-player"] *),
 /* Target buttons in bottom left area specifically - (idk if this is needed.. but it's here) */
-.radiant-lyrics-ui-hidden [class*="_nowPlayingContainer"] button[class*="_button"]:not(.unhide-ui-button),
-.radiant-lyrics-ui-hidden [class*="_nowPlayingContainer"] [class*="_iconButton"]:not(.unhide-ui-button),
+	.radiant-lyrics-ui-hidden [class*="_nowPlayingContainer"]
+	button[class*="_button"]:not(.unhide-ui-button),
+.radiant-lyrics-ui-hidden
+	[class*="_nowPlayingContainer"]
+	[class*="_iconButton"]:not(.unhide-ui-button),
 /* Additional catch-all for bottom left area buttons - (idk if this is needed.. but it's here) */
-.radiant-lyrics-ui-hidden [class*="_nowPlayingContainer"] > div > div:first-child button:not(.unhide-ui-button),
-.radiant-lyrics-ui-hidden [class*="_nowPlayingContainer"] > div:first-child button:not(.unhide-ui-button) {
-    opacity: 0 !important;
-    pointer-events: none !important;
-    transition: opacity 0.5s ease-in-out !important;
+	.radiant-lyrics-ui-hidden [class*="_nowPlayingContainer"]
+	> div
+	> div:first-child
+	button:not(.unhide-ui-button),
+.radiant-lyrics-ui-hidden
+	[class*="_nowPlayingContainer"]
+	> div:first-child
+	button:not(.unhide-ui-button) {
+	opacity: 0 !important;
+	pointer-events: none !important;
+	transition: opacity 0.5s ease-in-out !important;
 }
 
 /* No hover functionality in Hide UI Mode - buttons stay hidden.. yea thats right, you heard me */
 
 /* Default state for control buttons */
 [data-test="add-to-playlist"],
-[data-test="remove-from-playlist"], 
+[data-test="remove-from-playlist"],
 [data-test="like-toggle"],
 [data-test="dislike-toggle"],
 [data-test="favorite-toggle"],
@@ -146,33 +175,38 @@ button[aria-label*="Favorite"],
 button[aria-label*="Heart"],
 [class*="_nowPlayingContainer"] button[class*="_button"]:not(.unhide-ui-button),
 [class*="_nowPlayingContainer"] [class*="_iconButton"]:not(.unhide-ui-button),
-[class*="_nowPlayingContainer"] > div > div:first-child button:not(.unhide-ui-button),
-[class*="_nowPlayingContainer"] > div:first-child button:not(.unhide-ui-button) {
-    transition: opacity 0.5s ease-in-out;
+[class*="_nowPlayingContainer"]
+	> div
+	> div:first-child
+	button:not(.unhide-ui-button),
+[class*="_nowPlayingContainer"]
+	> div:first-child
+	button:not(.unhide-ui-button) {
+	transition: opacity 0.5s ease-in-out;
 }
 
 /* Smooth cover art movement when UI is hidden */
 [class*="_albumImage"],
 [class*="_coverArt"],
 figure[class*="_albumImage"] {
-    transition: transform 0.6s ease-in-out;
+	transition: transform 0.6s ease-in-out;
 }
 
 .radiant-lyrics-ui-hidden [class*="_albumImage"],
 .radiant-lyrics-ui-hidden [class*="_coverArt"],
 .radiant-lyrics-ui-hidden figure[class*="_albumImage"] {
-    transform: translateX(80px) !important;
+	transform: translateX(80px) !important;
 }
 
 /* Smooth track info wrapper movement when UI is hidden (Arists & Track Title) */
 [class*="_infoWrapper"],
 [class*="_textContainer"] {
-    transition: transform 0.6s ease-in-out;
+	transition: transform 0.6s ease-in-out;
 }
 
 .radiant-lyrics-ui-hidden [class*="_infoWrapper"],
 .radiant-lyrics-ui-hidden [class*="_textContainer"] {
-    transform: translateX(40px) !important;
+	transform: translateX(40px) !important;
 }
 
 /* Move parent containers instead of lyrics container directly to preserve gradient fade */
@@ -183,7 +217,7 @@ figure[class*="_albumImage"] {
 [class*="_sidePanel"],
 [class*="_lyricsSection"],
 [class*="_lyricsWrapper"] {
-    transition: transform 0.6s ease-in-out;
+	transition: transform 0.6s ease-in-out;
 }
 
 .radiant-lyrics-ui-hidden [data-test="stream-metadata"],
@@ -193,32 +227,46 @@ figure[class*="_albumImage"] {
 .radiant-lyrics-ui-hidden [class*="_sidePanel"],
 .radiant-lyrics-ui-hidden [class*="_lyricsSection"],
 .radiant-lyrics-ui-hidden [class*="_lyricsWrapper"] {
-    transform: translateX(60px) translateY(-70px) !important;
+	transform: translateX(60px) translateY(-70px) !important;
 }
 
 /* Hide UI button base styling - just the transition */
 .hide-ui-button {
-    transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out, background-color 0.2s ease-in-out, transform 0.2s ease-in-out !important;
+	transition:
+		opacity 0.5s ease-in-out,
+		visibility 0.5s ease-in-out,
+		background-color 0.2s ease-in-out,
+		transform 0.2s ease-in-out !important;
 }
 
 /* Auto-fade styling for unhide button - (Keeps Text Visible, just not full opacity) | Cheers @Zyhn for the idea*/
 .unhide-ui-button.auto-faded {
-    background-color: transparent !important;
-    border-color: transparent !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    color: rgba(255, 255, 255, 0.8) !important;
-    transition: background-color 0.8s ease-in-out, border-color 0.8s ease-in-out, box-shadow 0.8s ease-in-out, backdrop-filter 0.8s ease-in-out, color 0.8s ease-in-out;
+	background-color: transparent !important;
+	border-color: transparent !important;
+	box-shadow: none !important;
+	backdrop-filter: none !important;
+	-webkit-backdrop-filter: none !important;
+	color: rgba(255, 255, 255, 0.8) !important;
+	transition:
+		background-color 0.8s ease-in-out,
+		border-color 0.8s ease-in-out,
+		box-shadow 0.8s ease-in-out,
+		backdrop-filter 0.8s ease-in-out,
+		color 0.8s ease-in-out;
 }
 
 /* Restore button styling on hover */
 .unhide-ui-button.auto-faded:hover {
-    background-color: rgba(255, 255, 255, 0.2) !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    color: white !important;
-    transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, backdrop-filter 0.3s ease-in-out, color 0.3s ease-in-out;
+	background-color: rgba(255, 255, 255, 0.2) !important;
+	border-color: rgba(255, 255, 255, 0.3) !important;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
+	color: white !important;
+	transition:
+		background-color 0.3s ease-in-out,
+		border-color 0.3s ease-in-out,
+		box-shadow 0.3s ease-in-out,
+		backdrop-filter 0.3s ease-in-out,
+		color 0.3s ease-in-out;
 }

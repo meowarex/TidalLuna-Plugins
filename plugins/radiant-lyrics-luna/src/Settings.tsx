@@ -5,34 +5,55 @@ import React from "react";
 export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	hideUIEnabled: true,
 	trackTitleGlow: false,
-    playerBarVisible: false,
+	playerBarVisible: false,
 	lyricsGlowEnabled: true,
 	textGlow: 20,
-    spinningCoverEverywhere: true,
+	spinningCoverEverywhere: true,
 	performanceMode: false,
 	spinningArtEnabled: true,
 	backgroundContrast: 120,
-    backgroundBlur: 80,
+	backgroundBlur: 80,
 	backgroundBrightness: 40,
 	spinSpeed: 45,
-    settingsAffectNowPlaying: true
+	settingsAffectNowPlaying: true,
 });
 
 export const Settings = () => {
-	const [hideUIEnabled, setHideUIEnabled] = React.useState(settings.hideUIEnabled);
-	const [playerBarVisible, setPlayerBarVisible] = React.useState(settings.playerBarVisible);
-	const [lyricsGlowEnabled, setLyricsGlowEnabled] = React.useState(settings.lyricsGlowEnabled);
+	const [hideUIEnabled, setHideUIEnabled] = React.useState(
+		settings.hideUIEnabled,
+	);
+	const [playerBarVisible, setPlayerBarVisible] = React.useState(
+		settings.playerBarVisible,
+	);
+	const [lyricsGlowEnabled, setLyricsGlowEnabled] = React.useState(
+		settings.lyricsGlowEnabled,
+	);
 	const [textGlow, setTextGlow] = React.useState(settings.textGlow);
-	const [spinningCoverEverywhere, setSpinningCoverEverywhere] = React.useState(settings.spinningCoverEverywhere);
-	const [performanceMode, setPerformanceMode] = React.useState(settings.performanceMode);
-	const [spinningArtEnabled, setSpinningArtEnabled] = React.useState(settings.spinningArtEnabled);
-	const [backgroundContrast, setBackgroundContrast] = React.useState(settings.backgroundContrast);
-	const [backgroundBlur, setBackgroundBlur] = React.useState(settings.backgroundBlur);
-	const [backgroundBrightness, setBackgroundBrightness] = React.useState(settings.backgroundBrightness);
+	const [spinningCoverEverywhere, setSpinningCoverEverywhere] = React.useState(
+		settings.spinningCoverEverywhere,
+	);
+	const [performanceMode, setPerformanceMode] = React.useState(
+		settings.performanceMode,
+	);
+	const [spinningArtEnabled, setSpinningArtEnabled] = React.useState(
+		settings.spinningArtEnabled,
+	);
+	const [backgroundContrast, setBackgroundContrast] = React.useState(
+		settings.backgroundContrast,
+	);
+	const [backgroundBlur, setBackgroundBlur] = React.useState(
+		settings.backgroundBlur,
+	);
+	const [backgroundBrightness, setBackgroundBrightness] = React.useState(
+		settings.backgroundBrightness,
+	);
 	const [spinSpeed, setSpinSpeed] = React.useState(settings.spinSpeed);
-	const [settingsAffectNowPlaying, setSettingsAffectNowPlaying] = React.useState(settings.settingsAffectNowPlaying);
-    const [trackTitleGlow, setTrackTitleGlow] = React.useState(settings.trackTitleGlow);
-	
+	const [settingsAffectNowPlaying, setSettingsAffectNowPlaying] =
+		React.useState(settings.settingsAffectNowPlaying);
+	const [trackTitleGlow, setTrackTitleGlow] = React.useState(
+		settings.trackTitleGlow,
+	);
+
 	return (
 		<LunaSettings>
 			<LunaSwitchSetting
@@ -48,16 +69,16 @@ export const Settings = () => {
 				}}
 			/>
 			<LunaSwitchSetting
-                title="Track Title Glow"
-                desc="Apply glow to the track title"
-                checked={trackTitleGlow}
-                onChange={(_: unknown, checked: boolean) => {
-                    setTrackTitleGlow((settings.trackTitleGlow = checked));
-                    if ((window as any).updateRadiantLyricsStyles) {
-                        (window as any).updateRadiantLyricsStyles();
-                    }
-                }}
-            />
+				title="Track Title Glow"
+				desc="Apply glow to the track title"
+				checked={trackTitleGlow}
+				onChange={(_: unknown, checked: boolean) => {
+					setTrackTitleGlow((settings.trackTitleGlow = checked));
+					if ((window as any).updateRadiantLyricsStyles) {
+						(window as any).updateRadiantLyricsStyles();
+					}
+				}}
+			/>
 			<LunaSwitchSetting
 				title="Hide UI Feature"
 				desc="Enable hide/unhide UI functionality with toggle buttons"
@@ -84,8 +105,13 @@ export const Settings = () => {
 				desc="Apply the spinning Cover Art background to the entire app, not just the Now Playing view, Heavily Inspired by Cover-Theme by @Inrixia"
 				checked={spinningCoverEverywhere}
 				onChange={(_, checked: boolean) => {
-					console.log("Spinning Cover Everywhere:", checked ? "enabled" : "disabled");
-					setSpinningCoverEverywhere((settings.spinningCoverEverywhere = checked));
+					console.log(
+						"Spinning Cover Everywhere:",
+						checked ? "enabled" : "disabled",
+					);
+					setSpinningCoverEverywhere(
+						(settings.spinningCoverEverywhere = checked),
+					);
 					// Update styles immediately when setting changes
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
@@ -113,31 +139,37 @@ export const Settings = () => {
 				desc="Enable the spinning cover art background animation"
 				checked={spinningArtEnabled}
 				onChange={(_, checked: boolean) => {
-					console.log("Background Cover Spin:", checked ? "enabled" : "disabled");
+					console.log(
+						"Background Cover Spin:",
+						checked ? "enabled" : "disabled",
+					);
 					setSpinningArtEnabled((settings.spinningArtEnabled = checked));
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
-					if (settings.settingsAffectNowPlaying && (window as any).updateRadiantLyricsNowPlayingBackground) {
+					if (
+						settings.settingsAffectNowPlaying &&
+						(window as any).updateRadiantLyricsNowPlayingBackground
+					) {
 						(window as any).updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
 			<LunaNumberSetting
-                title="Text Glow"
-                desc="Adjust the glow size of lyrics (0-100, default: 20)"
-                min={0}
-                max={100}
-                step={1}
-                value={textGlow}
-                onNumber={(value: number) => {
-                    setTextGlow((settings.textGlow = value));
-                    // Update variables immediately when setting changes
-                    if ((window as any).updateRadiantLyricsTextGlow) {
-                        (window as any).updateRadiantLyricsTextGlow();
-                    }
-                }}
-            />
+				title="Text Glow"
+				desc="Adjust the glow size of lyrics (0-100, default: 20)"
+				min={0}
+				max={100}
+				step={1}
+				value={textGlow}
+				onNumber={(value: number) => {
+					setTextGlow((settings.textGlow = value));
+					// Update variables immediately when setting changes
+					if ((window as any).updateRadiantLyricsTextGlow) {
+						(window as any).updateRadiantLyricsTextGlow();
+					}
+				}}
+			/>
 			<LunaNumberSetting
 				title="Background Contrast"
 				desc="Adjust the contrast of the spinning background (0-200, default: 120)"
@@ -150,7 +182,10 @@ export const Settings = () => {
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
-					if (settings.settingsAffectNowPlaying && (window as any).updateRadiantLyricsNowPlayingBackground) {
+					if (
+						settings.settingsAffectNowPlaying &&
+						(window as any).updateRadiantLyricsNowPlayingBackground
+					) {
 						(window as any).updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
@@ -168,7 +203,10 @@ export const Settings = () => {
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
-					if (settings.settingsAffectNowPlaying && (window as any).updateRadiantLyricsNowPlayingBackground) {
+					if (
+						settings.settingsAffectNowPlaying &&
+						(window as any).updateRadiantLyricsNowPlayingBackground
+					) {
 						(window as any).updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
@@ -186,7 +224,10 @@ export const Settings = () => {
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
-					if (settings.settingsAffectNowPlaying && (window as any).updateRadiantLyricsNowPlayingBackground) {
+					if (
+						settings.settingsAffectNowPlaying &&
+						(window as any).updateRadiantLyricsNowPlayingBackground
+					) {
 						(window as any).updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
@@ -204,7 +245,10 @@ export const Settings = () => {
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
-					if (settings.settingsAffectNowPlaying && (window as any).updateRadiantLyricsNowPlayingBackground) {
+					if (
+						settings.settingsAffectNowPlaying &&
+						(window as any).updateRadiantLyricsNowPlayingBackground
+					) {
 						(window as any).updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
@@ -214,8 +258,13 @@ export const Settings = () => {
 				desc="Apply background settings to Now Playing view"
 				checked={settingsAffectNowPlaying}
 				onChange={(_, checked: boolean) => {
-					console.log("Settings Affect Now Playing:", checked ? "enabled" : "disabled");
-					setSettingsAffectNowPlaying((settings.settingsAffectNowPlaying = checked));
+					console.log(
+						"Settings Affect Now Playing:",
+						checked ? "enabled" : "disabled",
+					);
+					setSettingsAffectNowPlaying(
+						(settings.settingsAffectNowPlaying = checked),
+					);
 					// Update Now Playing background immediately when setting changes
 					if ((window as any).updateRadiantLyricsNowPlayingBackground) {
 						(window as any).updateRadiantLyricsNowPlayingBackground();
@@ -224,4 +273,4 @@ export const Settings = () => {
 			/>
 		</LunaSettings>
 	);
-}; 
+};

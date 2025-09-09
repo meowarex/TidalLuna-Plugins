@@ -1,105 +1,105 @@
 /* Global Spinning Background Styles - PERFORMANCE OPTIMIZED */
 
 .global-background-container {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: -3;
-    pointer-events: none;
-    overflow: hidden;
-    /* Hardware acceleration */
-    transform: translateZ(0);
-    backface-visibility: hidden;
+	position: fixed;
+	left: 0;
+	top: 0;
+	width: 100vw;
+	height: 100vh;
+	z-index: -3;
+	pointer-events: none;
+	overflow: hidden;
+	/* Hardware acceleration */
+	transform: translateZ(0);
+	backface-visibility: hidden;
 }
 
 .global-spinning-black-bg {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: #000;
-    z-index: -2;
-    pointer-events: none;
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	background: #000;
+	z-index: -2;
+	pointer-events: none;
 }
 
 .global-spinning-image {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 150vw;
-    height: 150vh;
-    object-fit: cover;
-    z-index: -1;
-    filter: blur(80px) brightness(0.4) contrast(1.2) saturate(1);
-    opacity: 1;
-    animation: spinGlobal 45s linear infinite;
-    will-change: transform;
-    /* Hardware acceleration */
-    transform-origin: center center;
-    backface-visibility: hidden;
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	width: 150vw;
+	height: 150vh;
+	object-fit: cover;
+	z-index: -1;
+	filter: blur(80px) brightness(0.4) contrast(1.2) saturate(1);
+	opacity: 1;
+	animation: spinGlobal 45s linear infinite;
+	will-change: transform;
+	/* Hardware acceleration */
+	transform-origin: center center;
+	backface-visibility: hidden;
 }
 
 /* Performance mode optimizations - keep spinning but optimize other aspects */
 .global-spinning-image.performance-mode-static {
-    /* Keep animation enabled in performance mode */
-    /* Lighter blur for performance */
-    filter: blur(20px) brightness(0.4) contrast(1.2) saturate(1) !important;
-    /* Smaller size for performance */
-    width: 120vw !important;
-    height: 120vh !important;
+	/* Keep animation enabled in performance mode */
+	/* Lighter blur for performance */
+	filter: blur(20px) brightness(0.4) contrast(1.2) saturate(1) !important;
+	/* Smaller size for performance */
+	width: 120vw !important;
+	height: 120vh !important;
 }
 
 .now-playing-background-image.performance-mode-static {
-    /* Keep animation enabled in performance mode */
-    /* Optimized size and effects for performance */
-    width: 80vw !important;
-    height: 80vh !important;
+	/* Keep animation enabled in performance mode */
+	/* Optimized size and effects for performance */
+	width: 80vw !important;
+	height: 80vh !important;
 }
 
 /* Now Playing Background Container Optimization */
 .now-playing-background-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -3;
-    pointer-events: none;
-    overflow: hidden;
-    /* Hardware acceleration */
-    transform: translateZ(0);
-    backface-visibility: hidden;
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	z-index: -3;
+	pointer-events: none;
+	overflow: hidden;
+	/* Hardware acceleration */
+	transform: translateZ(0);
+	backface-visibility: hidden;
 }
 
 /* Optimized keyframe animations with GPU acceleration */
 @keyframes spinGlobal {
-    from { 
-        transform: translate(-50%, -50%) rotate(0deg); 
-    }
-    to { 
-        transform: translate(-50%, -50%) rotate(360deg); 
-    }
+	from {
+		transform: translate(-50%, -50%) rotate(0deg);
+	}
+	to {
+		transform: translate(-50%, -50%) rotate(360deg);
+	}
 }
 
 /* Reduced motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
-    .global-spinning-image,
-    .now-playing-background-image {
-        animation: none !important;
-        transform: translate(-50%, -50%) !important;
-        will-change: auto !important;
-    }
+	.global-spinning-image,
+	.now-playing-background-image {
+		animation: none !important;
+		transform: translate(-50%, -50%) !important;
+		will-change: auto !important;
+	}
 }
 
 /* Performance mode: optimize effects but keep spinning */
 .performance-mode .global-spinning-image,
 .performance-mode .now-playing-background-image {
-    /* Keep animations but optimize filter effects */
-    filter: blur(10px) brightness(0.4) contrast(1.1) !important;
+	/* Keep animations but optimize filter effects */
+	filter: blur(10px) brightness(0.4) contrast(1.1) !important;
 }
 
 /* Make Notification Feed sidebar transparent */
@@ -115,13 +115,13 @@ main,
 [data-test="stream-metadata"],
 [data-test="footer-player"],
 /* Notification Feed sidebar specific container */
-[class^="_feedSidebarVStack"],
+	[class^="_feedSidebarVStack"],
 [class^="_feedSidebarSpacer"],
 [class^="_feedSidebarItem"],
 [class^="_feedSidebarItemDiv"],
 [class^="_cellContainer"],
 [class^="_cellTextContainer"] {
-    background: unset !important;
+	background: unset !important;
 }
 
 /* Make sidebar and player bar semi-transparent with optimized backdrop-filter */
@@ -129,9 +129,9 @@ main,
 [data-test="main-layout-sidebar-wrapper"],
 [class^="_bar"],
 [class^="_sidebarItem"]:hover {
-    background-color: rgba(0, 0, 0, 0.3) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
+	background-color: rgba(0, 0, 0, 0.3) !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
 }
 
 /* Performance mode: reduce backdrop blur */
@@ -139,21 +139,21 @@ main,
 .performance-mode [data-test="main-layout-sidebar-wrapper"],
 .performance-mode [class^="_bar"],
 .performance-mode [class^="_sidebarItem"]:hover {
-    backdrop-filter: blur(5px) !important;
-    -webkit-backdrop-filter: blur(5px) !important;
+	backdrop-filter: blur(5px) !important;
+	-webkit-backdrop-filter: blur(5px) !important;
 }
 
 /* Feed sidebar panel - black tint background for readability */
 [data-test="feed-sidebar"] {
-    background-color: rgba(0, 0, 0, 0.5) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
+	background-color: rgba(0, 0, 0, 0.5) !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
 }
 
 /* Performance mode: reduce sidebar backdrop blur */
 .performance-mode [data-test="feed-sidebar"] {
-    backdrop-filter: blur(5px) !important;
-    -webkit-backdrop-filter: blur(5px) !important;
+	backdrop-filter: blur(5px) !important;
+	-webkit-backdrop-filter: blur(5px) !important;
 }
 
 /* Feed sidebar items - transparent */
@@ -162,10 +162,10 @@ main,
 [class*="_cellContainer"],
 [data-test="feed-interval"],
 [data-test="feed-item"] {
-    background-color: transparent !important;
+	background-color: transparent !important;
 }
 
 /* Remove bottom gradient */
 [class^="_bottomGradient"] {
-    display: none !important;
-} 
+	display: none !important;
+}
