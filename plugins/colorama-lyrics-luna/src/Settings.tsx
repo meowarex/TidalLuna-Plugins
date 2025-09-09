@@ -142,17 +142,17 @@ export const Settings = () => {
 		if (!hexColorRegex.test(trimmed)) return;
 		if (mode === "single") {
 			const next = normalizeToRGB(trimmed);
-			setSingleColor(next);
 			settings.singleColor = next;
+			setSingleColor(next);
 			if (updateInput) setCustomInput(next);
 		} else if (mode === "gradient-experimental") {
 			const next = normalizeToRGB(trimmed);
 			if (activeEndpoint === "end") {
-				setGradientEnd(next);
 				settings.gradientEnd = next;
+				setGradientEnd(next);
 			} else {
-				setGradientStart(next);
 				settings.gradientStart = next;
+				setGradientStart(next);
 			}
 			if (updateInput) setCustomInput(next);
 		}
@@ -511,15 +511,15 @@ export const Settings = () => {
 										onClick={() => {
 											const next = normalizeToRGB(color);
 											if (mode === "single") {
-												setSingleColor(next);
 												settings.singleColor = next;
+												setSingleColor(next);
 											} else if (mode === "gradient-experimental") {
 												if (activeEndpoint === "end") {
-													setGradientEnd(next);
 													settings.gradientEnd = next;
+													setGradientEnd(next);
 												} else {
-													setGradientStart(next);
 													settings.gradientStart = next;
+													setGradientStart(next);
 												}
 											}
 											setCustomInput(next);
@@ -618,8 +618,8 @@ export const Settings = () => {
 									value={singleAlpha}
 									onChange={(e) => {
 										const value = Number(e.target.value);
-										setSingleAlpha(value);
 										settings.singleAlpha = value;
+										setSingleAlpha(value);
 										requestApply();
 									}}
 									style={{ width: "100%" }}
@@ -661,8 +661,8 @@ export const Settings = () => {
 										value={gradientStartAlpha}
 										onChange={(e) => {
 											const value = Number(e.target.value);
-											setGradientStartAlpha(value);
 											settings.gradientStartAlpha = value;
+											setGradientStartAlpha(value);
 											requestApply();
 										}}
 										style={{ width: "100%" }}
@@ -700,8 +700,8 @@ export const Settings = () => {
 										value={gradientEndAlpha}
 										onChange={(e) => {
 											const value = Number(e.target.value);
-											setGradientEndAlpha(value);
 											settings.gradientEndAlpha = value;
+											setGradientEndAlpha(value);
 											requestApply();
 										}}
 										style={{ width: "100%" }}
@@ -735,8 +735,8 @@ export const Settings = () => {
 										value={gradientAngle}
 										onChange={(e) => {
 											const value = Number(e.target.value);
-											setGradientAngle(value);
 											settings.gradientAngle = value;
+											setGradientAngle(value);
 											requestApply();
 										}}
 										style={{ width: "100%" }}
@@ -770,8 +770,8 @@ export const Settings = () => {
 									value={gradientAngle}
 									onChange={(e) => {
 										const value = Number(e.target.value);
-										setGradientAngle(value);
 										settings.gradientAngle = value;
+										setGradientAngle(value);
 										requestApply();
 									}}
 									style={{ width: "100%" }}
