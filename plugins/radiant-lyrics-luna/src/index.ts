@@ -465,10 +465,13 @@ function updateCoverArtBackground(method: number = 0): void {
 					const scalePm = getScaledMultiplier();
 					const widthPm = `${Math.round(scalePm * 100)}vw`;
 					const heightPm = `${Math.round(scalePm * 100)}vh`;
+					const radiusPm = `${Math.max(0, Math.min(50, settings.backgroundRadius ?? 0))}%`;
 					if (nowPlayingBackgroundImage.style.width !== widthPm)
 						nowPlayingBackgroundImage.style.width = widthPm;
 					if (nowPlayingBackgroundImage.style.height !== heightPm)
 						nowPlayingBackgroundImage.style.height = heightPm;
+					if (nowPlayingBackgroundImage.style.borderRadius !== radiusPm)
+						nowPlayingBackgroundImage.style.borderRadius = radiusPm;
 					const filt = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
 					if (nowPlayingBackgroundImage.style.filter !== filt)
 						nowPlayingBackgroundImage.style.filter = filt;
@@ -486,10 +489,13 @@ function updateCoverArtBackground(method: number = 0): void {
 					const scaleNm = getScaledMultiplier();
 					const widthNm = `${Math.round(scaleNm * 100)}vw`;
 					const heightNm = `${Math.round(scaleNm * 100)}vh`;
+					const radiusNm = `${Math.max(0, Math.min(50, settings.backgroundRadius ?? 0))}%`;
 					if (nowPlayingBackgroundImage.style.width !== widthNm)
 						nowPlayingBackgroundImage.style.width = widthNm;
 					if (nowPlayingBackgroundImage.style.height !== heightNm)
 						nowPlayingBackgroundImage.style.height = heightNm;
+					if (nowPlayingBackgroundImage.style.borderRadius !== radiusNm)
+						nowPlayingBackgroundImage.style.borderRadius = radiusNm;
 					const filt = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
 					if (nowPlayingBackgroundImage.style.filter !== filt)
 						nowPlayingBackgroundImage.style.filter = filt;
@@ -605,12 +611,15 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 		const scale = getScaledMultiplier();
 		const scaledWidth = `${Math.round(scale * 100)}vw`;
 		const scaledHeight = `${Math.round(scale * 100)}vh`;
+		const radius = `${Math.max(0, Math.min(50, settings.backgroundRadius ?? 0))}%`;
 		// Performance mode optimizations
 		if (settings.performanceMode) {
 			// Performance mode with spinning enabled
 			globalBackgroundImage.style.width = scaledWidth;
 			globalBackgroundImage.style.height = scaledHeight;
 			globalBackgroundImage.style.filter = `blur(${Math.min(settings.backgroundBlur, 20)}px) brightness(${settings.backgroundBrightness / 100}) contrast(${Math.min(settings.backgroundContrast, 150)}%)`;
+			if (globalBackgroundImage.style.borderRadius !== radius)
+				globalBackgroundImage.style.borderRadius = radius;
 			if (settings.spinningArtEnabled) {
 				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
 				globalBackgroundImage.style.willChange = "transform";
@@ -624,6 +633,8 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 			globalBackgroundImage.style.width = scaledWidth;
 			globalBackgroundImage.style.height = scaledHeight;
 			globalBackgroundImage.style.filter = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
+			if (globalBackgroundImage.style.borderRadius !== radius)
+				globalBackgroundImage.style.borderRadius = radius;
 			if (settings.spinningArtEnabled) {
 				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
 				globalBackgroundImage.style.willChange = "transform";

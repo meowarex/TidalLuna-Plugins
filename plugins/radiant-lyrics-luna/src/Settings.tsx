@@ -17,6 +17,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	spinSpeed: 45,
 	settingsAffectNowPlaying: true,
 	backgroundScale: 15,
+	backgroundRadius: 0,
 });
 
 export const Settings = () => {
@@ -56,6 +57,9 @@ export const Settings = () => {
 	);
 	const [backgroundScale, setBackgroundScale] = React.useState(
 		settings.backgroundScale,
+	);
+	const [backgroundRadius, setBackgroundRadius] = React.useState(
+		settings.backgroundRadius,
 	);
 
 	// Derive props and override onChange to accept a broader first param type
@@ -178,11 +182,32 @@ export const Settings = () => {
 				onNumber={(value: number) => {
 					const next = Math.max(1, Math.min(30, Math.round(value)));
 					setBackgroundScale((settings.backgroundScale = next));
-					// Immediate visual update without throttle
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
 					if (
+						settings.settingsAffectNowPlaying &&
+						(window as any).updateRadiantLyricsNowPlayingBackground
+					) {
+						(window as any).updateRadiantLyricsNowPlayingBackground();
+					}
+				}}
+			/>
+			<LunaNumberSetting
+				title="Background Radius"
+				desc="Round the image corners (0–50%). 50% ≈ circle."
+				min={0}
+				max={50}
+				step={1}
+				value={backgroundRadius}
+				onNumber={(value: number) => {
+					const next = Math.max(0, Math.min(50, Math.round(value)));
+					setBackgroundRadius((settings.backgroundRadius = next));
+					if ((window as any).updateRadiantLyricsGlobalBackground) {
+						(window as any).updateRadiantLyricsGlobalBackground();
+					}
+					if (
+						sessionStorage &&
 						settings.settingsAffectNowPlaying &&
 						(window as any).updateRadiantLyricsNowPlayingBackground
 					) {
