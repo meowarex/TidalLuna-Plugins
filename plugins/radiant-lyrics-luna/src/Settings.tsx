@@ -17,7 +17,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	spinSpeed: 45,
 	settingsAffectNowPlaying: true,
 	backgroundScale: 15,
-	backgroundRadius: 0,
+	backgroundRadius: 25,
 });
 
 export const Settings = () => {
@@ -174,6 +174,21 @@ export const Settings = () => {
 				}}
 			/>
 			<LunaNumberSetting
+				title="Text Glow"
+				desc="Adjust the glow size of lyrics (0-100, default: 20)"
+				min={0}
+				max={100}
+				step={1}
+				value={textGlow}
+				onNumber={(value: number) => {
+					setTextGlow((settings.textGlow = value));
+					// Update variables immediately when setting changes
+					if ((window as any).updateRadiantLyricsTextGlow) {
+						(window as any).updateRadiantLyricsTextGlow();
+					}
+				}}
+			/>
+						<LunaNumberSetting
 				title="Background Scale"
 				desc="Adjust the scale of the background cover (1=10% - 50=500%)"
 				min={1}
@@ -195,9 +210,9 @@ export const Settings = () => {
 			/>
 			<LunaNumberSetting
 				title="Background Radius"
-				desc="Round the image corners (percentage). 50% ≈ circle."
+				desc="Adjust the cover art corner radius (0-100%, 100% = circle)"
 				min={0}
-				max={50}
+				max={100}
 				step={1}
 				value={backgroundRadius}
 				onNumber={(value: number) => {
@@ -210,21 +225,6 @@ export const Settings = () => {
 						(window as any).updateRadiantLyricsNowPlayingBackground
 					) {
 						(window as any).updateRadiantLyricsNowPlayingBackground();
-					}
-				}}
-			/>
-			<LunaNumberSetting
-				title="Text Glow"
-				desc="Adjust the glow size of lyrics (0-100, default: 20)"
-				min={0}
-				max={100}
-				step={1}
-				value={textGlow}
-				onNumber={(value: number) => {
-					setTextGlow((settings.textGlow = value));
-					// Update variables immediately when setting changes
-					if ((window as any).updateRadiantLyricsTextGlow) {
-						(window as any).updateRadiantLyricsTextGlow();
 					}
 				}}
 			/>

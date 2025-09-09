@@ -8,29 +8,6 @@ const getScaledMultiplier = (): number => {
     return value / 10;
 };
 
-// Helper to size an image using its intrinsic dimensions times scale (in pixels)
-const applyScaledPixelSize = (img: HTMLImageElement | null): void => {
-    if (!img) return;
-    const scale = getScaledMultiplier();
-    const apply = () => {
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-        if (w > 0 && h > 0) {
-            const wPx = Math.round(w * scale);
-            const hPx = Math.round(h * scale);
-            const wStr = `${wPx}px`;
-            const hStr = `${hPx}px`;
-            if (img.style.width !== wStr) img.style.width = wStr;
-            if (img.style.height !== hStr) img.style.height = hStr;
-        }
-    };
-    if (img.complete && img.naturalWidth > 0) {
-        apply();
-    } else {
-        img.addEventListener("load", apply, { once: true });
-    }
-};
-
 // Import CSS files directly using Luna's file:// syntax - Took me a while to figure out <3
 import baseStyles from "file://styles.css?minify";
 import playerBarHidden from "file://player-bar-hidden.css?minify";
@@ -333,6 +310,7 @@ let globalSpinningBgStyleTag: StyleTag | null = null;
 let globalBackgroundContainer: HTMLElement | null = null;
 let globalBackgroundImage: HTMLImageElement | null = null;
 let globalBlackBg: HTMLElement | null = null;
+let globalGradientOverlay: HTMLElement | null = null;
 let currentGlobalCoverSrc: string | null = null;
 let lastUpdateTime = 0;
 const getUpdateThrottle = () => (settings.performanceMode ? 1500 : 500);
@@ -344,6 +322,29 @@ let nowPlayingBlackBg: HTMLElement | null = null;
 let nowPlayingGradientOverlay: HTMLElement | null = null;
 let currentNowPlayingCoverSrc: string | null = null;
 let spinAnimationAdded = false;
+
+// apply scaled pixel sizes to cover art
+const applyScaledPixelSize = (img: HTMLImageElement | null): void => {
+    if (!img) return;
+    const scale = getScaledMultiplier();
+    const apply = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (w > 0 && h > 0) {
+            const wPx = Math.round(w * scale);
+            const hPx = Math.round(h * scale);
+            const wStr = `${wPx}px`;
+            const hStr = `${hPx}px`;
+            if (img.style.width !== wStr) img.style.width = wStr;
+            if (img.style.height !== hStr) img.style.height = hStr;
+        }
+    };
+    if (img.complete && img.naturalWidth > 0) {
+        apply();
+    } else {
+        img.addEventListener("load", apply, { once: true });
+    }
+};
 
 // Update Cover Art background for Now Playing and Global
 function updateCoverArtBackground(method: number = 0): void {
@@ -607,6 +608,38 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
             transform-origin: center center;
         `;
 		globalBackgroundContainer.appendChild(globalBackgroundImage);
+
+		// Create gradient overlay
+		globalGradientOverlay = document.createElement("div");
+		globalGradientOverlay.className = "global-spinning-gradient-overlay";
+		globalGradientOverlay.style.cssText = `
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.3) 60%, rgba(0, 0, 0, 0.8) 90%);
+            z-index: -1;
+            pointer-events: none;
+        `;
+		globalBackgroundContainer.appendChild(globalGradientOverlay);
+	}
+
+	// Ensure gradient overlay exists even if container was pre-existing
+	if (!globalGradientOverlay && globalBackgroundContainer) {
+		globalGradientOverlay = document.createElement("div");
+		globalGradientOverlay.className = "global-spinning-gradient-overlay";
+		globalGradientOverlay.style.cssText = `
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.3) 60%, rgba(0, 0, 0, 0.8) 90%);
+            z-index: -1;
+            pointer-events: none;
+        `;
+		globalBackgroundContainer.appendChild(globalGradientOverlay);
 	}
 
 	// Update image source efficiently (throttled)
@@ -629,6 +662,7 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 			globalBackgroundImage.style.filter = `blur(${Math.min(settings.backgroundBlur, 20)}px) brightness(${settings.backgroundBrightness / 100}) contrast(${Math.min(settings.backgroundContrast, 150)}%)`;
 			if (globalBackgroundImage.style.borderRadius !== radius)
 				globalBackgroundImage.style.borderRadius = radius;
+			// Do not apply radius to vignette overlay; matches Now Playing behavior
 			if (settings.spinningArtEnabled) {
 				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
 				globalBackgroundImage.style.willChange = "transform";
@@ -642,6 +676,7 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 			globalBackgroundImage.style.filter = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
 			if (globalBackgroundImage.style.borderRadius !== radius)
 				globalBackgroundImage.style.borderRadius = radius;
+			// Do not apply radius to vignette overlay; matches Now Playing behavior
 			if (settings.spinningArtEnabled) {
 				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
 				globalBackgroundImage.style.willChange = "transform";
@@ -662,6 +697,7 @@ const cleanUpGlobalSpinningBackground = function (): void {
 	globalBackgroundContainer = null;
 	globalBackgroundImage = null;
 	globalBlackBg = null;
+	globalGradientOverlay = null;
 	currentGlobalCoverSrc = null;
 
 	if (globalSpinningBgStyleTag) {
