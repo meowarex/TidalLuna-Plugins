@@ -1,12 +1,11 @@
 {
-  "name": "@meowarex/colorama-lyrics",
-  "description": "Customize lyrics colors: single, gradient & auto from cover art",
-  "author": {
-    "name": "meowarex",
-    "url": "https://github.com/meowarex",
-    "avatarUrl": "https://avatars.githubusercontent.com/u/90243579"
-  },
-  "main": "./src/index.ts",
-  "type": "module"
+	"name": "@meowarex/colorama-lyrics",
+	"description": "Customize lyrics colors: single, gradient & auto from cover art",
+	"author": {
+		"name": "meowarex",
+		"url": "https://github.com/meowarex",
+		"avatarUrl": "https://avatars.githubusercontent.com/u/90243579"
+	},
+	"main": "./src/index.ts",
+	"type": "module"
 }
-

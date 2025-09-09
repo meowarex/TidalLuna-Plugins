@@ -1,94 +1,138 @@
 /* Variables used by Colorama Lyrics */
 :root {
-  --cl-lyrics-color: #ffffff;
-  --cl-grad-start: #ffffff;
-  --cl-grad-end: #88aaff;
-  --cl-grad-angle: 0deg;
-  --cl-glow1: #ffffff;
-  --cl-glow2: #ffffff;
+	--cl-lyrics-color: #ffffff;
+	--cl-grad-start: #ffffff;
+	--cl-grad-end: #88aaff;
+	--cl-grad-angle: 0deg;
+	--cl-glow1: #ffffff;
+	--cl-glow2: #ffffff;
 }
 
 /* Apply solid color to lyrics text */
 .colorama-single [class*="_lyricsText"] > div > span,
 .colorama-single [class*="_lyricsText"] > div > span[data-current="true"],
 .colorama-single [class^="_lyricsContainer"] > div > div > span,
-.colorama-single [class^="_lyricsContainer"] > div > div > span[data-current="true"] {
-  color: var(--cl-lyrics-color) !important;
-  background: none !important;
-  -webkit-background-clip: initial !important;
-  background-clip: initial !important;
-  -webkit-text-fill-color: initial !important;
+.colorama-single
+	[class^="_lyricsContainer"]
+	> div
+	> div
+	> span[data-current="true"] {
+	color: var(--cl-lyrics-color) !important;
+	background: none !important;
+	-webkit-background-clip: initial !important;
+	background-clip: initial !important;
+	-webkit-text-fill-color: initial !important;
 }
 
 /* Apply gradient to lyrics text */
 .colorama-gradient [class*="_lyricsText"] > div > span,
 .colorama-gradient [class*="_lyricsText"] > div > span[data-current="true"],
 .colorama-gradient [class^="_lyricsContainer"] > div > div > span,
-.colorama-gradient [class^="_lyricsContainer"] > div > div > span[data-current="true"] {
-  background: linear-gradient(var(--cl-grad-angle), var(--cl-grad-start), var(--cl-grad-end)) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
+.colorama-gradient
+	[class^="_lyricsContainer"]
+	> div
+	> div
+	> span[data-current="true"] {
+	background: linear-gradient(
+		var(--cl-grad-angle),
+		var(--cl-grad-start),
+		var(--cl-grad-end)
+	) !important;
+	-webkit-background-clip: text !important;
+	background-clip: text !important;
+	color: transparent !important;
+	-webkit-text-fill-color: transparent !important;
 }
 
 /* Only-active: apply container class only on the active line via JS */
 
 /* Slight emphasis on current line (uniform to single mode) */
 .colorama-gradient [class*="_lyricsText"] > div > span[data-current="true"],
-.colorama-gradient [class^="_lyricsContainer"] > div > div > span[data-current="true"] {
-  filter: brightness(1.1) !important;
+.colorama-gradient
+	[class^="_lyricsContainer"]
+	> div
+	> div
+	> span[data-current="true"] {
+	filter: brightness(1.1) !important;
 }
 
 /* Keep song title color unchanged; its glow is controlled in Radiant CSS */
 
 /* Color Radiant glow shadows using Colorama colors (respect RL sizes) */
 .colorama-single [class*="_lyricsText"] > div > span[data-current="true"],
-.colorama-single [class^="_lyricsContainer"] > div > div > span[data-current="true"],
+.colorama-single
+	[class^="_lyricsContainer"]
+	> div
+	> div
+	> span[data-current="true"],
 .colorama-gradient [class*="_lyricsText"] > div > span[data-current="true"],
-.colorama-gradient [class^="_lyricsContainer"] > div > div > span[data-current="true"],
-.colorama-gradient [class^="_lyricsContainer"] > div > div > span[data-current="true"] {
-  text-shadow: 0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #ffffff), 0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #ffffff) !important;
+.colorama-gradient
+	[class^="_lyricsContainer"]
+	> div
+	> div
+	> span[data-current="true"],
+.colorama-gradient
+	[class^="_lyricsContainer"]
+	> div
+	> div
+	> span[data-current="true"] {
+	text-shadow:
+		0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #ffffff),
+		0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #ffffff) !important;
 }
 
 /* Hover: force glow color to match Colorama settings for inactive lines */
 .colorama-single [class*="_lyricsText"] > div > span:hover,
 .colorama-single [class^="_lyricsContainer"] > div > div > span:hover {
-  color: var(--cl-lyrics-color) !important;
-  text-shadow: 0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #ffffff), 0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #ffffff) !important;
+	color: var(--cl-lyrics-color) !important;
+	text-shadow:
+		0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #ffffff),
+		0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #ffffff) !important;
 }
 
 .colorama-gradient [class*="_lyricsText"] > div > span:hover,
 .colorama-gradient [class^="_lyricsContainer"] > div > div > span:hover {
-  background: linear-gradient(var(--cl-grad-angle), var(--cl-grad-start), var(--cl-grad-end)) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-  /* Do not increase glow strength on hover for gradients */
+	background: linear-gradient(
+		var(--cl-grad-angle),
+		var(--cl-grad-start),
+		var(--cl-grad-end)
+	) !important;
+	-webkit-background-clip: text !important;
+	background-clip: text !important;
+	color: transparent !important;
+	-webkit-text-fill-color: transparent !important;
+	/* Do not increase glow strength on hover for gradients */
 }
 
 /* Only color active line mode */
-body.colorama-only-active.colorama-single [class*="_lyricsText"] > div > span:not([data-current="true"]),
-body.colorama-only-active.colorama-gradient [class*="_lyricsText"] > div > span:not([data-current="true"]) {
-  /* Match Radiant inactive styling */
-  color: rgba(128, 128, 128, 0.4) !important;
-  background: none !important;
-  -webkit-background-clip: initial !important;
-  background-clip: initial !important;
-  -webkit-text-fill-color: initial !important;
-  text-shadow: initial !important;
+body.colorama-only-active.colorama-single [class*="_lyricsText"]
+	> div
+	> span:not([data-current="true"]),
+body.colorama-only-active.colorama-gradient
+	[class*="_lyricsText"]
+	> div
+	> span:not([data-current="true"]) {
+	/* Match Radiant inactive styling */
+	color: rgba(128, 128, 128, 0.4) !important;
+	background: none !important;
+	-webkit-background-clip: initial !important;
+	background-clip: initial !important;
+	-webkit-text-fill-color: initial !important;
+	text-shadow: initial !important;
 }
 
 /* In only-active mode, keep TIDAL defaults even on hover for inactive lines */
-body.colorama-only-active.colorama-single [class*="_lyricsText"] > div > span:not([data-current="true"]):hover,
-body.colorama-only-active.colorama-gradient [class*="_lyricsText"] > div > span:not([data-current="true"]):hover {
-  color: lightgray !important;
-  background: none !important;
-  -webkit-background-clip: initial !important;
-  background-clip: initial !important;
-  -webkit-text-fill-color: initial !important;
-  text-shadow: initial !important;
+body.colorama-only-active.colorama-single [class*="_lyricsText"]
+	> div
+	> span:not([data-current="true"]):hover,
+body.colorama-only-active.colorama-gradient
+	[class*="_lyricsText"]
+	> div
+	> span:not([data-current="true"]):hover {
+	color: lightgray !important;
+	background: none !important;
+	-webkit-background-clip: initial !important;
+	background-clip: initial !important;
+	-webkit-text-fill-color: initial !important;
+	text-shadow: initial !important;
 }
-
-

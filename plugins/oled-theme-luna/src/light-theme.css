@@ -7,90 +7,94 @@
 */
 
 ::-webkit-scrollbar {
-    display: none;
+	display: none;
 }
 
 :root {
-    --wave-color-solid-accent-fill: #666666;
-    --wave-color-solid-rainbow-yellow-fill: #666666;
-    --wave-color-solid-contrast-fill: #666666;
-    --wave-color-solid-base-brighter: #666666;
-    --wave-text-body-medium: #333333 !important;
-    --track-vibrant-color: #666666 !important;
-    --wave-color-opacity-contrast-fill-ultra-thin: #c0c0c0 !important;
-    --wave-color-solid-rainbow-yellow-darkest: #c0c0c0 !important;
-    --wave-color-solid-accent-dark: #555555;
+	--wave-color-solid-accent-fill: #666666;
+	--wave-color-solid-rainbow-yellow-fill: #666666;
+	--wave-color-solid-contrast-fill: #666666;
+	--wave-color-solid-base-brighter: #666666;
+	--wave-text-body-medium: #333333 !important;
+	--track-vibrant-color: #666666 !important;
+	--wave-color-opacity-contrast-fill-ultra-thin: #c0c0c0 !important;
+	--wave-color-solid-rainbow-yellow-darkest: #c0c0c0 !important;
+	--wave-color-solid-accent-dark: #555555;
 }
 
 /* Credits to https://github.com/surfbryce for the fonts */
 @font-face {
-    font-family: "AbyssFont";
-    font-weight: 400;
-    src: url("https://excel.lexploits.top/extra/tidal/LyricsRegular.woff2") format("woff2");
+	font-family: "AbyssFont";
+	font-weight: 400;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsRegular.woff2")
+		format("woff2");
 }
 
 @font-face {
-    font-family: "AbyssFont";
-    font-weight: 500;
-    src: url("https://excel.lexploits.top/extra/tidal/LyricsMedium.woff2") format("woff2");
+	font-family: "AbyssFont";
+	font-weight: 500;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsMedium.woff2")
+		format("woff2");
 }
 
 @font-face {
-    font-family: "AbyssFont";
-    font-weight: 600;
-    src: url("https://excel.lexploits.top/extra/tidal/LyricsSemibold.woff2") format("woff2");
+	font-family: "AbyssFont";
+	font-weight: 600;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsSemibold.woff2")
+		format("woff2");
 }
 
 @font-face {
-    font-family: "AbyssFont";
-    font-weight: 700;
-    src: url("https://excel.lexploits.top/extra/tidal/LyricsBold.woff2") format("woff2");
+	font-family: "AbyssFont";
+	font-weight: 700;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsBold.woff2")
+		format("woff2");
 }
 
 [class^="followingButton"],
 [title="Unfollow"],
 [title="Follow"],
-[title="Unfollow"]>span,
-[title="Follow"]>span {
-    background-color: var(--wave-color-solid-rainbow-yellow-fill) !important;
-    color: var(--wave-color-solid-base-brighter);
+[title="Unfollow"] > span,
+[title="Follow"] > span {
+	background-color: var(--wave-color-solid-rainbow-yellow-fill) !important;
+	color: var(--wave-color-solid-base-brighter);
 }
 
 [class^="_wave-badge-color-max"] {
-    color: #333333 !important;
-    background-color: var(--wave-color-solid-accent-fill);
-    border-radius: 3px;
+	color: #333333 !important;
+	background-color: var(--wave-color-solid-accent-fill);
+	border-radius: 3px;
 }
 
 [data-test="main-layout-sidebar-wrapper"] {
-    border-right: rgb(230, 230, 230) 1px solid;
-    background-color: rgba(250, 250, 250, 0.95) !important;
+	border-right: rgb(230, 230, 230) 1px solid;
+	background-color: rgba(250, 250, 250, 0.95) !important;
 }
 
 [class^="_wave-badge"] {
-    background-color: var(--wave-color-solid-accent-fill);
-    border-radius: 4px;
-    color: #333333;
+	background-color: var(--wave-color-solid-accent-fill);
+	border-radius: 4px;
+	color: #333333;
 }
 
 [class^="_progressBarWrapper"] {
-    color: var(--wave-color-solid-accent-fill) !important;
+	color: var(--wave-color-solid-accent-fill) !important;
 }
 
-[class^="_sidebarItem"]>span {
-    color: #666666;
+[class^="_sidebarItem"] > span {
+	color: #666666;
 }
 
 [data-test="main-layout-header"] {
-    border-left: 0 !important;
+	border-left: 0 !important;
 }
 
 [class^="_sidebarItem"]:hover span {
-    color: #333333;
+	color: #333333;
 }
 
-[class^="_sidebarItem"] [class^="active"]>span {
-    color: #333333 !important;
+[class^="_sidebarItem"] [class^="active"] > span {
+	color: #333333 !important;
 }
 
 /* Sidebar icons and text - ensure grey colors */
@@ -98,110 +102,107 @@
 [data-test="main-layout-sidebar-wrapper"] path,
 [class^="_sidebarItem"] svg,
 [class^="_sidebarItem"] path {
-    fill: #666666 !important;
-    color: #666666 !important;
+	fill: #666666 !important;
+	color: #666666 !important;
 }
 
 [data-test="main-layout-sidebar-wrapper"] span,
 [class^="_sidebarItem"] span {
-    color: #666666 !important;
+	color: #666666 !important;
 }
 
 [class^="_active"] {
-    color: var(--wave-color-solid-accent-fill) !important;
+	color: var(--wave-color-solid-accent-fill) !important;
 }
 
 [class^="ReactVirtualized__Grid"] {
-    border-radius: 10px;
-    margin: 5px;
+	border-radius: 10px;
+	margin: 5px;
 }
 
-[data-test="media-table"]>div>div>div {
-    border: 1px solid rgb(230, 230, 230) !important;
+[data-test="media-table"] > div > div > div {
+	border: 1px solid rgb(230, 230, 230) !important;
 }
 
 [class^="ReactVirtualized__Grid__innerScrollContainer"] {
-    border: none;
-    margin: 5px;
+	border: none;
+	margin: 5px;
 }
 
-[class^="button"]>span {
-    color: #333333;
+[class^="button"] > span {
+	color: #333333;
 }
-
-
 
 [class^="_explicitBadge"] {
-    color: var(--wave-color-solid-accent-fill);
+	color: var(--wave-color-solid-accent-fill);
 }
 
 [class^="viewAllButton"] {
-    border-radius: 4px;
-    display: grid;
-    place-items: center;
+	border-radius: 4px;
+	display: grid;
+	place-items: center;
 }
 
 [data-test="current-media-imagery"] {
-    border: 0 !important;
-    margin: none;
+	border: 0 !important;
+	margin: 0;
 }
 
 [class^="_imageBorder"] {
-    display: none;
+	display: none;
 }
 
-[class^="_headerButtons"]>button,
-[class^="_headerButtons"]>button>span,
+[class^="_headerButtons"] > button,
+[class^="_headerButtons"] > button > span,
 [data-test="toggle-picture-in-picture"] {
-    background-color: var(--wave-color-solid-accent-fill) !important;
-    color: #333333;
+	background-color: var(--wave-color-solid-accent-fill) !important;
+	color: #333333;
 }
 
-[class^="_container"]>[class^="_navigationArrows"] {
-    color: #333333;
-    background-color: var(--wave-color-solid-accent-fill) !important;
-    border-radius: 4px;
+[class^="_container"] > [class^="_navigationArrows"] {
+	color: #333333;
+	background-color: var(--wave-color-solid-accent-fill) !important;
+	border-radius: 4px;
 }
 
-[class^="_buttons"]>button>span {
-    color: #333333 !important;
+[class^="_buttons"] > button > span {
+	color: #333333 !important;
 }
 
-[class^="_container"]>button {
-    border: 0px none;
+[class^="_container"] > button {
+	border: 0px none;
 }
-
 
 [data-test="feed-sidebar"] {
-    margin-top: 10px;
+	margin-top: 10px;
 }
 
 [data-test="footer-player"] {
-    width: calc(100% - 20px);
-    bottom: 10px;
-    left: 10px;
-    border: 1px solid rgba(200, 200, 200, 0.7);
-    border-radius: 4px !important;
-    position: absolute !important;
+	width: calc(100% - 20px);
+	bottom: 10px;
+	left: 10px;
+	border: 1px solid rgba(200, 200, 200, 0.7);
+	border-radius: 4px !important;
+	position: absolute !important;
 }
 
-[class^="_tooltipContainer"]>button {
-    background-color: var(--wave-color-solid-accent-fill);
-    color: #333333;
+[class^="_tooltipContainer"] > button {
+	background-color: var(--wave-color-solid-accent-fill);
+	color: #333333;
 }
 
-[class^="_tooltipContainer"]>button:hover {
-    background-color: #555555 !important;
+[class^="_tooltipContainer"] > button:hover {
+	background-color: #555555 !important;
 }
 
-[class^="_tableRow"]:hover>*,
-[data-test-is-playing="true"]>* {
-    color: #333333 !important;
+[class^="_tableRow"]:hover > *,
+[data-test-is-playing="true"] > * {
+	color: #333333 !important;
 }
 
-[class^="_tableRow"]>*,
-[data-test-is-playing="false"]>* {
-    color: #333333 !important;
+[class^="_tableRow"] > *,
+[data-test-is-playing="false"] > * {
+	color: #333333 !important;
 }
 
 /* Track list text - ensure all text is dark */
@@ -211,200 +212,200 @@
 [class^="_albumTitle"],
 [class^="_tableCell"] *,
 [class^="_tableCellContent"] * {
-    color: #333333 !important;
+	color: #333333 !important;
 }
 
 [class*="coverColumn"] {
-    padding-left: 5px !important;
+	padding-left: 5px !important;
 }
 
 [class^="actionList"] {
-    background-color: transparent;
-    margin: 0px;
-    border-radius: 5px;
+	background-color: transparent;
+	margin: 0px;
+	border-radius: 5px;
 }
 
 button[data-test="request-fullscreen"],
 button[data-test="close-now-playing"],
 button[data-test="play-all"],
 button[data-test="shuffle-all"] {
-    color: #333333;
-    background-color: var(--wave-color-solid-accent-fill);
-    border-radius: 12px;
+	color: #333333;
+	background-color: var(--wave-color-solid-accent-fill);
+	border-radius: 12px;
 }
 
 button[data-test="request-fullscreen"]:hover,
 button[data-test="close-now-playing"]:hover {
-    color: #333333;
-    background-color: #aaaaaa !important;
+	color: #333333;
+	background-color: #aaaaaa !important;
 }
 
-.neptune-switch-checkbox:checked+.neptune-switch {
-    background-color: rgba(0, 0, 0, 0.1);
+.neptune-switch-checkbox:checked + .neptune-switch {
+	background-color: rgba(0, 0, 0, 0.1);
 }
 
-[data-test="navigation-arrows"]>button {
-    background-color: var(--wave-color-solid-accent-fill) !important;
-    color: #333333 !important;
-    border-radius: 5px;
+[data-test="navigation-arrows"] > button {
+	background-color: var(--wave-color-solid-accent-fill) !important;
+	color: #333333 !important;
+	border-radius: 5px;
 }
 
-[data-test="navigation-arrows"]>button:disabled {
-    background-color: #cccccc !important;
-    opacity: 1;
+[data-test="navigation-arrows"] > button:disabled {
+	background-color: #cccccc !important;
+	opacity: 1;
 }
 
 [data-test="main-layout-header"] {
-    background-color: rgba(235, 235, 235, 0.95) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
+	background-color: rgba(235, 235, 235, 0.95) !important;
+	backdrop-filter: blur(10px);
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
 }
 
 [data-test="feed-sidebar"] {
-    background-color: rgba(225, 225, 225, 0.9) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
+	background-color: rgba(225, 225, 225, 0.9) !important;
+	backdrop-filter: blur(10px);
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
 }
 
 [data-test="stream-metadata"] {
-    background-color: rgba(230, 230, 230, 0.92) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
+	background-color: rgba(230, 230, 230, 0.92) !important;
+	backdrop-filter: blur(10px);
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
 }
 
 [data-test="footer-player"] {
-    background-color: rgba(255, 255, 255, 0.6) !important;
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(200, 200, 200, 0.7) !important;
+	background-color: rgba(255, 255, 255, 0.6) !important;
+	backdrop-filter: blur(15px);
+	border: 1px solid rgba(200, 200, 200, 0.7) !important;
 }
 
-[data-wave-color=textUrl] {
-    color: var(--wave-color-solid-accent-fill);
+[data-wave-color="textUrl"] {
+	color: var(--wave-color-solid-accent-fill);
 }
 
 [class^="_smallHeader"] {
-    margin-top: 7.5px;
+	margin-top: 7.5px;
 }
 
 /* Button styling using proper light theme approach */
 :root {
-    --button-light: #d9d9d9 !important;
-    --button-medium: #cbcbcb !important;
+	--button-light: #d9d9d9 !important;
+	--button-medium: #cbcbcb !important;
 }
 
 /*buttons*/
 ._activeTab_f47dafa {
-    background: #0000001c;
+	background: #0000001c;
 }
 
 /*canvas nav buttons*/
 .viewAllButton--Nb87U,
 .css-7l8ggf {
-    background: #e0e0e0;
+	background: #e0e0e0;
 }
 
 .viewAllButton--Nb87U:hover,
 .css-7l8ggf:hover {
-    background: #cbcbcb;
+	background: #cbcbcb;
 }
 
 /*tracks page*/
 .variantPrimary--pjymy,
 ._button_3357ce6 {
-    background-color: var(--button-light);
+	background-color: var(--button-light);
 }
 
 ._button_f1c7fcb {
-    background: var(--wave-color-solid-base-brighter);
+	background: var(--wave-color-solid-base-brighter);
 }
 
 ._button_84b8ffe {
-    background-color: var(--wave-color-solid-base-brighter);
+	background-color: var(--wave-color-solid-base-brighter);
 }
 
 ._button_84b8ffe:hover {
-    background-color: var(--wave-color-solid-base-brightest);
+	background-color: var(--wave-color-solid-base-brightest);
 }
 
 .button--_0I_t {
-    background-color: var(--button-light);
+	background-color: var(--button-light);
 }
 
 .button--_0I_t:hover {
-    background-color: var(--wave-color-opacity-contrast-fill-regular);
+	background-color: var(--wave-color-opacity-contrast-fill-regular);
 }
 
 ._button_94c5125 {
-    background: var(--wave-color-solid-base-brighter);
+	background: var(--wave-color-solid-base-brighter);
 }
 
 .primary--NLSX4 {
-    background-color: #d5d5d5;
+	background-color: #d5d5d5;
 }
 
 .primary--NLSX4:hover {
-    background-color: var(--wave-color-opacity-contrast-fill-regular) !important;
+	background-color: var(--wave-color-opacity-contrast-fill-regular) !important;
 }
 
 .primary--NLSX4:disabled {
-    background-color: #e7e7e8;
+	background-color: #e7e7e8;
 }
 
 .primary--NLSX4:disabled:hover {
-    background-color: #e7e7e8;
+	background-color: #e7e7e8;
 }
 
 [class^="__NEPTUNE_PAGE"],
 [data-test="main"] {
-    margin-top: 35px;
+	margin-top: 35px;
 }
 
 [data-test="button-desktop-release-notes"],
 [data-test="button-release-notes"] {
-    background-color: #333333;
+	background-color: #333333;
 }
 
 [data-test="button-desktop-release-notes"]:hover,
 [data-test="button-release-notes"]:hover {
-    background-color: #555555 !important;
-    transition: none !important;
+	background-color: #555555 !important;
+	transition: none !important;
 }
 
 #playQueueSidebar {
-    top: 50px !important;
-    border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin);
-    margin: 2px;
-    margin-right: -14px !important;
-    background-color: rgba(220, 220, 220, 0.9) !important;
-    backdrop-filter: blur(10px);
+	top: 50px !important;
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin);
+	margin: 2px;
+	margin-right: -14px !important;
+	background-color: rgba(220, 220, 220, 0.9) !important;
+	backdrop-filter: blur(10px);
 }
 
 [class^="_bottomGradient"] {
-    visibility: hidden;
+	visibility: hidden;
 }
 
 [data-test="settings-page"] {
-    padding-bottom: 60px !important;
+	padding-bottom: 60px !important;
 }
 
 [data-test="query-suggestions"],
 [data-test="recent-searches-container"] {
-    background-color: rgba(227, 227, 227, 0.85);
-    backdrop-filter: blur(10px);
+	background-color: rgba(227, 227, 227, 0.85);
+	backdrop-filter: blur(10px);
 }
 
 [data-test="contextmenu"] {
-    border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
 }
 
 [class^="_dataContainer_"]::before {
-    background-image: var(--img);
-    filter: blur(10px) brightness(1.2);
+	background-image: var(--img);
+	filter: blur(10px) brightness(1.2);
 }
 
 /* Player bar text colors - fix white text issues */
 [data-test="footer-player"] * {
-    color: #333333 !important;
+	color: #333333 !important;
 }
 
 [data-test="footer-player"] [class*="trackTitle"],
@@ -413,12 +414,12 @@ button[data-test="close-now-playing"]:hover {
 [data-test="footer-player"] [class*="duration"],
 [data-test="footer-player"] [class*="time"],
 [data-test="footer-player"] [class*="timestamp"] {
-    color: #333333 !important;
+	color: #333333 !important;
 }
 
 /* Main page background */
 body,
 [data-test="main"],
 [class^="__NEPTUNE_PAGE"] {
-    background-color: #f5f5f5 !important;
+	background-color: #f5f5f5 !important;
 }

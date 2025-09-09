@@ -1,15 +1,15 @@
 /* Hide player bar when setting is disabled, but show on hover - only when UI is hidden */
 .radiant-lyrics-ui-hidden [data-test="footer-player"] {
-    opacity: 0 !important;
-    transition: opacity 0.5s ease-in-out !important;
+	opacity: 0 !important;
+	transition: opacity 0.5s ease-in-out !important;
 }
 
 .radiant-lyrics-ui-hidden [data-test="footer-player"]:hover {
-    opacity: 1 !important;
+	opacity: 1 !important;
 }
 
 /* Also show player bar when hovering over the bottom area - only when UI is hidden */
 .radiant-lyrics-ui-hidden body.rl-footer-hover [data-test="footer-player"],
 .radiant-lyrics-ui-hidden [data-test="footer-player"]:hover {
-    opacity: 1 !important;
-} 
+	opacity: 1 !important;
+}

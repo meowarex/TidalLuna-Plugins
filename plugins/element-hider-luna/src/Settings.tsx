@@ -9,9 +9,9 @@ export const settings = await ReactiveStore.getPluginStorage("ElementHider", {
 		className: string;
 		textContent: string;
 		timestamp: number;
-	}>
+	}>,
 });
 
 export const Settings = () => {
 	return null;
-}; 
+};

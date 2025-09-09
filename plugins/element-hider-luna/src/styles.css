@@ -2,62 +2,64 @@
 
 /* Custom context menu for elements without built-in menu */
 .element-hider-custom-menu {
-    position: fixed;
-    background: var(--wave-color-background-elevated, #2a2a2a);
-    border: 1px solid var(--wave-color-border, #444);
-    border-radius: 8px;
-    padding: 8px 0;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    z-index: 999999;
-    min-width: 180px;
-    font-family: inherit;
-    font-size: 14px;
+	position: fixed;
+	background: var(--wave-color-background-elevated, #2a2a2a);
+	border: 1px solid var(--wave-color-border, #444);
+	border-radius: 8px;
+	padding: 8px 0;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+	z-index: 999999;
+	min-width: 180px;
+	font-family: inherit;
+	font-size: 14px;
 }
 
 .element-hider-menu-item {
-    display: flex;
-    align-items: center;
-    padding: 8px 16px;
-    cursor: pointer;
-    color: var(--wave-color-text, #ffffff);
-    background: transparent;
-    border: none;
-    width: 100%;
-    text-align: left;
-    transition: background-color 0.15s ease;
-    font-family: inherit;
-    font-size: 14px;
+	display: flex;
+	align-items: center;
+	padding: 8px 16px;
+	cursor: pointer;
+	color: var(--wave-color-text, #ffffff);
+	background: transparent;
+	border: none;
+	width: 100%;
+	text-align: left;
+	transition: background-color 0.15s ease;
+	font-family: inherit;
+	font-size: 14px;
 }
 
 .element-hider-menu-item:hover {
-    background: var(--wave-color-background-hover, #3a3a3a);
+	background: var(--wave-color-background-hover, #3a3a3a);
 }
 
 .element-hider-menu-item:active {
-    background: var(--wave-color-background-active, #4a4a4a);
+	background: var(--wave-color-background-active, #4a4a4a);
 }
 
 .element-hider-menu-icon {
-    margin-right: 8px;
-    width: 16px;
-    height: 16px;
+	margin-right: 8px;
+	width: 16px;
+	height: 16px;
 }
 
 /* Highlight the target element */
 .element-hider-target {
-    outline: 2px solid #ff6b6b !important;
-    outline-offset: 2px !important;
-    box-shadow: 0 0 10px rgba(255, 107, 107, 0.6) !important;
+	outline: 2px solid #ff6b6b !important;
+	outline-offset: 2px !important;
+	box-shadow: 0 0 10px rgba(255, 107, 107, 0.6) !important;
 }
 
 /* Hidden elements */
 .element-hider-hidden {
-    display: none !important;
+	display: none !important;
 }
 
 /* Animation for hiding */
 .element-hider-hiding {
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    opacity: 0;
-    transform: scale(0.95);
-} 
+	transition:
+		opacity 0.3s ease,
+		transform 0.3s ease;
+	opacity: 0;
+	transform: scale(0.95);
+}

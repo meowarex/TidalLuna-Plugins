@@ -1,9 +1,9 @@
-[class^="_lyricsText"]>div>span {
-    user-select: text;
-    cursor: text;
+[class^="_lyricsText"] > div > span {
+	user-select: text;
+	cursor: text;
 }
 
 ::selection {
-    background: rgb(72, 0, 60);
-    color: rgb(255, 255, 255);
-} 
+	background: rgb(72, 0, 60);
+	color: rgb(255, 255, 255);
+}
