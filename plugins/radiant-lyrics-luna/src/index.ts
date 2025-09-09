@@ -225,7 +225,7 @@ const createHideUIButton = function (): void {
 		hideUIButton.setAttribute("aria-label", "Hide UI");
 		hideUIButton.setAttribute("title", "Hide UI");
 		hideUIButton.textContent = "Hide UI";
-		hideUIButton.style.backgroundColor = "var(--wave-color-solid-accent-fill)";
+		hideUIButton.style.backgroundColor = "#ffffff";
 		hideUIButton.style.color = "black";
 		hideUIButton.style.border = "none";
 		hideUIButton.style.borderRadius = "12px";
@@ -245,11 +245,10 @@ const createHideUIButton = function (): void {
 		hideUIButton.style.visibility = "hidden";
 		hideUIButton.style.pointerEvents = "none";
 		hideUIButton.addEventListener("mouseenter", () => {
-			hideUIButton.style.backgroundColor = "lightgray";
+			hideUIButton.style.backgroundColor = "#e5e5e5";
 		});
 		hideUIButton.addEventListener("mouseleave", () => {
-			hideUIButton.style.backgroundColor =
-				"var(--wave-color-solid-accent-fill)";
+			hideUIButton.style.backgroundColor = "#ffffff";
 		});
 		hideUIButton.onclick = toggleRadiantLyrics;
 		buttonContainer.insertBefore(hideUIButton, fullscreenButton.nextSibling);
