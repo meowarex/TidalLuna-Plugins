@@ -7,7 +7,7 @@ import darkTheme from "file://dark-theme.css?minify";
 import oledFriendlyTheme from "file://oled-friendly.css?minify";
 import lightTheme from "file://light-theme.css?minify";
 
-export const { trace } = Tracer("[OLED Theme]");
+export const { trace } = Tracer("[Obsidian]");
 export { Settings };
 
 // called when plugin is unloaded.
@@ -15,7 +15,7 @@ export { Settings };
 export const unloads = new Set<LunaUnload>();
 
 // StyleTag instance for theme management
-const themeStyleTag = new StyleTag("OLED-Theme", unloads);
+const themeStyleTag = new StyleTag("Obsidian", unloads);
 
 // Quality color mapping
 const QUALITY_COLORS = {
@@ -150,13 +150,13 @@ const applyThemeStyles = (): void => {
 // Make this function available globally so Settings can call it
 declare global {
 	interface Window {
-		updateOLEDThemeStyles?: () => void;
+		updateObsidianStyles?: () => void;
 	}
 }
 
-window.updateOLEDThemeStyles = applyThemeStyles;
+window.updateObsidianStyles = applyThemeStyles;
 
-// Apply the OLED theme initially
+// Apply the Obsidian theme initially
 applyThemeStyles();
 
 // Ensure interval is cleared on unload

@@ -1,6 +1,6 @@
 {
-	"name": "@meowarex/oled-theme",
-	"description": "A dark OLED-friendly theme plugin that transforms Tidal Luna's appearance.",
+	"name": "@meowarex/obsidian",
+	"description": "A dark OLED-friendly theme for Tidal Luna.",
 	"author": {
 		"name": "meowarex",
 		"url": "https://github.com/meowarex",
