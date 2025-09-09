@@ -3,21 +3,21 @@ import { LunaSettings, LunaSwitchSetting, LunaNumberSetting } from "@luna/ui";
 import React from "react";
 
 export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
-	hideUIEnabled: true,
-	trackTitleGlow: false,
-	playerBarVisible: false,
 	lyricsGlowEnabled: true,
-	textGlow: 20,
-	spinningCoverEverywhere: true,
+	trackTitleGlow: false,
+	hideUIEnabled: true,
+	playerBarVisible: false,
+	CoverEverywhere: true,
 	performanceMode: false,
-	spinningArtEnabled: true,
+	spinningArt: true,
+	textGlow: 20,
+	backgroundScale: 15,
+	backgroundRadius: 25,
 	backgroundContrast: 120,
 	backgroundBlur: 80,
 	backgroundBrightness: 40,
 	spinSpeed: 45,
 	settingsAffectNowPlaying: true,
-	backgroundScale: 15,
-	backgroundRadius: 25,
 });
 
 export const Settings = () => {
@@ -31,14 +31,14 @@ export const Settings = () => {
 		settings.lyricsGlowEnabled,
 	);
 	const [textGlow, setTextGlow] = React.useState(settings.textGlow);
-	const [spinningCoverEverywhere, setSpinningCoverEverywhere] = React.useState(
-		settings.spinningCoverEverywhere,
+	const [CoverEverywhere, setCoverEverywhere] = React.useState(
+		settings.CoverEverywhere,
 	);
 	const [performanceMode, setPerformanceMode] = React.useState(
 		settings.performanceMode,
 	);
-	const [spinningArtEnabled, setSpinningArtEnabled] = React.useState(
-		settings.spinningArtEnabled,
+	const [spinningArt, setspinningArt] = React.useState(
+		settings.spinningArt,
 	);
 	const [backgroundContrast, setBackgroundContrast] = React.useState(
 		settings.backgroundContrast,
@@ -121,14 +121,14 @@ export const Settings = () => {
 			<AnySwitch
 				title="Cover Everywhere"
 				desc="Apply the spinning Cover Art background to the entire app, not just the Now Playing view, Heavily Inspired by Cover-Theme by @Inrixia"
-				checked={spinningCoverEverywhere}
+				checked={CoverEverywhere}
 				onChange={(_: unknown, checked: boolean) => {
 					console.log(
 						"Spinning Cover Everywhere:",
 						checked ? "enabled" : "disabled",
 					);
-					setSpinningCoverEverywhere(
-						(settings.spinningCoverEverywhere = checked),
+					setCoverEverywhere(
+						(settings.CoverEverywhere = checked),
 					);
 					// Update styles immediately when setting changes
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
@@ -155,13 +155,13 @@ export const Settings = () => {
 			<AnySwitch
 				title="Background Cover Spin" // Cheers @Max/n0201 for the idea <3
 				desc="Enable the spinning cover art background animation"
-				checked={spinningArtEnabled}
+				checked={spinningArt}
 				onChange={(_: unknown, checked: boolean) => {
 					console.log(
 						"Background Cover Spin:",
 						checked ? "enabled" : "disabled",
 					);
-					setSpinningArtEnabled((settings.spinningArtEnabled = checked));
+					setspinningArt((settings.spinningArt = checked));
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}

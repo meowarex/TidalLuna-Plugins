@@ -387,7 +387,7 @@ function updateCoverArtBackground(method: number = 0): void {
 	// Update backgrounds when we have a valid cover art source
 	if (coverArtImageSrc) {
 		// Apply global spinning background if enabled
-		if (settings.spinningCoverEverywhere) {
+		if (settings.CoverEverywhere) {
 			applyGlobalSpinningBackground(coverArtImageSrc);
 		}
 
@@ -495,10 +495,10 @@ function updateCoverArtBackground(method: number = 0): void {
 					const filt = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
 					if (nowPlayingBackgroundImage.style.filter !== filt)
 						nowPlayingBackgroundImage.style.filter = filt;
-					const anim = settings.spinningArtEnabled
+					const anim = settings.spinningArt
 						? `spin ${settings.spinSpeed}s linear infinite`
 						: "none";
-					const wc = settings.spinningArtEnabled ? "transform" : "auto";
+					const wc = settings.spinningArt ? "transform" : "auto";
 					if (nowPlayingBackgroundImage.style.animation !== anim)
 						nowPlayingBackgroundImage.style.animation = anim;
 					if (nowPlayingBackgroundImage.style.willChange !== wc)
@@ -512,10 +512,10 @@ function updateCoverArtBackground(method: number = 0): void {
 					const filt = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
 					if (nowPlayingBackgroundImage.style.filter !== filt)
 						nowPlayingBackgroundImage.style.filter = filt;
-					const anim = settings.spinningArtEnabled
+					const anim = settings.spinningArt
 						? `spin ${settings.spinSpeed}s linear infinite`
 						: "none";
-					const wc = settings.spinningArtEnabled ? "transform" : "auto";
+					const wc = settings.spinningArt ? "transform" : "auto";
 					if (nowPlayingBackgroundImage.style.animation !== anim)
 						nowPlayingBackgroundImage.style.animation = anim;
 					if (nowPlayingBackgroundImage.style.willChange !== wc)
@@ -547,7 +547,7 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 		'[data-test="main"]',
 	) as HTMLElement;
 
-	if (!settings.spinningCoverEverywhere) {
+	if (!settings.CoverEverywhere) {
 		cleanUpGlobalSpinningBackground();
 		return;
 	}
@@ -663,7 +663,7 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 			if (globalBackgroundImage.style.borderRadius !== radius)
 				globalBackgroundImage.style.borderRadius = radius;
 			// Do not apply radius to vignette overlay; matches Now Playing behavior
-			if (settings.spinningArtEnabled) {
+			if (settings.spinningArt) {
 				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
 				globalBackgroundImage.style.willChange = "transform";
 			} else {
@@ -677,7 +677,7 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 			if (globalBackgroundImage.style.borderRadius !== radius)
 				globalBackgroundImage.style.borderRadius = radius;
 			// Do not apply radius to vignette overlay; matches Now Playing behavior
-			if (settings.spinningArtEnabled) {
+			if (settings.spinningArt) {
 				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
 				globalBackgroundImage.style.willChange = "transform";
 			} else {
@@ -715,7 +715,7 @@ const updateRadiantLyricsGlobalBackground = function (): void {
 		document.body.classList.remove("performance-mode");
 	}
 
-	if (settings.spinningCoverEverywhere) {
+	if (settings.CoverEverywhere) {
 		// Get current cover art and apply global background
 		updateCoverArtBackground();
 	} else {
@@ -761,7 +761,7 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 			// Reduce blur and effects for better performance, but keep spinning
 			blur = Math.min(blur, 20);
 			contrast = Math.min(contrast, 150);
-			if (settings.spinningArtEnabled) {
+			if (settings.spinningArt) {
 				imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
 				imgElement.style.willChange = "transform";
 			} else {
@@ -770,7 +770,7 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 			}
 			imgElement.classList.remove("performance-mode-static");
 		} else {
-			if (settings.spinningArtEnabled) {
+			if (settings.spinningArt) {
 				imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
 				imgElement.style.willChange = "transform";
 			} else {
