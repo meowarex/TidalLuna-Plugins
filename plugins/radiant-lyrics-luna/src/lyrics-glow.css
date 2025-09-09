@@ -9,22 +9,19 @@
 @font-face {
 	font-family: "AbyssFont";
 	font-weight: 500;
-	src: url("https://excel.lexploits.top/extra/tidal/LyricsMedium.woff2")
-		format("woff2");
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsMedium.woff2") format("woff2");
 }
 
 @font-face {
 	font-family: "AbyssFont";
 	font-weight: 600;
-	src: url("https://excel.lexploits.top/extra/tidal/LyricsSemibold.woff2")
-		format("woff2");
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsSemibold.woff2") format("woff2");
 }
 
 @font-face {
 	font-family: "AbyssFont";
 	font-weight: 700;
-	src: url("https://excel.lexploits.top/extra/tidal/LyricsBold.woff2")
-		format("woff2");
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsBold.woff2") format("woff2");
 }
 
 /* Enhanced lyrics styling with glow effects */

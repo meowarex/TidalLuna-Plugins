@@ -31,10 +31,16 @@ const getQualityColor = (audioQuality: string): string => {
 		return QUALITY_COLORS.MAX;
 	} else if (quality?.includes("LOSSLESS")) {
 		return QUALITY_COLORS.HIGH;
-	} else {
+	} else if (quality?.includes("HIGH")) {
+		return QUALITY_COLORS.HIGH;
+	} else if (quality?.includes("LOW")) {
 		return QUALITY_COLORS.LOW;
 	}
+	return QUALITY_COLORS.LOW;
 };
+
+// Interval tracking for quality monitoring
+let qualityMonitoringIntervalId: number | null = null;
 
 // Function to Reset Seek Bar Color (if setting gets disabled while playing)
 const resetSeekBarColor = async (): Promise<void> => {
@@ -82,23 +88,29 @@ const applyQualityColors = async (): Promise<void> => {
 
 // Function to monitor track changes using track ID
 const setupQualityMonitoring = (): void => {
+	if (qualityMonitoringIntervalId != null) return;
 	let lastTrackId: string | null = null;
-	const interval = setInterval(() => {
+	qualityMonitoringIntervalId = window.setInterval(() => {
 		if (!settings.qualityColorMatchedSeekBar) return;
 		const currentTrackId = PlayState.playbackContext?.actualProductId;
 		if (currentTrackId && currentTrackId !== lastTrackId) {
-			//trace.msg.log(`[OLED Theme] Track ID changed: ${lastTrackId} -> ${currentTrackId}`);
 			lastTrackId = currentTrackId;
 			applyQualityColors();
 		}
 	}, 250);
-	unloads.add(() => clearInterval(interval));
 
 	// Initial color application (if a track is already loaded)
 	const currentTrackId = PlayState.playbackContext?.actualProductId;
 	if (settings.qualityColorMatchedSeekBar && currentTrackId) {
 		lastTrackId = currentTrackId;
 		applyQualityColors();
+	}
+};
+
+const stopQualityMonitoring = (): void => {
+	if (qualityMonitoringIntervalId != null) {
+		window.clearInterval(qualityMonitoringIntervalId);
+		qualityMonitoringIntervalId = null;
 	}
 };
 
@@ -126,8 +138,9 @@ const applyThemeStyles = (): void => {
 		);
 		setupQualityMonitoring();
 	} else {
-		// If disabling, reset the seek bar color
+		// If disabling, reset the seek bar color and stop monitoring
 		resetSeekBarColor();
+		stopQualityMonitoring();
 	}
 
 	// Apply the selected theme using StyleTag
@@ -145,3 +158,8 @@ window.updateOLEDThemeStyles = applyThemeStyles;
 
 // Apply the OLED theme initially
 applyThemeStyles();
+
+// Ensure interval is cleared on unload
+unloads.add(() => {
+	stopQualityMonitoring();
+});

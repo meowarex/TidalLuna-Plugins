@@ -41,25 +41,39 @@ const onMouseUp = (): void => {
 		if (selection?.toString().length > 0) {
 			const selectedSpans: HTMLSpanElement[] = [];
 			const range = selection.getRangeAt(0);
-			const container = range.commonAncestorContainer;
+			let container: Node | null = range.commonAncestorContainer;
 
-			// If the container is NOT an element and a document, adjust it.
+			// Normalize container: if it's a text node, use its parent element/node
+			if (container && container.nodeType === Node.TEXT_NODE) {
+				container = (container.parentElement ?? container.parentNode) as Node | null;
+			}
+
+			// If parent has data-current, treat as single-line copy case
 			if (
-				container.nodeType !== Node.ELEMENT_NODE &&
-				container.nodeType !== Node.DOCUMENT_NODE
+				container &&
+				container.nodeType === Node.ELEMENT_NODE &&
+				(container as Element).hasAttribute("data-current")
 			) {
-				// Get the parent element if it's a text node
-				const parentElement = container.parentElement;
-				if (parentElement?.hasAttribute("data-current")) {
-					const text_ = selection.toString().trim();
-					SetClipboard(text_);
-					trace.msg.log("Copied to clipboard!");
-					return;
-				}
+				const text_ = selection.toString().trim();
+				SetClipboard(text_);
+				trace.msg.log("Copied to clipboard!");
+				return;
+			}
+
+			// Ensure we have an Element or Document before querying
+			if (
+				!container ||
+				(container.nodeType !== Node.ELEMENT_NODE &&
+					container.nodeType !== Node.DOCUMENT_NODE)
+			) {
+				isSelecting = false;
+				return;
 			}
 
 			// Get all the spans inside the container.
-			const spans = (container as Element).getElementsByTagName("span");
+			const spans = (container as Element | Document).getElementsByTagName(
+				"span",
+			);
 			for (const span of spans) {
 				if (selection.containsNode(span, true)) {
 					selectedSpans.push(span as HTMLSpanElement);

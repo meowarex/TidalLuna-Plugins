@@ -38,30 +38,30 @@ const updateRadiantLyricsTextGlow = function (): void {
 // Function to update styles when settings change
 const updateRadiantLyricsStyles = function (): void {
 	if (isHidden) {
-		// Apply only base styles (button hiding), NOT separated lyrics styles
-		// to avoid affecting lyrics scrolling behavior
+		// Apply only base styles (button hiding) and optional player bar hiding
 		baseStyleTag.css = baseStyles;
-
-		// Apply player bar styles based on setting
 		if (!settings.playerBarVisible) {
 			playerBarStyleTag.css = playerBarHidden;
 		} else {
 			playerBarStyleTag.remove();
 		}
+		// Ensure lyrics glow styles are not applied when hidden
+		lyricsGlowStyleTag.remove();
+		return;
 	}
 
-	// Update lyrics glow based on setting (only if UI is not hidden to avoid interference)
+	// Update lyrics glow based on setting (only when UI is visible)
 	const lyricsContainer = document.querySelector('[class^="_lyricsContainer"]');
-	if (lyricsContainer && !isHidden) {
+	if (lyricsContainer) {
 		if (settings.lyricsGlowEnabled) {
-			lyricsContainer.classList.remove("lyrics-glow-disabled");
+			(lyricsContainer as HTMLElement).classList.remove("lyrics-glow-disabled");
 			lyricsGlowStyleTag.css = lyricsGlow;
 			updateRadiantLyricsTextGlow();
 		} else {
-			lyricsContainer.classList.add("lyrics-glow-disabled");
+			(lyricsContainer as HTMLElement).classList.add("lyrics-glow-disabled");
 			lyricsGlowStyleTag.remove();
 		}
-	} else if (!isHidden) {
+	} else {
 		observePromise<HTMLElement>(unloads, '[class^="_lyricsContainer"]')
 			.then((el) => {
 				if (!el) return;
@@ -95,6 +95,16 @@ const updateRadiantLyricsStyles = function (): void {
 var isHidden = false;
 let unhideButtonAutoFadeTimeout: number | null = null;
 
+// Helper to safely create a one-off timeout that clears previous if any
+const safelySetAutoFadeTimeout = (
+	existingId: number | null,
+	fn: () => void,
+	delay: number,
+): number => {
+	if (existingId != null) window.clearTimeout(existingId);
+	return window.setTimeout(fn, delay);
+};
+
 const updateButtonStates = function (): void {
 	const hideButton = document.querySelector(".hide-ui-button") as HTMLElement;
 	const unhideButton = document.querySelector(
@@ -120,7 +130,7 @@ const updateButtonStates = function (): void {
 	}
 	if (unhideButton) {
 		// Clear any existing auto-fade timeout
-		if (unhideButtonAutoFadeTimeout) {
+		if (unhideButtonAutoFadeTimeout != null) {
 			window.clearTimeout(unhideButtonAutoFadeTimeout);
 			unhideButtonAutoFadeTimeout = null;
 		}
@@ -137,11 +147,15 @@ const updateButtonStates = function (): void {
 				unhideButton.style.pointerEvents = "auto";
 
 				// Set up auto-fade after 2 seconds
-				unhideButtonAutoFadeTimeout = window.setTimeout(() => {
-					if (isHidden && unhideButton && !unhideButton.matches(":hover")) {
-						unhideButton.classList.add("auto-faded");
-					}
-				}, 2000);
+				unhideButtonAutoFadeTimeout = safelySetAutoFadeTimeout(
+					unhideButtonAutoFadeTimeout,
+					() => {
+						if (isHidden && unhideButton && !unhideButton.matches(":hover")) {
+							unhideButton.classList.add("auto-faded");
+						}
+					},
+					2000,
+				);
 			}, 50);
 		} else {
 			// Smooth fade out for Unhide UI button
@@ -771,7 +785,7 @@ unloads.add(() => {
 	cleanUpDynamicArt();
 
 	// Clean up auto-fade timeout
-	if (unhideButtonAutoFadeTimeout) {
+	if (unhideButtonAutoFadeTimeout != null) {
 		window.clearTimeout(unhideButtonAutoFadeTimeout);
 		unhideButtonAutoFadeTimeout = null;
 	}

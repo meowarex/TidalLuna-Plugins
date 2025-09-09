@@ -8,6 +8,12 @@ declare global {
 	}
 }
 
+// Define a typed onChange signature for the switch
+type SwitchChangeHandler = (
+	event: React.ChangeEvent<HTMLInputElement> | null,
+	checked: boolean,
+) => void;
+
 export type ColoramaMode =
 	| "single"
 	| "gradient-experimental"
@@ -60,9 +66,12 @@ export const Settings = () => {
 	const [activeEndpoint, setActiveEndpoint] = React.useState<
 		"single" | "start" | "end"
 	>("single");
-	const AnySwitch = LunaSwitchSetting as unknown as React.ComponentType<
-		Record<string, unknown>
-	>;
+	const AnySwitch = LunaSwitchSetting as unknown as React.ComponentType<{
+		title: string;
+		desc?: string;
+		checked: boolean;
+		onChange: SwitchChangeHandler;
+	}>;
 
 	// Helper for HEX normalization
 	const normalizeToRGB = (
@@ -133,19 +142,19 @@ export const Settings = () => {
 		if (!hexColorRegex.test(trimmed)) return;
 		if (mode === "single") {
 			const next = normalizeToRGB(trimmed);
-			settings.singleColor = next;
 			setSingleColor(next);
+			settings.singleColor = next;
 			if (updateInput) setCustomInput(next);
 		} else if (mode === "gradient-experimental") {
-			const norm = normalizeToRGB(trimmed);
+			const next = normalizeToRGB(trimmed);
 			if (activeEndpoint === "end") {
-				settings.gradientEnd = norm;
-				setGradientEnd(norm);
+				setGradientEnd(next);
+				settings.gradientEnd = next;
 			} else {
-				settings.gradientStart = norm;
-				setGradientStart(norm);
+				setGradientStart(next);
+				settings.gradientStart = next;
 			}
-			if (updateInput) setCustomInput(norm);
+			if (updateInput) setCustomInput(next);
 		}
 		requestApply();
 	};
@@ -500,21 +509,20 @@ export const Settings = () => {
 										key={color}
 										type="button"
 										onClick={() => {
+											const next = normalizeToRGB(color);
 											if (mode === "single") {
-												const next = normalizeToRGB(color);
-												settings.singleColor = next;
 												setSingleColor(next);
+												settings.singleColor = next;
 											} else if (mode === "gradient-experimental") {
-												const next = normalizeToRGB(color);
 												if (activeEndpoint === "end") {
-													settings.gradientEnd = next;
 													setGradientEnd(next);
+													settings.gradientEnd = next;
 												} else {
-													settings.gradientStart = next;
 													setGradientStart(next);
+													settings.gradientStart = next;
 												}
 											}
-											setCustomInput(normalizeToRGB(color));
+											setCustomInput(next);
 											requestApply();
 										}}
 										style={{
@@ -610,8 +618,8 @@ export const Settings = () => {
 									value={singleAlpha}
 									onChange={(e) => {
 										const value = Number(e.target.value);
-										settings.singleAlpha = value;
 										setSingleAlpha(value);
+										settings.singleAlpha = value;
 										requestApply();
 									}}
 									style={{ width: "100%" }}
@@ -653,8 +661,8 @@ export const Settings = () => {
 										value={gradientStartAlpha}
 										onChange={(e) => {
 											const value = Number(e.target.value);
-											settings.gradientStartAlpha = value;
 											setGradientStartAlpha(value);
+											settings.gradientStartAlpha = value;
 											requestApply();
 										}}
 										style={{ width: "100%" }}
@@ -692,8 +700,8 @@ export const Settings = () => {
 										value={gradientEndAlpha}
 										onChange={(e) => {
 											const value = Number(e.target.value);
-											settings.gradientEndAlpha = value;
 											setGradientEndAlpha(value);
+											settings.gradientEndAlpha = value;
 											requestApply();
 										}}
 										style={{ width: "100%" }}
@@ -727,8 +735,8 @@ export const Settings = () => {
 										value={gradientAngle}
 										onChange={(e) => {
 											const value = Number(e.target.value);
-											settings.gradientAngle = value;
 											setGradientAngle(value);
+											settings.gradientAngle = value;
 											requestApply();
 										}}
 										style={{ width: "100%" }}
@@ -762,8 +770,8 @@ export const Settings = () => {
 									value={gradientAngle}
 									onChange={(e) => {
 										const value = Number(e.target.value);
-										settings.gradientAngle = value;
 										setGradientAngle(value);
+										settings.gradientAngle = value;
 										requestApply();
 									}}
 									style={{ width: "100%" }}
@@ -794,7 +802,7 @@ export const Settings = () => {
 				title="Exclude Inactive"
 				desc="Apply color/gradient only to the currently active lyric line"
 				checked={excludeInactive}
-				onChange={(_: unknown, checked: boolean) => {
+				onChange={(_event: React.ChangeEvent<HTMLInputElement> | null, checked: boolean) => {
 					settings.excludeInactive = checked;
 					setExcludeInactive(checked);
 					requestApply();

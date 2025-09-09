@@ -400,8 +400,7 @@ document.addEventListener(
 		const eventX = event.clientX;
 		const eventY = event.clientY;
 
-		// Prevent default immediately if we plan to handle it
-		event.preventDefault();
+		// Allow native context menu by default; we'll show our custom menu only if needed
 
 		// Wait to see if the built-in context menu appears
 		contextMenuTimeout = window.setTimeout(() => {

@@ -145,7 +145,7 @@
 
 [data-test="current-media-imagery"] {
 	border: 0 !important;
-	margin: none;
+	margin: 0;
 }
 
 [class^="_imageBorder"] {
