@@ -1,4 +1,4 @@
-import { LunaUnload, Tracer } from "@luna/core";
+import { type LunaUnload, Tracer } from "@luna/core";
 import { StyleTag } from "@luna/lib";
 
 // Import CSS directly using Luna's file:// syntax - Took me a while to figure out <3
@@ -9,8 +9,8 @@ export const { trace } = Tracer("[Copy Lyrics]");
 // clean up resources
 export const unloads = new Set<LunaUnload>();
 
-// StyleTag for lyrics selection styling
-const lyricsStyleTag = new StyleTag("Copy-Lyrics", unloads, unlockSelection);
+// Style injection via side effect
+new StyleTag("Copy-Lyrics", unloads, unlockSelection);
 
 function SetClipboard(text: string): void {
 	const textarea = document.createElement("textarea");
@@ -31,17 +31,17 @@ function SetClipboard(text: string): void {
 
 let isSelecting = false;
 
-const onMouseDown = function (): void {
+const onMouseDown = (): void => {
 	isSelecting = true;
 };
 
-const onMouseUp = function (event: MouseEvent): void {
+const onMouseUp = (): void => {
 	if (isSelecting) {
 		const selection = window.getSelection();
-		if (selection && selection.toString().length > 0) {
+		if (selection?.toString().length > 0) {
 			const selectedSpans: HTMLSpanElement[] = [];
 			const range = selection.getRangeAt(0);
-			let container = range.commonAncestorContainer;
+			const container = range.commonAncestorContainer;
 
 			// If the container is NOT an element and a document, adjust it.
 			if (
@@ -50,8 +50,8 @@ const onMouseUp = function (event: MouseEvent): void {
 			) {
 				// Get the parent element if it's a text node
 				const parentElement = container.parentElement;
-				if (parentElement && parentElement.hasAttribute("data-current")) {
-					let text_ = selection.toString().trim();
+				if (parentElement?.hasAttribute("data-current")) {
+					const text_ = selection.toString().trim();
 					SetClipboard(text_);
 					trace.msg.log("Copied to clipboard!");
 					return;
@@ -60,7 +60,7 @@ const onMouseUp = function (event: MouseEvent): void {
 
 			// Get all the spans inside the container.
 			const spans = (container as Element).getElementsByTagName("span");
-			for (let span of spans) {
+			for (const span of spans) {
 				if (selection.containsNode(span, true)) {
 					selectedSpans.push(span as HTMLSpanElement);
 				}
@@ -95,7 +95,7 @@ const onMouseUp = function (event: MouseEvent): void {
 	}
 };
 
-const onClickHooked = function (event: MouseEvent): boolean | void {
+const onClickHooked = (event: MouseEvent): boolean | undefined => {
 	if (!isSelecting) return;
 
 	const target = event.target as HTMLElement;
@@ -109,15 +109,19 @@ const onClickHooked = function (event: MouseEvent): boolean | void {
 		event.stopImmediatePropagation();
 		return false;
 	}
+	return undefined;
 };
 
 // Add event listener with capture phase to intercept events before they reach other handlers
+
 document.addEventListener("click", onClickHooked, true);
+
 document.addEventListener("mousedown", onMouseDown);
+
 document.addEventListener("mouseup", onMouseUp);
 
 // Add cleanup to unloads
-unloads.add(() => {
+unloads.add((): void => {
 	// Remove event listeners
 	document.removeEventListener("click", onClickHooked, true);
 	document.removeEventListener("mousedown", onMouseDown);

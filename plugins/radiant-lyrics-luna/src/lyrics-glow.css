@@ -31,10 +31,12 @@
 [class*="_lyricsText"] > div > span[data-current="true"] {
 	text-shadow:
 		0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #fff),
+		/* biome-ignore lint: Required to override app glow strength */
 		0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #fff) !important;
 	padding-left: 20px;
 	transition-duration: 0.7s;
 	font-size: 55px;
+	/* biome-ignore lint: Needs priority for active lyric color */
 	color: white !important;
 	font-family:
 		"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -58,7 +60,9 @@
 [class*="_lyricsText"] > div > span:hover {
 	text-shadow:
 		0 0 var(--rl-glow-inner, 2px) lightgray,
+		/* biome-ignore lint: Hover glow should override defaults */
 		0 0 var(--rl-glow-outer, 20px) lightgray !important;
+	/* biome-ignore lint: Hover color override */
 	color: lightgray !important;
 	padding-left: 20px;
 	transition-duration: 0.7s;
@@ -69,15 +73,21 @@
 	/* Title text color/gradient is left to default app styling; only glow is customized. */
 	text-shadow:
 		0 0 var(--rl-glow-inner, 1px) var(--cl-glow1, #fff),
+		/* biome-ignore lint: Title glow needs priority */
 		0 0 var(--rl-glow-outer, 30px) #fff !important;
+	/* biome-ignore lint: Reset vendor background clip */
 	-webkit-background-clip: initial !important;
+	/* biome-ignore lint: Reset background clip */
 	background-clip: initial !important;
+	/* biome-ignore lint: Reset vendor text fill */
 	-webkit-text-fill-color: initial !important;
+	/* biome-ignore lint: Ensure inherited color takes precedence */
 	color: inherit !important;
 }
 
 /* When track title glow setting is disabled, remove glow regardless of Colorama */
 .rl-title-glow-disabled[data-test="now-playing-track-title"] {
+	/* biome-ignore lint: Full reset required */
 	text-shadow: none !important;
 }
 
@@ -86,6 +96,7 @@
 	transition:
 		text-shadow 0.7s ease-in-out,
 		color 0.7s ease-in-out,
+		/* biome-ignore lint: Transition priority needed */
 		padding 0.7s ease-in-out !important;
 }
 
@@ -97,6 +108,7 @@
 		"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
 		Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 	font-weight: 700;
+	/* biome-ignore lint: Typography override for readability */
 	font-size: 38px !important;
 }
 
@@ -106,13 +118,22 @@
 .lyrics-glow-disabled [class*="_lyricsText"] > div > span:hover,
 .lyrics-glow-disabled [data-test="now-playing-track-title"],
 .lyrics-glow-disabled [class^="_lyricsContainer"] > div > div > span {
+	/* biome-ignore lint: Hard reset when disabled */
 	text-shadow: none !important;
+	/* biome-ignore lint: Hard reset when disabled */
 	padding-left: 0 !important;
+	/* biome-ignore lint: Hard reset when disabled */
 	transition: none !important;
+	/* biome-ignore lint: Hard reset when disabled */
 	font-size: inherit !important;
+	/* biome-ignore lint: Hard reset when disabled */
 	color: inherit !important;
+	/* biome-ignore lint: Hard reset when disabled */
 	font-family: inherit !important;
+	/* biome-ignore lint: Hard reset when disabled */
 	font-weight: inherit !important;
+	/* biome-ignore lint: Hard reset when disabled */
 	margin-bottom: inherit !important;
+	/* biome-ignore lint: Hard reset when disabled */
 	opacity: inherit !important;
 }

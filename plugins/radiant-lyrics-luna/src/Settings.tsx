@@ -54,13 +54,18 @@ export const Settings = () => {
 		settings.trackTitleGlow,
 	);
 
+	// Use a permissive wrapper to align with current usage props
+	const AnySwitch = LunaSwitchSetting as unknown as React.ComponentType<
+		Record<string, unknown>
+	>;
+
 	return (
 		<LunaSettings>
-			<LunaSwitchSetting
+			<AnySwitch
 				title="Lyrics Glow Effect"
 				desc="Enable glowing effect for lyrics & Font Stytling Changes"
 				checked={lyricsGlowEnabled}
-				onChange={(_, checked: boolean) => {
+				onChange={(_event: unknown, checked: boolean) => {
 					setLyricsGlowEnabled((settings.lyricsGlowEnabled = checked));
 					// Update styles immediately when setting changes
 					if ((window as any).updateRadiantLyricsStyles) {
@@ -68,30 +73,30 @@ export const Settings = () => {
 					}
 				}}
 			/>
-			<LunaSwitchSetting
+			<AnySwitch
 				title="Track Title Glow"
 				desc="Apply glow to the track title"
 				checked={trackTitleGlow}
-				onChange={(_: unknown, checked: boolean) => {
+				onChange={(_event: unknown, checked: boolean) => {
 					setTrackTitleGlow((settings.trackTitleGlow = checked));
 					if ((window as any).updateRadiantLyricsStyles) {
 						(window as any).updateRadiantLyricsStyles();
 					}
 				}}
 			/>
-			<LunaSwitchSetting
+			<AnySwitch
 				title="Hide UI Feature"
 				desc="Enable hide/unhide UI functionality with toggle buttons"
 				checked={hideUIEnabled}
-				onChange={(_, checked: boolean) => {
+				onChange={(_event: unknown, checked: boolean) => {
 					setHideUIEnabled((settings.hideUIEnabled = checked));
 				}}
 			/>
-			<LunaSwitchSetting
+			<AnySwitch
 				title="Player Bar Visibility in Hide UI Mode"
 				desc="Keep player bar visible when UI is hidden"
 				checked={playerBarVisible}
-				onChange={(_, checked: boolean) => {
+				onChange={(_event: unknown, checked: boolean) => {
 					console.log("Player Bar Visibility:", checked ? "visible" : "hidden");
 					setPlayerBarVisible((settings.playerBarVisible = checked));
 					// Update styles immediately when setting changes
@@ -100,11 +105,11 @@ export const Settings = () => {
 					}
 				}}
 			/>
-			<LunaSwitchSetting
+			<AnySwitch
 				title="Cover Everywhere"
 				desc="Apply the spinning Cover Art background to the entire app, not just the Now Playing view, Heavily Inspired by Cover-Theme by @Inrixia"
 				checked={spinningCoverEverywhere}
-				onChange={(_, checked: boolean) => {
+				onChange={(_event: unknown, checked: boolean) => {
 					console.log(
 						"Spinning Cover Everywhere:",
 						checked ? "enabled" : "disabled",
@@ -118,11 +123,11 @@ export const Settings = () => {
 					}
 				}}
 			/>
-			<LunaSwitchSetting
+			<AnySwitch
 				title="Performance Mode | Experimental"
 				desc="Performance mode: Reduces blur effects & uses smaller image sizes, to optimize GPU usage"
 				checked={performanceMode}
-				onChange={(_, checked: boolean) => {
+				onChange={(_event: unknown, checked: boolean) => {
 					console.log("Performance Mode:", checked ? "enabled" : "disabled");
 					setPerformanceMode((settings.performanceMode = checked));
 					// Update background animations immediately when setting changes
@@ -134,11 +139,11 @@ export const Settings = () => {
 					}
 				}}
 			/>
-			<LunaSwitchSetting
+			<AnySwitch
 				title="Background Cover Spin" // Cheers @Max/n0201 for the idea <3
 				desc="Enable the spinning cover art background animation"
 				checked={spinningArtEnabled}
-				onChange={(_, checked: boolean) => {
+				onChange={(_event: unknown, checked: boolean) => {
 					console.log(
 						"Background Cover Spin:",
 						checked ? "enabled" : "disabled",
@@ -253,11 +258,11 @@ export const Settings = () => {
 					}
 				}}
 			/>
-			<LunaSwitchSetting
+			<AnySwitch
 				title="Settings Affect Now Playing"
 				desc="Apply background settings to Now Playing view"
 				checked={settingsAffectNowPlaying}
-				onChange={(_, checked: boolean) => {
+				onChange={(_event: unknown, checked: boolean) => {
 					console.log(
 						"Settings Affect Now Playing:",
 						checked ? "enabled" : "disabled",

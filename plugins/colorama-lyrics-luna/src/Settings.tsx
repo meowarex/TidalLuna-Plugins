@@ -2,6 +2,12 @@ import { ReactiveStore } from "@luna/core";
 import { LunaSettings, LunaSwitchSetting } from "@luna/ui";
 import React from "react";
 
+declare global {
+	interface Window {
+		applyColoramaLyrics?: () => void;
+	}
+}
+
 export type ColoramaMode =
 	| "single"
 	| "gradient-experimental"
@@ -24,7 +30,7 @@ export const settings = await ReactiveStore.getPluginStorage("ColoramaLyrics", {
 });
 
 export const Settings = () => {
-	const [enabled, setEnabled] = React.useState(settings.enabled);
+	// const [enabled, setEnabled] = React.useState(settings.enabled);
 	const [mode, setMode] = React.useState<ColoramaMode>(settings.mode);
 	const [singleColor, setSingleColor] = React.useState(settings.singleColor);
 	const [singleAlpha, setSingleAlpha] = React.useState<number>(
@@ -54,7 +60,9 @@ export const Settings = () => {
 	const [activeEndpoint, setActiveEndpoint] = React.useState<
 		"single" | "start" | "end"
 	>("single");
-	const AnySwitch = LunaSwitchSetting as unknown as React.ComponentType<any>;
+	const AnySwitch = LunaSwitchSetting as unknown as React.ComponentType<
+		Record<string, unknown>
+	>;
 
 	// Helper for HEX normalization
 	const normalizeToRGB = (
@@ -125,14 +133,17 @@ export const Settings = () => {
 		if (!hexColorRegex.test(trimmed)) return;
 		if (mode === "single") {
 			const next = normalizeToRGB(trimmed);
-			setSingleColor((settings.singleColor = next));
+			settings.singleColor = next;
+			setSingleColor(next);
 			if (updateInput) setCustomInput(next);
 		} else if (mode === "gradient-experimental") {
 			const norm = normalizeToRGB(trimmed);
 			if (activeEndpoint === "end") {
-				setGradientEnd((settings.gradientEnd = norm));
+				settings.gradientEnd = norm;
+				setGradientEnd(norm);
 			} else {
-				setGradientStart((settings.gradientStart = norm));
+				settings.gradientStart = norm;
+				setGradientStart(norm);
 			}
 			if (updateInput) setCustomInput(norm);
 		}
@@ -152,16 +163,16 @@ export const Settings = () => {
 		}
 	};
 
-	const removeCustomColor = (color: string) => {
-		const updated = customColors.filter((c) => c !== color);
-		setCustomColors(updated);
-		settings.customColors = updated;
-	};
+	// const removeCustomColor = (color: string) => {
+	// 	const updated = customColors.filter((c) => c !== color);
+	// 	setCustomColors(updated);
+	// 	settings.customColors = updated;
+	// };
 
 	const allColors = [...colorPresets, ...customColors];
 
 	const requestApply = () => {
-		(window as any).applyColoramaLyrics?.();
+		window.applyColoramaLyrics?.();
 	};
 
 	return (
@@ -185,7 +196,8 @@ export const Settings = () => {
 					value={mode}
 					onChange={(e) => {
 						const next = e.target.value as ColoramaMode;
-						setMode((settings.mode = next));
+						settings.mode = next;
+						setMode(next);
 						requestApply();
 					}}
 					style={{
@@ -250,6 +262,7 @@ export const Settings = () => {
 					}}
 				>
 					<button
+						type="button"
 						onClick={() => (showPicker ? closePicker() : openPicker("single"))}
 						style={{
 							width: 32,
@@ -285,6 +298,7 @@ export const Settings = () => {
 					<div style={{ opacity: 0.7, fontSize: 14 }}>Set colors & angle</div>
 				</div>
 				<button
+					type="button"
 					onClick={() => {
 						setCustomInput(gradientStart);
 						openPicker("start");
@@ -324,6 +338,7 @@ export const Settings = () => {
 					<div style={{ opacity: 0.7, fontSize: 14 }}>Set angle</div>
 				</div>
 				<button
+					type="button"
 					onClick={() => openPicker("start")}
 					style={{
 						padding: "8px 12px",
@@ -341,7 +356,7 @@ export const Settings = () => {
 			{/* Modal for picking and managing colors (reused) */}
 			{shouldRender && (
 				<>
-					<div
+					<button
 						style={{
 							position: "fixed",
 							top: 0,
@@ -353,7 +368,12 @@ export const Settings = () => {
 							opacity: isAnimatingIn ? 1 : 0,
 							transition: "opacity 0.2s ease",
 						}}
+						type="button"
+						aria-label="Close color picker"
 						onClick={closePicker}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === "Escape") closePicker();
+						}}
 					/>
 					<div
 						style={{
@@ -419,6 +439,7 @@ export const Settings = () => {
 										color: "#fff",
 										cursor: "pointer",
 									}}
+									type="button"
 								>
 									<span
 										style={{
@@ -432,6 +453,7 @@ export const Settings = () => {
 									<span style={{ fontSize: 12 }}>Start</span>
 								</button>
 								<button
+									type="button"
 									onClick={() => {
 										setActiveEndpoint("end");
 										setCustomInput(gradientEnd);
@@ -473,22 +495,23 @@ export const Settings = () => {
 									marginBottom: 16,
 								}}
 							>
-								{allColors.map((color, index) => (
+								{allColors.map((color) => (
 									<button
-										key={index}
+										key={color}
+										type="button"
 										onClick={() => {
 											if (mode === "single") {
 												const next = normalizeToRGB(color);
-												setSingleColor((settings.singleColor = next));
+												settings.singleColor = next;
+												setSingleColor(next);
 											} else if (mode === "gradient-experimental") {
+												const next = normalizeToRGB(color);
 												if (activeEndpoint === "end") {
-													setGradientEnd(
-														(settings.gradientEnd = normalizeToRGB(color)),
-													);
+													settings.gradientEnd = next;
+													setGradientEnd(next);
 												} else {
-													setGradientStart(
-														(settings.gradientStart = normalizeToRGB(color)),
-													);
+													settings.gradientStart = next;
+													setGradientStart(next);
 												}
 											}
 											setCustomInput(normalizeToRGB(color));
@@ -560,6 +583,7 @@ export const Settings = () => {
 											justifyContent: "center",
 											transition: "all 0.2s ease",
 										}}
+										type="button"
 									>
 										+
 									</button>
@@ -586,7 +610,8 @@ export const Settings = () => {
 									value={singleAlpha}
 									onChange={(e) => {
 										const value = Number(e.target.value);
-										setSingleAlpha((settings.singleAlpha = value));
+										settings.singleAlpha = value;
+										setSingleAlpha(value);
 										requestApply();
 									}}
 									style={{ width: "100%" }}
@@ -628,9 +653,8 @@ export const Settings = () => {
 										value={gradientStartAlpha}
 										onChange={(e) => {
 											const value = Number(e.target.value);
-											setGradientStartAlpha(
-												(settings.gradientStartAlpha = value),
-											);
+											settings.gradientStartAlpha = value;
+											setGradientStartAlpha(value);
 											requestApply();
 										}}
 										style={{ width: "100%" }}
@@ -668,7 +692,8 @@ export const Settings = () => {
 										value={gradientEndAlpha}
 										onChange={(e) => {
 											const value = Number(e.target.value);
-											setGradientEndAlpha((settings.gradientEndAlpha = value));
+											settings.gradientEndAlpha = value;
+											setGradientEndAlpha(value);
 											requestApply();
 										}}
 										style={{ width: "100%" }}
@@ -702,7 +727,8 @@ export const Settings = () => {
 										value={gradientAngle}
 										onChange={(e) => {
 											const value = Number(e.target.value);
-											setGradientAngle((settings.gradientAngle = value));
+											settings.gradientAngle = value;
+											setGradientAngle(value);
 											requestApply();
 										}}
 										style={{ width: "100%" }}
@@ -736,7 +762,8 @@ export const Settings = () => {
 									value={gradientAngle}
 									onChange={(e) => {
 										const value = Number(e.target.value);
-										setGradientAngle((settings.gradientAngle = value));
+										settings.gradientAngle = value;
+										setGradientAngle(value);
 										requestApply();
 									}}
 									style={{ width: "100%" }}
@@ -756,6 +783,7 @@ export const Settings = () => {
 								cursor: "pointer",
 								fontSize: 12,
 							}}
+							type="button"
 						>
 							Done
 						</button>
@@ -767,7 +795,8 @@ export const Settings = () => {
 				desc="Apply color/gradient only to the currently active lyric line"
 				checked={excludeInactive}
 				onChange={(_: unknown, checked: boolean) => {
-					setExcludeInactive((settings.excludeInactive = checked));
+					settings.excludeInactive = checked;
+					setExcludeInactive(checked);
 					requestApply();
 				}}
 			/>

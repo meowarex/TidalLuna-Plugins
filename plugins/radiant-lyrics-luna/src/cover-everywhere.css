@@ -47,16 +47,21 @@
 .global-spinning-image.performance-mode-static {
 	/* Keep animation enabled in performance mode */
 	/* Lighter blur for performance */
+	/* biome-ignore lint: Required to override app styles in performance mode */
 	filter: blur(20px) brightness(0.4) contrast(1.2) saturate(1) !important;
 	/* Smaller size for performance */
+	/* biome-ignore lint: Required to override app layout sizes */
 	width: 120vw !important;
+	/* biome-ignore lint: Required to override app layout sizes */
 	height: 120vh !important;
 }
 
 .now-playing-background-image.performance-mode-static {
 	/* Keep animation enabled in performance mode */
 	/* Optimized size and effects for performance */
+	/* biome-ignore lint: Required to override inline sizes in performance mode */
 	width: 80vw !important;
+	/* biome-ignore lint: Required to override inline sizes in performance mode */
 	height: 80vh !important;
 }
 
@@ -89,8 +94,11 @@
 @media (prefers-reduced-motion: reduce) {
 	.global-spinning-image,
 	.now-playing-background-image {
+		/* biome-ignore lint: Accessibility override needs priority */
 		animation: none !important;
+		/* biome-ignore lint: Accessibility override needs priority */
 		transform: translate(-50%, -50%) !important;
+		/* biome-ignore lint: Accessibility override needs priority */
 		will-change: auto !important;
 	}
 }
@@ -99,6 +107,7 @@
 .performance-mode .global-spinning-image,
 .performance-mode .now-playing-background-image {
 	/* Keep animations but optimize filter effects */
+	/* biome-ignore lint: Intentional override of runtime styles */
 	filter: blur(10px) brightness(0.4) contrast(1.1) !important;
 }
 
@@ -121,6 +130,7 @@ main,
 [class^="_feedSidebarItemDiv"],
 [class^="_cellContainer"],
 [class^="_cellTextContainer"] {
+	/* biome-ignore lint: Ensure background is fully cleared under theme CSS */
 	background: unset !important;
 }
 
@@ -129,8 +139,11 @@ main,
 [data-test="main-layout-sidebar-wrapper"],
 [class^="_bar"],
 [class^="_sidebarItem"]:hover {
+	/* biome-ignore lint: Must beat app inline styles for translucency */
 	background-color: rgba(0, 0, 0, 0.3) !important;
+	/* biome-ignore lint: Must beat app inline styles for translucency */
 	backdrop-filter: blur(10px) !important;
+	/* biome-ignore lint: Must beat app inline styles for translucency */
 	-webkit-backdrop-filter: blur(10px) !important;
 }
 
@@ -139,20 +152,27 @@ main,
 .performance-mode [data-test="main-layout-sidebar-wrapper"],
 .performance-mode [class^="_bar"],
 .performance-mode [class^="_sidebarItem"]:hover {
+	/* biome-ignore lint: Performance mode style requires priority */
 	backdrop-filter: blur(5px) !important;
+	/* biome-ignore lint: Performance mode style requires priority */
 	-webkit-backdrop-filter: blur(5px) !important;
 }
 
 /* Feed sidebar panel - black tint background for readability */
 [data-test="feed-sidebar"] {
+	/* biome-ignore lint: Ensure readability over media */
 	background-color: rgba(0, 0, 0, 0.5) !important;
+	/* biome-ignore lint: Ensure readability over media */
 	backdrop-filter: blur(10px) !important;
+	/* biome-ignore lint: Ensure readability over media */
 	-webkit-backdrop-filter: blur(10px) !important;
 }
 
 /* Performance mode: reduce sidebar backdrop blur */
 .performance-mode [data-test="feed-sidebar"] {
+	/* biome-ignore lint: Performance mode style requires priority */
 	backdrop-filter: blur(5px) !important;
+	/* biome-ignore lint: Performance mode style requires priority */
 	-webkit-backdrop-filter: blur(5px) !important;
 }
 
@@ -162,10 +182,12 @@ main,
 [class*="_cellContainer"],
 [data-test="feed-interval"],
 [data-test="feed-item"] {
+	/* biome-ignore lint: Match theme transparency */
 	background-color: transparent !important;
 }
 
 /* Remove bottom gradient */
 [class^="_bottomGradient"] {
+	/* biome-ignore lint: Explicitly remove conflicting gradient */
 	display: none !important;
 }

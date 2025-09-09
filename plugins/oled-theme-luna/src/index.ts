@@ -1,11 +1,5 @@
-import { LunaUnload, Tracer } from "@luna/core";
-import {
-	StyleTag,
-	observePromise,
-	PlayState,
-	Quality,
-	type MediaItem,
-} from "@luna/lib";
+import { type LunaUnload, Tracer } from "@luna/core";
+import { StyleTag, observePromise, PlayState } from "@luna/lib";
 import { settings, Settings } from "./Settings";
 
 // Import CSS files directly using Luna's file:// syntax - Took me a while to figure out <3
@@ -109,7 +103,7 @@ const setupQualityMonitoring = (): void => {
 };
 
 // Function to apply theme styles based on current settings
-const applyThemeStyles = function (): void {
+const applyThemeStyles = (): void => {
 	// Choose the appropriate CSS file based on settings
 	let selectedStyle: string;
 
@@ -141,7 +135,13 @@ const applyThemeStyles = function (): void {
 };
 
 // Make this function available globally so Settings can call it
-(window as any).updateOLEDThemeStyles = applyThemeStyles;
+declare global {
+	interface Window {
+		updateOLEDThemeStyles?: () => void;
+	}
+}
+
+window.updateOLEDThemeStyles = applyThemeStyles;
 
 // Apply the OLED theme initially
 applyThemeStyles();

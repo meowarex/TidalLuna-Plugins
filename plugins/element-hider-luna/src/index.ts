@@ -1,5 +1,5 @@
-import { LunaUnload, Tracer } from "@luna/core";
-import { StyleTag, ContextMenu } from "@luna/lib";
+import { type LunaUnload, Tracer } from "@luna/core";
+import { StyleTag } from "@luna/lib";
 import { settings, Settings } from "./Settings";
 
 // Import CSS directly using Luna's file:// syntax
@@ -13,8 +13,8 @@ export { Settings };
 // Clean up resources
 export const unloads = new Set<LunaUnload>();
 
-// StyleTag for element hider
-const styleTag = new StyleTag("Element-Hider", unloads, styles);
+// StyleTag for element hider (side-effect)
+new StyleTag("Element-Hider", unloads, styles);
 
 // State management
 let targetElement: HTMLElement | null = null;
@@ -144,19 +144,18 @@ function saveHiddenElement(element: HTMLElement): void {
 	}
 }
 
-// Remove hidden element from persistent storage (for unhiding)
-function removeSavedElement(element: HTMLElement): void {
-	const selector = generateElementSelector(element);
-	const index = settings.hiddenElements.findIndex(
-		(stored) => stored.selector === selector,
-	);
-
-	if (index !== -1) {
-		settings.hiddenElements.splice(index, 1);
-		trace.log(`Permanently removed: ${selector}`);
-		trace.log(`Remaining stored: ${settings.hiddenElements.length}`);
-	}
-}
+// Remove hidden element from persistent storage (for unhiding) - currently unused
+// function removeSavedElement(element: HTMLElement): void {
+// 	const selector = generateElementSelector(element);
+// 	const index = settings.hiddenElements.findIndex(
+// 		(stored) => stored.selector === selector,
+// 	);
+// 	if (index !== -1) {
+// 		settings.hiddenElements.splice(index, 1);
+// 		trace.log(`Permanently removed: ${selector}`);
+// 		trace.log(`Remaining stored: ${settings.hiddenElements.length}`);
+// 	}
+// }
 
 // Check if an element matches any stored selector (EXACT match only)
 function matchesStoredSelector(element: HTMLElement): boolean {
@@ -324,8 +323,15 @@ function setupElementObserver(): void {
 }
 
 // Global functions
-(window as any).showAllElementsFromSettings = unhideAllElements;
-(window as any).debugElementHider = () => {
+declare global {
+	interface Window {
+		showAllElementsFromSettings?: () => void;
+		debugElementHider?: () => void;
+	}
+}
+
+window.showAllElementsFromSettings = unhideAllElements;
+window.debugElementHider = () => {
 	trace.log(`=== Element Hider Debug Info ===`);
 	trace.log(`Stored elements: ${settings.hiddenElements.length}`);
 	trace.log(`Currently hidden elements: ${hiddenElementsArray.length}`);
@@ -662,8 +668,8 @@ unloads.add(() => {
 	removeHighlight();
 
 	// Clean up global functions
-	(window as any).showAllElementsFromSettings = undefined;
-	(window as any).debugElementHider = undefined;
+	window.showAllElementsFromSettings = undefined;
+	window.debugElementHider = undefined;
 
 	trace.log("Plugin unloaded");
 });
