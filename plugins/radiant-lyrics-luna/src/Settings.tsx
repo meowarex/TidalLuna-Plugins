@@ -174,14 +174,14 @@ export const Settings = () => {
 				}}
 			/>
 			<LunaNumberSetting
-				title="Background Cover Scale"
-				desc="Integer scale 1–30 (10=100%, 20=200%, 30=300%)"
+				title="Background Scale"
+				desc="Adjust the scale of the background cover (1=10% - 50=500%)"
 				min={1}
-				max={30}
+				max={50}
+				step={1}
 				value={backgroundScale}
 				onNumber={(value: number) => {
-					const next = Math.max(1, Math.min(30, Math.round(value)));
-					setBackgroundScale((settings.backgroundScale = next));
+					setBackgroundScale((settings.backgroundScale = value));
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
@@ -195,19 +195,17 @@ export const Settings = () => {
 			/>
 			<LunaNumberSetting
 				title="Background Radius"
-				desc="Round the image corners (0–50%). 50% ≈ circle."
+				desc="Round the image corners (percentage). 50% ≈ circle."
 				min={0}
 				max={50}
 				step={1}
 				value={backgroundRadius}
 				onNumber={(value: number) => {
-					const next = Math.max(0, Math.min(50, Math.round(value)));
-					setBackgroundRadius((settings.backgroundRadius = next));
+					setBackgroundRadius((settings.backgroundRadius = value));
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
 					if (
-						sessionStorage &&
 						settings.settingsAffectNowPlaying &&
 						(window as any).updateRadiantLyricsNowPlayingBackground
 					) {

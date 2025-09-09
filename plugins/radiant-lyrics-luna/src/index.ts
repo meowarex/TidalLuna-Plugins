@@ -2,10 +2,33 @@
 import { LunaUnload, Tracer, ftch } from "@luna/core";
 import { StyleTag, PlayState, observePromise, observe } from "@luna/lib";
 import { settings, Settings } from "./Settings";
-// Interpret integer backgroundScale (1–30) strictly as 0.1–3.0 multiplier
+// Interpret integer backgroundScale (e.g., 10=1.0x, 20=2.0x)
 const getScaledMultiplier = (): number => {
-    const value = Math.round(settings.backgroundScale);
-    return Math.max(0.1, Math.min(3, value / 10));
+    const value = settings.backgroundScale;
+    return value / 10;
+};
+
+// Helper to size an image using its intrinsic dimensions times scale (in pixels)
+const applyScaledPixelSize = (img: HTMLImageElement | null): void => {
+    if (!img) return;
+    const scale = getScaledMultiplier();
+    const apply = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (w > 0 && h > 0) {
+            const wPx = Math.round(w * scale);
+            const hPx = Math.round(h * scale);
+            const wStr = `${wPx}px`;
+            const hStr = `${hPx}px`;
+            if (img.style.width !== wStr) img.style.width = wStr;
+            if (img.style.height !== hStr) img.style.height = hStr;
+        }
+    };
+    if (img.complete && img.naturalWidth > 0) {
+        apply();
+    } else {
+        img.addEventListener("load", apply, { once: true });
+    }
 };
 
 // Import CSS files directly using Luna's file:// syntax - Took me a while to figure out <3
@@ -456,20 +479,16 @@ function updateCoverArtBackground(method: number = 0): void {
 				currentNowPlayingCoverSrc = coverArtImageSrc;
 			}
 
-			// Apply performance-optimized settings
+			// Apply pixel-based size using intrinsic dimensions
+			applyScaledPixelSize(nowPlayingBackgroundImage);
+
+			// Apply performance-optimized settings (filter/animation); size handled above
 			if (nowPlayingBackgroundImage) {
 				if (settings.performanceMode) {
 					// Performance mode with spinning enabled
 					const blur = Math.min(settings.backgroundBlur, 20);
 					const contrast = Math.min(settings.backgroundContrast, 150);
-					const scalePm = getScaledMultiplier();
-					const widthPm = `${Math.round(scalePm * 100)}vw`;
-					const heightPm = `${Math.round(scalePm * 100)}vh`;
-					const radiusPm = `${Math.max(0, Math.min(50, settings.backgroundRadius ?? 0))}%`;
-					if (nowPlayingBackgroundImage.style.width !== widthPm)
-						nowPlayingBackgroundImage.style.width = widthPm;
-					if (nowPlayingBackgroundImage.style.height !== heightPm)
-						nowPlayingBackgroundImage.style.height = heightPm;
+					const radiusPm = `${settings.backgroundRadius}%`;
 					if (nowPlayingBackgroundImage.style.borderRadius !== radiusPm)
 						nowPlayingBackgroundImage.style.borderRadius = radiusPm;
 					const filt = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
@@ -486,14 +505,7 @@ function updateCoverArtBackground(method: number = 0): void {
 					nowPlayingBackgroundImage.classList.remove("performance-mode-static");
 				} else {
 					// Normal mode
-					const scaleNm = getScaledMultiplier();
-					const widthNm = `${Math.round(scaleNm * 100)}vw`;
-					const heightNm = `${Math.round(scaleNm * 100)}vh`;
-					const radiusNm = `${Math.max(0, Math.min(50, settings.backgroundRadius ?? 0))}%`;
-					if (nowPlayingBackgroundImage.style.width !== widthNm)
-						nowPlayingBackgroundImage.style.width = widthNm;
-					if (nowPlayingBackgroundImage.style.height !== heightNm)
-						nowPlayingBackgroundImage.style.height = heightNm;
+					const radiusNm = `${settings.backgroundRadius}%`;
 					if (nowPlayingBackgroundImage.style.borderRadius !== radiusNm)
 						nowPlayingBackgroundImage.style.borderRadius = radiusNm;
 					const filt = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
@@ -608,15 +620,12 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 
 	// Apply performance-optimized settings
 	if (globalBackgroundImage) {
-		const scale = getScaledMultiplier();
-		const scaledWidth = `${Math.round(scale * 100)}vw`;
-		const scaledHeight = `${Math.round(scale * 100)}vh`;
-		const radius = `${Math.max(0, Math.min(50, settings.backgroundRadius ?? 0))}%`;
+		// Pixel-based sizing based on intrinsic dimensions
+		applyScaledPixelSize(globalBackgroundImage);
+		const radius = `${settings.backgroundRadius}%`;
 		// Performance mode optimizations
 		if (settings.performanceMode) {
 			// Performance mode with spinning enabled
-			globalBackgroundImage.style.width = scaledWidth;
-			globalBackgroundImage.style.height = scaledHeight;
 			globalBackgroundImage.style.filter = `blur(${Math.min(settings.backgroundBlur, 20)}px) brightness(${settings.backgroundBrightness / 100}) contrast(${Math.min(settings.backgroundContrast, 150)}%)`;
 			if (globalBackgroundImage.style.borderRadius !== radius)
 				globalBackgroundImage.style.borderRadius = radius;
@@ -630,8 +639,6 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 			globalBackgroundImage.classList.remove("performance-mode-static");
 		} else {
 			// Normal mode
-			globalBackgroundImage.style.width = scaledWidth;
-			globalBackgroundImage.style.height = scaledHeight;
 			globalBackgroundImage.style.filter = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
 			if (globalBackgroundImage.style.borderRadius !== radius)
 				globalBackgroundImage.style.borderRadius = radius;
@@ -686,7 +693,7 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 		".now-playing-background-image",
 	);
 	nowPlayingBackgroundImages.forEach((img: Element) => {
-		const imgElement = img as HTMLElement;
+		const imgElement = img as HTMLImageElement;
 
 		// Default values when settings don't affect Now Playing
 		const defaultBlur = 80;
@@ -708,10 +715,10 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 			spinSpeed = defaultSpinSpeed;
 		}
 
-		// Apply size based on backgroundScale
-		const scale = getScaledMultiplier();
-		imgElement.style.width = `${Math.round(scale * 100)}vw`;
-		imgElement.style.height = `${Math.round(scale * 100)}vh`;
+		// Apply pixel-based size using intrinsic dimensions and current scale
+		applyScaledPixelSize(imgElement);
+		const radius = `${settings.backgroundRadius}%`;
+		if (imgElement.style.borderRadius !== radius) imgElement.style.borderRadius = radius;
 
 		// Performance mode optimizations
 		if (settings.performanceMode) {
