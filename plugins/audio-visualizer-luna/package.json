@@ -1,6 +1,6 @@
 {
 	"name": "@meowarex/audio-visualizer",
-	"description": "ONLY WORKS ON LINUX :(",
+	"description": "Audio visualizer for TidalLuna - Works on Windows and Linux",
 	"author": {
 		"name": "meowarex",
 		"url": "https://github.com/meowarex",

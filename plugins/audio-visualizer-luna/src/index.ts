@@ -1,11 +1,21 @@
 import { LunaUnload, Tracer } from "@luna/core";
 import { StyleTag, PlayState } from "@luna/lib";
+import { MediaItem } from "@luna/lib";
 import { settings, Settings } from "./Settings";
+
+// Import platform-specific audio handling
+import {
+	startAudioVisualizerServer,
+	stopAudioVisualizerServer,
+	isWindows
+} from "./index.native";
 
 // Import CSS styles for the visualizer
 import visualizerStyles from "file://styles.css?minify";
 
-export const { trace } = Tracer("[Audio Visualizer]");
+// Initialize tracer (for future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const { trace } = Tracer("[Audio Visualizer]");
 
 // Helper function for consistent logging
 const log = (message: string) => console.log(`[Audio Visualizer] ${message}`);
@@ -38,7 +48,7 @@ const config = {
 export const unloads = new Set<LunaUnload>();
 
 // StyleTag for CSS
-const styleTag = new StyleTag("AudioVisualizer", unloads, visualizerStyles);
+new StyleTag("AudioVisualizer", unloads, visualizerStyles);
 
 // Audio context and analyzer
 let audioContext: AudioContext | null = null;
@@ -47,12 +57,48 @@ let audioSource: MediaElementAudioSourceNode | null = null;
 let dataArray: Uint8Array | null = null;
 let animationId: number | null = null;
 let currentAudioElement: HTMLAudioElement | null = null;
+let streamAudioElement: HTMLAudioElement | null = null;
 let isSourceConnected: boolean = false;
+let visualizerServerPort: number = 0;
+let currentTrackIdForStream: number | string | null = null;
 
 // Canvas and container elements
 let visualizerContainer: HTMLDivElement | null = null;
 let canvas: HTMLCanvasElement | null = null;
 let canvasContext: CanvasRenderingContext2D | null = null;
+
+// Initialize Windows audio streaming server
+const initializeWindowsAudioServer = async (): Promise<void> => {
+	if (!isWindows) return;
+
+	try {
+		visualizerServerPort = await startAudioVisualizerServer();
+		log(`Windows audio stream server started on port ${visualizerServerPort}`);
+	} catch (err) {
+		error(`Failed to start Windows audio stream server: ${err}`);
+	}
+};
+
+// Create or update streaming audio element for Windows
+const getStreamAudioElement = (trackId: number | string): HTMLAudioElement => {
+	if (!streamAudioElement) {
+		streamAudioElement = new Audio();
+		streamAudioElement.crossOrigin = "anonymous";
+		streamAudioElement.style.display = "none";
+		document.body.appendChild(streamAudioElement);
+		log("Created streaming audio element for Windows");
+	}
+
+	const streamUrl = `http://localhost:${visualizerServerPort}/stream/${trackId}`;
+	if (streamAudioElement.src !== streamUrl) {
+		streamAudioElement.src = streamUrl;
+		streamAudioElement.play().catch(err => {
+			warn(`Failed to play stream: ${err}`);
+		});
+	}
+
+	return streamAudioElement;
+};
 
 // Find the audio element - this is a bit of a hack but it works
 const findAudioElement = (): HTMLAudioElement | null => {
@@ -89,8 +135,28 @@ const findAudioElement = (): HTMLAudioElement | null => {
 // Initialize audio visualization
 const initializeAudioVisualizer = async (): Promise<void> => {
 	try {
-		// Find the audio element
-		const audioElement = findAudioElement();
+		// For Windows, get current track and setup stream
+		let audioElement: HTMLAudioElement | null = null;
+
+		if (isWindows && visualizerServerPort > 0) {
+			try {
+				const currentMedia = await MediaItem.fromPlaybackContext();
+				if (currentMedia?.tidalItem?.id) {
+					const trackId = currentMedia.tidalItem.id;
+					currentTrackIdForStream = trackId;
+					audioElement = getStreamAudioElement(trackId);
+					log(`Using Windows stream for track ${trackId}`);
+				}
+			} catch (err) {
+				warn(`Failed to get current media for Windows stream: ${err}`);
+				// Fall back to finding audio element
+				audioElement = findAudioElement();
+			}
+		} else {
+			// Non-Windows: use existing approach
+			audioElement = findAudioElement();
+		}
+
 		if (!audioElement) {
 			return;
 		}
@@ -122,11 +188,11 @@ const initializeAudioVisualizer = async (): Promise<void> => {
 				currentAudioElement = audioElement;
 				isSourceConnected = true;
 				log("Connected to audio stream with output");
-			} catch (error) {
+			} catch (connectErr) {
 				// Audio is connected elsewhere - that's fine, we just can't visualize
 				if (
-					error instanceof Error &&
-					error.message.includes("already connected")
+					connectErr instanceof Error &&
+					connectErr.message.includes("already connected")
 				) {
 					log("Audio already connected elsewhere - skipping visualization");
 				}
@@ -245,8 +311,13 @@ const animate = (): void => {
 	if (analyser && dataArray) {
 		analyser.getByteFrequencyData(dataArray);
 		// Check if there's actual audio signal (not just silence)
-		const avgVolume =
-			dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
+		let sum = 0;
+		const len = dataArray.length;
+		for (let i = 0; i < len; i++) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			sum += (dataArray as any)[i];
+		}
+		const avgVolume = sum / len;
 		hasRealAudio = avgVolume > 5; // Threshold for detecting actual audio
 	}
 
@@ -255,17 +326,7 @@ const animate = (): void => {
 
 	if (hasRealAudio && analyser && dataArray) {
 		// Draw real audio visualization
-		switch (config.visualizerType) {
-			case "bars": // Is implemented YAYYY (default)
-				drawBars();
-				break;
-			case "waveform": // Not implemented yet
-				drawWaveform();
-				break;
-			case "circular": // Not implemented yet
-				drawCircular();
-				break;
-		}
+		drawBars();
 	} else {
 		// Draw cool scrolling wave effect when no audio
 		drawScrollingWave();
@@ -356,62 +417,6 @@ const drawBars = (): void => {
 	}
 };
 
-// Draw waveform visualization - NOT IMPLEMENTED YET
-// const drawWaveform = (): void => {
-//     if (!canvasContext || !dataArray || !canvas) return;
-
-//     const centerY = canvas.height / 2;
-//     const amplitudeScale = canvas.height / 512;
-
-//     canvasContext.strokeStyle = config.color;
-//     canvasContext.lineWidth = 2;
-//     canvasContext.beginPath();
-
-//     for (let i = 0; i < config.barCount; i++) {
-//         const dataIndex = Math.floor(i * (dataArray.length / config.barCount));
-//         const amplitude = (dataArray[dataIndex] - 128) * config.sensitivity * amplitudeScale;
-
-//         const x = (i / config.barCount) * canvas.width;
-//         const y = centerY + amplitude;
-
-//         if (i === 0) {
-//             canvasContext.moveTo(x, y);
-//         } else {
-//             canvasContext.lineTo(x, y);
-//         }
-//     }
-
-//     canvasContext.stroke();
-// };
-
-// Draw circular visualization - NOT IMPLEMENTED YET
-// const drawCircular = (): void => {
-//     if (!canvasContext || !dataArray || !canvas) return;
-
-//     const centerX = canvas.width / 2;
-//     const centerY = canvas.height / 2;
-//     const radius = Math.min(centerX, centerY) - 10;
-
-//     canvasContext.strokeStyle = config.color;
-//     canvasContext.lineWidth = 2;
-
-//     for (let i = 0; i < config.barCount; i++) {
-//         const dataIndex = Math.floor(i * (dataArray.length / config.barCount));
-//         const amplitude = (dataArray[dataIndex] * config.sensitivity) / 255;
-
-//         const angle = (i / config.barCount) * Math.PI * 2;
-//         const startX = centerX + Math.cos(angle) * radius * 0.7;
-//         const startY = centerY + Math.sin(angle) * radius * 0.7;
-//         const endX = centerX + Math.cos(angle) * radius * (0.7 + amplitude * 0.3);
-//         const endY = centerY + Math.sin(angle) * radius * (0.7 + amplitude * 0.3);
-
-//         canvasContext.beginPath();
-//         canvasContext.moveTo(startX, startY);
-//         canvasContext.lineTo(endX, endY);
-//         canvasContext.stroke();
-//     }
-// };
-
 // Update visualizer settings
 const updateAudioVisualizer = (): void => {
 	if (analyser) {
@@ -433,7 +438,7 @@ const updateAudioVisualizer = (): void => {
 };
 
 // Make updateAudioVisualizer available globally for settings
-(window as any).updateAudioVisualizer = updateAudioVisualizer;
+(window as unknown as { updateAudioVisualizer: (() => void) }).updateAudioVisualizer = updateAudioVisualizer;
 
 // Clean up function
 const cleanupAudioVisualizer = (): void => {
@@ -445,8 +450,53 @@ const cleanupAudioVisualizer = (): void => {
 
 	removeVisualizerUI();
 
+	// Clean up stream audio element if on Windows
+	if (streamAudioElement) {
+		streamAudioElement.pause();
+		streamAudioElement.src = "";
+		streamAudioElement.remove();
+		streamAudioElement = null;
+	}
+
 	// i was killing audio connections - But it was reconnecting and being a pain
 	// so i just left it alone - it works fine
+};
+
+// Observer for media transitions on Windows
+const setupWindowsMediaObserver = (): void => {
+	if (!isWindows) return;
+
+	const checkMediaTransition = async () => {
+		try {
+			const currentMedia = await MediaItem.fromPlaybackContext();
+			if (currentMedia?.tidalItem?.id) {
+				const trackId = currentMedia.tidalItem.id;
+				if (trackId !== currentTrackIdForStream && visualizerServerPort > 0) {
+					currentTrackIdForStream = trackId;
+					log(`Media changed on Windows, updating stream to track ${trackId}`);
+
+					// Update stream element
+					if (streamAudioElement) {
+						const streamUrl = `http://localhost:${visualizerServerPort}/stream/${trackId}`;
+						streamAudioElement.src = streamUrl;
+						streamAudioElement.play().catch(err => {
+							warn(`Failed to play updated stream: ${err}`);
+						});
+					}
+
+					// Reinitialize audio if needed
+					if (audioContext?.state === "suspended") {
+						audioContext.resume().catch(() => {});
+					}
+				}
+			}
+		} catch (err) {
+			warn(`Error checking media transition: ${err}`);
+		}
+	};
+
+	// Check on play state changes using observer pattern instead of polling [[memory:6199491]]
+	PlayState.onState(unloads, checkMediaTransition);
 };
 
 // Initialize when DOM is ready and track is playing
@@ -499,8 +549,14 @@ const observePlayState = (): void => {
 };
 
 // Initialize the plugin
-const initialize = (): void => {
+const initialize = async (): Promise<void> => {
 	log("Audio Visualizer plugin initializing...");
+
+	// Initialize Windows audio server if on Windows
+	if (isWindows) {
+		await initializeWindowsAudioServer();
+		setupWindowsMediaObserver();
+	}
 
 	// Start immediately - DOM should be ready by plugin load
 	setTimeout(() => {
@@ -525,20 +581,29 @@ const completeCleanup = (): void => {
 
 	removeVisualizerUI();
 
+	// Clean up stream
+	cleanupAudioVisualizer();
+
 	// Fully disconnect and reset everything
 	if (audioSource) {
 		try {
 			audioSource.disconnect();
 			log("Disconnected audio source completely");
-		} catch (e) {
+		} catch {
 			log("Audio source already disconnected");
 		}
 	}
 
 	// Close audio context completely on plugin unload
-	if (audioContext && audioContext.state !== "closed") {
-		audioContext.close();
+	if (audioContext?.state !== "closed") {
+		audioContext?.close();
 		log("Closed AudioContext");
+	}
+
+	// Stop Windows server if on Windows
+	if (isWindows) {
+		stopAudioVisualizerServer();
+		log("Stopped audio visualizer server");
 	}
 
 	// Reset all references
@@ -547,7 +612,10 @@ const completeCleanup = (): void => {
 	audioSource = null;
 	dataArray = null;
 	currentAudioElement = null;
+	streamAudioElement = null;
 	isSourceConnected = false;
+	visualizerServerPort = 0;
+	currentTrackIdForStream = null;
 };
 
 // Register cleanup
