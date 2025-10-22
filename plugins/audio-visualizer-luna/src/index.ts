@@ -84,20 +84,53 @@ const getStreamAudioElement = (trackId: number | string): HTMLAudioElement => {
 	if (!streamAudioElement) {
 		streamAudioElement = new Audio();
 		streamAudioElement.crossOrigin = "anonymous";
+		streamAudioElement.muted = true; // CRITICAL: Only use for analysis, NOT for playback
+		streamAudioElement.volume = 0; // Extra safety
 		streamAudioElement.style.display = "none";
 		document.body.appendChild(streamAudioElement);
-		log("Created streaming audio element for Windows");
+		log("Created streaming audio element for Windows (muted - analysis only)");
 	}
 
 	const streamUrl = `http://localhost:${visualizerServerPort}/stream/${trackId}`;
 	if (streamAudioElement.src !== streamUrl) {
 		streamAudioElement.src = streamUrl;
-		streamAudioElement.play().catch(err => {
-			warn(`Failed to play stream: ${err}`);
-		});
+		// Don't auto-play - we'll sync it manually to the main playback
+		streamAudioElement.pause();
 	}
 
 	return streamAudioElement;
+};
+
+// Sync the stream element to the main playback for perfect synchronization
+const syncStreamToMainPlayback = (): void => {
+	if (!streamAudioElement || !currentAudioElement || !isWindows) return;
+
+	try {
+		// Check if main audio is playing
+		if (currentAudioElement.paused) {
+			// Pause stream if main is paused
+			if (!streamAudioElement.paused) {
+				streamAudioElement.pause();
+			}
+		} else {
+			// Play stream if main is playing
+			if (streamAudioElement.paused && streamAudioElement.readyState >= 2) {
+				// Only play if stream has buffered enough data
+				streamAudioElement.play().catch(() => {
+					// Silently fail - stream might not be ready yet
+				});
+			}
+		}
+
+		// Sync playback time - keep stream time very close to main time
+		const timeDiff = Math.abs(streamAudioElement.currentTime - currentAudioElement.currentTime);
+		if (timeDiff > 0.5) {
+			// If drift is > 0.5 seconds, resync
+			streamAudioElement.currentTime = currentAudioElement.currentTime;
+		}
+	} catch {
+		// Ignore sync errors - they're not critical
+	}
 };
 
 // Find the audio element - this is a bit of a hack but it works
@@ -302,6 +335,11 @@ const animate = (): void => {
 		return;
 	}
 
+	// Sync Windows stream to main playback
+	if (isWindows) {
+		syncStreamToMainPlayback();
+	}
+
 	// Update canvas color in case it changed
 	canvasContext.fillStyle = config.color;
 	canvasContext.strokeStyle = config.color;
@@ -479,9 +517,8 @@ const setupWindowsMediaObserver = (): void => {
 					if (streamAudioElement) {
 						const streamUrl = `http://localhost:${visualizerServerPort}/stream/${trackId}`;
 						streamAudioElement.src = streamUrl;
-						streamAudioElement.play().catch(err => {
-							warn(`Failed to play updated stream: ${err}`);
-						});
+						// Don't auto-play - we'll sync it manually to the main playback
+						streamAudioElement.pause();
 					}
 
 					// Reinitialize audio if needed
