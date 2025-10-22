@@ -1,14 +1,6 @@
 import { LunaUnload, Tracer } from "@luna/core";
 import { StyleTag, PlayState } from "@luna/lib";
-import { MediaItem } from "@luna/lib";
 import { settings, Settings } from "./Settings";
-
-// Import platform-specific audio handling
-import {
-	startAudioVisualizerServer,
-	stopAudioVisualizerServer,
-	isWindows
-} from "./index.native";
 
 // Import CSS styles for the visualizer
 import visualizerStyles from "file://styles.css?minify";
@@ -57,83 +49,14 @@ let audioSource: MediaElementAudioSourceNode | null = null;
 let dataArray: Uint8Array | null = null;
 let animationId: number | null = null;
 let currentAudioElement: HTMLAudioElement | null = null;
-let streamAudioElement: HTMLAudioElement | null = null;
 let isSourceConnected: boolean = false;
-let visualizerServerPort: number = 0;
-let currentTrackIdForStream: number | string | null = null;
 
 // Canvas and container elements
 let visualizerContainer: HTMLDivElement | null = null;
 let canvas: HTMLCanvasElement | null = null;
 let canvasContext: CanvasRenderingContext2D | null = null;
 
-// Initialize Windows audio streaming server
-const initializeWindowsAudioServer = async (): Promise<void> => {
-	if (!isWindows) return;
-
-	try {
-		visualizerServerPort = await startAudioVisualizerServer();
-		log(`Windows audio stream server started on port ${visualizerServerPort}`);
-	} catch (err) {
-		error(`Failed to start Windows audio stream server: ${err}`);
-	}
-};
-
-// Create or update streaming audio element for Windows
-const getStreamAudioElement = (trackId: number | string): HTMLAudioElement => {
-	if (!streamAudioElement) {
-		streamAudioElement = new Audio();
-		streamAudioElement.crossOrigin = "anonymous";
-		streamAudioElement.muted = true; // CRITICAL: Only use for analysis, NOT for playback
-		streamAudioElement.volume = 0; // Extra safety
-		streamAudioElement.style.display = "none";
-		document.body.appendChild(streamAudioElement);
-		log("Created streaming audio element for Windows (muted - analysis only)");
-	}
-
-	const streamUrl = `http://localhost:${visualizerServerPort}/stream/${trackId}`;
-	if (streamAudioElement.src !== streamUrl) {
-		streamAudioElement.src = streamUrl;
-		// Don't auto-play - we'll sync it manually to the main playback
-		streamAudioElement.pause();
-	}
-
-	return streamAudioElement;
-};
-
-// Sync the stream element to the main playback for perfect synchronization
-const syncStreamToMainPlayback = (): void => {
-	if (!streamAudioElement || !currentAudioElement || !isWindows) return;
-
-	try {
-		// Check if main audio is playing
-		if (currentAudioElement.paused) {
-			// Pause stream if main is paused
-			if (!streamAudioElement.paused) {
-				streamAudioElement.pause();
-			}
-		} else {
-			// Play stream if main is playing
-			if (streamAudioElement.paused && streamAudioElement.readyState >= 2) {
-				// Only play if stream has buffered enough data
-				streamAudioElement.play().catch(() => {
-					// Silently fail - stream might not be ready yet
-				});
-			}
-		}
-
-		// Sync playback time - keep stream time very close to main time
-		const timeDiff = Math.abs(streamAudioElement.currentTime - currentAudioElement.currentTime);
-		if (timeDiff > 0.5) {
-			// If drift is > 0.5 seconds, resync
-			streamAudioElement.currentTime = currentAudioElement.currentTime;
-		}
-	} catch {
-		// Ignore sync errors - they're not critical
-	}
-};
-
-// Find the audio element - this is a bit of a hack but it works
+// Find the audio element from the DOM
 const findAudioElement = (): HTMLAudioElement | null => {
 	// Try main selectors first
 	const selectors = [
@@ -168,27 +91,10 @@ const findAudioElement = (): HTMLAudioElement | null => {
 // Initialize audio visualization
 const initializeAudioVisualizer = async (): Promise<void> => {
 	try {
-		// For Windows, get current track and setup stream
+		// Use the native main audio element directly
 		let audioElement: HTMLAudioElement | null = null;
 
-		if (isWindows && visualizerServerPort > 0) {
-			try {
-				const currentMedia = await MediaItem.fromPlaybackContext();
-				if (currentMedia?.tidalItem?.id) {
-					const trackId = currentMedia.tidalItem.id;
-					currentTrackIdForStream = trackId;
-					audioElement = getStreamAudioElement(trackId);
-					log(`Using Windows stream for track ${trackId}`);
-				}
-			} catch (err) {
-				warn(`Failed to get current media for Windows stream: ${err}`);
-				// Fall back to finding audio element
-				audioElement = findAudioElement();
-			}
-		} else {
-			// Non-Windows: use existing approach
-			audioElement = findAudioElement();
-		}
+		audioElement = findAudioElement();
 
 		if (!audioElement) {
 			return;
@@ -220,7 +126,7 @@ const initializeAudioVisualizer = async (): Promise<void> => {
 
 				currentAudioElement = audioElement;
 				isSourceConnected = true;
-				log("Connected to audio stream with output");
+				log("Connected to main audio stream for visualization");
 			} catch (connectErr) {
 				// Audio is connected elsewhere - that's fine, we just can't visualize
 				if (
@@ -333,11 +239,6 @@ const animate = (): void => {
 	if (!canvasContext || !canvas) {
 		animationId = null;
 		return;
-	}
-
-	// Sync Windows stream to main playback
-	if (isWindows) {
-		syncStreamToMainPlayback();
 	}
 
 	// Update canvas color in case it changed
@@ -488,52 +389,8 @@ const cleanupAudioVisualizer = (): void => {
 
 	removeVisualizerUI();
 
-	// Clean up stream audio element if on Windows
-	if (streamAudioElement) {
-		streamAudioElement.pause();
-		streamAudioElement.src = "";
-		streamAudioElement.remove();
-		streamAudioElement = null;
-	}
-
 	// i was killing audio connections - But it was reconnecting and being a pain
 	// so i just left it alone - it works fine
-};
-
-// Observer for media transitions on Windows
-const setupWindowsMediaObserver = (): void => {
-	if (!isWindows) return;
-
-	const checkMediaTransition = async () => {
-		try {
-			const currentMedia = await MediaItem.fromPlaybackContext();
-			if (currentMedia?.tidalItem?.id) {
-				const trackId = currentMedia.tidalItem.id;
-				if (trackId !== currentTrackIdForStream && visualizerServerPort > 0) {
-					currentTrackIdForStream = trackId;
-					log(`Media changed on Windows, updating stream to track ${trackId}`);
-
-					// Update stream element
-					if (streamAudioElement) {
-						const streamUrl = `http://localhost:${visualizerServerPort}/stream/${trackId}`;
-						streamAudioElement.src = streamUrl;
-						// Don't auto-play - we'll sync it manually to the main playback
-						streamAudioElement.pause();
-					}
-
-					// Reinitialize audio if needed
-					if (audioContext?.state === "suspended") {
-						audioContext.resume().catch(() => {});
-					}
-				}
-			}
-		} catch (err) {
-			warn(`Error checking media transition: ${err}`);
-		}
-	};
-
-	// Check on play state changes using observer pattern instead of polling [[memory:6199491]]
-	PlayState.onState(unloads, checkMediaTransition);
 };
 
 // Initialize when DOM is ready and track is playing
@@ -589,12 +446,6 @@ const observePlayState = (): void => {
 const initialize = async (): Promise<void> => {
 	log("Audio Visualizer plugin initializing...");
 
-	// Initialize Windows audio server if on Windows
-	if (isWindows) {
-		await initializeWindowsAudioServer();
-		setupWindowsMediaObserver();
-	}
-
 	// Start immediately - DOM should be ready by plugin load
 	setTimeout(() => {
 		log("Starting visualizer...");
@@ -637,22 +488,13 @@ const completeCleanup = (): void => {
 		log("Closed AudioContext");
 	}
 
-	// Stop Windows server if on Windows
-	if (isWindows) {
-		stopAudioVisualizerServer();
-		log("Stopped audio visualizer server");
-	}
-
 	// Reset all references
 	audioContext = null;
 	analyser = null;
 	audioSource = null;
 	dataArray = null;
 	currentAudioElement = null;
-	streamAudioElement = null;
 	isSourceConnected = false;
-	visualizerServerPort = 0;
-	currentTrackIdForStream = null;
 };
 
 // Register cleanup
