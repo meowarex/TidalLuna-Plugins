@@ -1,6 +1,14 @@
 import { LunaUnload, Tracer } from "@luna/core";
 import { StyleTag, PlayState } from "@luna/lib";
+import { MediaItem } from "@luna/lib";
 import { settings, Settings } from "./Settings";
+
+// Import platform-specific audio handling
+import {
+	startAudioVisualizerServer,
+	stopAudioVisualizerServer,
+	isWindows
+} from "./index.native";
 
 // Import CSS styles for the visualizer
 import visualizerStyles from "file://styles.css?minify";
@@ -49,14 +57,100 @@ let audioSource: MediaElementAudioSourceNode | null = null;
 let dataArray: Uint8Array | null = null;
 let animationId: number | null = null;
 let currentAudioElement: HTMLAudioElement | null = null;
+let streamAudioElement: HTMLAudioElement | null = null;
 let isSourceConnected: boolean = false;
+let visualizerServerPort: number = 0;
+let currentTrackIdForStream: number | string | null = null;
 
 // Canvas and container elements
 let visualizerContainer: HTMLDivElement | null = null;
 let canvas: HTMLCanvasElement | null = null;
 let canvasContext: CanvasRenderingContext2D | null = null;
 
-// Find the audio element from the DOM
+// Initialize Windows audio streaming server
+const initializeWindowsAudioServer = async (): Promise<void> => {
+	if (!isWindows) return;
+
+	try {
+		visualizerServerPort = await startAudioVisualizerServer();
+		log(`Windows audio stream server started on port ${visualizerServerPort}`);
+		
+		// Preload the stream for the current track immediately
+		const currentMedia = await MediaItem.fromPlaybackContext();
+		if (currentMedia?.tidalItem?.id) {
+			preloadStreamForTrack(currentMedia.tidalItem.id);
+		}
+	} catch (err) {
+		error(`Failed to start Windows audio stream server: ${err}`);
+	}
+};
+
+// Preload stream for a track (without playing it yet)
+const preloadStreamForTrack = (trackId: number | string): void => {
+	if (!streamAudioElement) {
+		streamAudioElement = new Audio();
+		streamAudioElement.crossOrigin = "anonymous";
+		streamAudioElement.muted = true;
+		streamAudioElement.volume = 0;
+		streamAudioElement.style.display = "none";
+		streamAudioElement.preload = "auto"; // Start loading immediately
+		document.body.appendChild(streamAudioElement);
+		log("Created streaming audio element for Windows (preloading)");
+	}
+
+	const streamUrl = `http://localhost:${visualizerServerPort}/stream/${trackId}`;
+	if (streamAudioElement.src !== streamUrl) {
+		streamAudioElement.src = streamUrl;
+		// Set to load but don't play yet
+		streamAudioElement.load();
+		log(`Preloading stream for track ${trackId}`);
+	}
+};
+
+// Create or update streaming audio element for Windows
+const getStreamAudioElement = (trackId: number | string): HTMLAudioElement => {
+	// Make sure stream is preloaded for this track
+	preloadStreamForTrack(trackId);
+	if (!streamAudioElement) {
+		throw new Error("Stream audio element failed to initialize");
+	}
+	return streamAudioElement;
+};
+
+// Sync the stream element to the main playback for perfect synchronization
+const syncStreamToMainPlayback = (): void => {
+	if (!streamAudioElement || !currentAudioElement || !isWindows) return;
+
+	try {
+		// Check if main audio is playing
+		if (currentAudioElement.paused) {
+			// Pause stream if main is paused
+			if (!streamAudioElement.paused) {
+				streamAudioElement.pause();
+			}
+		} else {
+			// Play stream if main is playing - don't wait for full buffering
+			if (streamAudioElement.paused) {
+				// Try to play, even if not fully buffered (like MPV does)
+				// Preload should have done most of the work by now
+				streamAudioElement.play().catch(() => {
+					// Silently fail if not ready - it's loading in background
+				});
+			}
+		}
+
+		// Sync playback time - only resync if drift is significant (like MPV's 2 second threshold)
+		const timeDiff = Math.abs(streamAudioElement.currentTime - currentAudioElement.currentTime);
+		if (timeDiff > 1) {
+			// If drift is > 1 second, resync (was 0.5, now more lenient like MPV)
+			streamAudioElement.currentTime = currentAudioElement.currentTime;
+		}
+	} catch {
+		// Ignore sync errors - they're not critical
+	}
+};
+
+// Find the audio element - this is a bit of a hack but it works
 const findAudioElement = (): HTMLAudioElement | null => {
 	// Try main selectors first
 	const selectors = [
@@ -91,10 +185,27 @@ const findAudioElement = (): HTMLAudioElement | null => {
 // Initialize audio visualization
 const initializeAudioVisualizer = async (): Promise<void> => {
 	try {
-		// Use the native main audio element directly
+		// For Windows, get current track and setup stream
 		let audioElement: HTMLAudioElement | null = null;
 
-		audioElement = findAudioElement();
+		if (isWindows && visualizerServerPort > 0) {
+			try {
+				const currentMedia = await MediaItem.fromPlaybackContext();
+				if (currentMedia?.tidalItem?.id) {
+					const trackId = currentMedia.tidalItem.id;
+					currentTrackIdForStream = trackId;
+					audioElement = getStreamAudioElement(trackId);
+					log(`Using Windows stream for track ${trackId}`);
+				}
+			} catch (err) {
+				warn(`Failed to get current media for Windows stream: ${err}`);
+				// Fall back to finding audio element
+				audioElement = findAudioElement();
+			}
+		} else {
+			// Non-Windows: use existing approach
+			audioElement = findAudioElement();
+		}
 
 		if (!audioElement) {
 			return;
@@ -126,7 +237,7 @@ const initializeAudioVisualizer = async (): Promise<void> => {
 
 				currentAudioElement = audioElement;
 				isSourceConnected = true;
-				log("Connected to main audio stream for visualization");
+				log("Connected to audio stream with output");
 			} catch (connectErr) {
 				// Audio is connected elsewhere - that's fine, we just can't visualize
 				if (
@@ -239,6 +350,11 @@ const animate = (): void => {
 	if (!canvasContext || !canvas) {
 		animationId = null;
 		return;
+	}
+
+	// Sync Windows stream to main playback
+	if (isWindows) {
+		syncStreamToMainPlayback();
 	}
 
 	// Update canvas color in case it changed
@@ -389,8 +505,47 @@ const cleanupAudioVisualizer = (): void => {
 
 	removeVisualizerUI();
 
+	// Clean up stream audio element if on Windows
+	if (streamAudioElement) {
+		streamAudioElement.pause();
+		streamAudioElement.src = "";
+		streamAudioElement.remove();
+		streamAudioElement = null;
+	}
+
 	// i was killing audio connections - But it was reconnecting and being a pain
 	// so i just left it alone - it works fine
+};
+
+// Observer for media transitions on Windows
+const setupWindowsMediaObserver = (): void => {
+	if (!isWindows) return;
+
+	const checkMediaTransition = async () => {
+		try {
+			const currentMedia = await MediaItem.fromPlaybackContext();
+			if (currentMedia?.tidalItem?.id) {
+				const trackId = currentMedia.tidalItem.id;
+				if (trackId !== currentTrackIdForStream && visualizerServerPort > 0) {
+					currentTrackIdForStream = trackId;
+					log(`Media changed on Windows, preloading stream for track ${trackId}`);
+
+					// Preload stream for new track immediately
+					preloadStreamForTrack(trackId);
+
+					// Reinitialize audio if needed
+					if (audioContext?.state === "suspended") {
+						audioContext.resume().catch(() => {});
+					}
+				}
+			}
+		} catch (err) {
+			warn(`Error checking media transition: ${err}`);
+		}
+	};
+
+	// Check on play state changes using observer pattern
+	PlayState.onState(unloads, checkMediaTransition);
 };
 
 // Initialize when DOM is ready and track is playing
@@ -446,6 +601,12 @@ const observePlayState = (): void => {
 const initialize = async (): Promise<void> => {
 	log("Audio Visualizer plugin initializing...");
 
+	// Initialize Windows audio server if on Windows
+	if (isWindows) {
+		await initializeWindowsAudioServer();
+		setupWindowsMediaObserver();
+	}
+
 	// Start immediately - DOM should be ready by plugin load
 	setTimeout(() => {
 		log("Starting visualizer...");
@@ -488,13 +649,22 @@ const completeCleanup = (): void => {
 		log("Closed AudioContext");
 	}
 
+	// Stop Windows server if on Windows
+	if (isWindows) {
+		stopAudioVisualizerServer();
+		log("Stopped audio visualizer server");
+	}
+
 	// Reset all references
 	audioContext = null;
 	analyser = null;
 	audioSource = null;
 	dataArray = null;
 	currentAudioElement = null;
+	streamAudioElement = null;
 	isSourceConnected = false;
+	visualizerServerPort = 0;
+	currentTrackIdForStream = null;
 };
 
 // Register cleanup
