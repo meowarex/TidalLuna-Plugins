@@ -22,3 +22,41 @@
 	opacity: 0 !important;
 	transition: opacity 0.4s ease-in-out;
 }
+
+/* Immediate hide class for unhide button */
+.hide-immediately {
+	opacity: 0 !important;
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+/* Auto-fade styling for unhide button */
+.unhide-ui-button.auto-faded {
+	background-color: transparent !important;
+	border-color: transparent !important;
+	box-shadow: none !important;
+	backdrop-filter: none !important;
+	-webkit-backdrop-filter: none !important;
+	color: rgba(255, 255, 255, 0.8) !important;
+	transition:
+		background-color 0.8s ease-in-out,
+		border-color 0.8s ease-in-out,
+		box-shadow 0.8s ease-in-out,
+		backdrop-filter 0.8s ease-in-out,
+		color 0.8s ease-in-out !important;
+}
+
+.unhide-ui-button.auto-faded:hover {
+	background-color: rgba(255, 255, 255, 0.2) !important;
+	border-color: rgba(255, 255, 255, 0.3) !important;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
+	color: white !important;
+	transition:
+		background-color 0.3s ease-in-out,
+		border-color 0.3s ease-in-out,
+		box-shadow 0.3s ease-in-out,
+		backdrop-filter 0.3s ease-in-out,
+		color 0.3s ease-in-out !important;
+}
