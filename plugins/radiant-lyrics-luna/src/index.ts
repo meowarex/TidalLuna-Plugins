@@ -33,6 +33,9 @@ if (settings.lyricsGlowEnabled) {
 	lyricsGlowStyleTag.css = lyricsGlow;
 }
 
+// Apply base styles always (contains global fixes and conditional UI hiding styles)
+baseStyleTag.css = baseStyles;
+
 // Update CSS variables for lyrics text glow based on settings
 const updateRadiantLyricsTextGlow = function (): void {
 	const root = document.documentElement;
@@ -43,8 +46,7 @@ const updateRadiantLyricsTextGlow = function (): void {
 // Function to update styles when settings change
 const updateRadiantLyricsStyles = function (): void {
 	if (isHidden) {
-		// Apply only base styles (button hiding) and optional player bar hiding
-		baseStyleTag.css = baseStyles;
+		// Apply optional player bar hiding
 		if (!settings.playerBarVisible) {
 			playerBarStyleTag.css = playerBarHidden;
 		} else {
@@ -195,7 +197,6 @@ const toggleRadiantLyrics = function (): void {
 		setTimeout(() => {
 			if (!isHidden) {
 				lyricsStyleTag.remove();
-				baseStyleTag.remove();
 				playerBarStyleTag.remove();
 			}
 		}, 500);
