@@ -17,15 +17,6 @@
 	border-radius: 10px !important;
 }
 
-/* Rounded corners for various elements */
-[class*="_thumbnail_"],
-[class*="_imageWrapper_"],
-[class*="_coverImage_"],
-[class*="_overlayIconWrapperAlbum_"],
-[class*="_playButton_"] {
-	border-radius: 10px !important;
-}
-
 /* Only apply styles when UI is hidden */
 .radiant-lyrics-ui-hidden [class*="tabItems"] {
 	opacity: 0 !important;
