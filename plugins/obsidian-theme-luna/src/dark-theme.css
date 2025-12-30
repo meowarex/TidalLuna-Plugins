@@ -12,7 +12,7 @@
 [class*="_coverImage_"],
 [class*="_overlayIconWrapperAlbum_"],
 [class*="_playButton_"] {
-	border-radius: 10px !important;
+	border-radius: 5px !important;
 }
 
 ::-webkit-scrollbar {
