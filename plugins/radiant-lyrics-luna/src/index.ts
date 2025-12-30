@@ -45,19 +45,18 @@ const updateRadiantLyricsTextGlow = function (): void {
 
 // Function to update styles when settings change
 const updateRadiantLyricsStyles = function (): void {
+	// Handle Player Bar Visibility
 	if (isHidden) {
-		// Apply optional player bar hiding
 		if (!settings.playerBarVisible) {
 			playerBarStyleTag.css = playerBarHidden;
 		} else {
 			playerBarStyleTag.remove();
 		}
-		// Ensure lyrics glow styles are not applied when hidden
-		lyricsGlowStyleTag.remove();
-		return;
+	} else {
+		playerBarStyleTag.remove();
 	}
 
-	// Update lyrics glow based on setting (only when UI is visible)
+	// Update lyrics glow based on setting (Always apply if enabled, even when UI is hidden)
 	const lyricsContainer = document.querySelector('[class^="_lyricsContainer"]');
 	if (lyricsContainer) {
 		if (settings.lyricsGlowEnabled) {
@@ -196,8 +195,7 @@ const toggleRadiantLyrics = function (): void {
 		document.body.classList.remove("radiant-lyrics-ui-hidden");
 		setTimeout(() => {
 			if (!isHidden) {
-				lyricsStyleTag.remove();
-				playerBarStyleTag.remove();
+				updateRadiantLyricsStyles();
 			}
 		}, 500);
 		updateButtonStates();
