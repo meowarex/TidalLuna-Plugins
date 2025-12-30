@@ -27,6 +27,13 @@
 	opacity: 1 !important;
 }
 
+/* Hide header container (search, minimize, fullscreen) when UI is hidden */
+.radiant-lyrics-ui-hidden [data-test="header-container"] {
+	opacity: 0 !important;
+	transition: opacity 0.4s ease-in-out;
+	pointer-events: none !important;
+}
+
 /* Immediate hide class for unhide button */
 .hide-immediately {
 	opacity: 0 !important;
