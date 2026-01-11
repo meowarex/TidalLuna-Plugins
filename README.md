@@ -58,9 +58,21 @@ Allows users to hide/remove UI elements by right clicking on them.
 
 ## Installation
 
+### Batteries Required
+1. [TidaLuna](https://github.com/Inrixia/TidaLuna) - Plugin Framework for Tidal (what these plugins are for)
+2. Tidal - Streaming Service (if you are here and dont use tidal.. then just enjoy the read <3)
+
+### Installing from Plugin Store (in TidaLuna)
+1. Open Tidal (with Luna installed)
+2. Navigate to Luna Settings (Top right of Tidal)
+3. Click "Plugin Store" Tab
+4. Scroll Down and just click on the plugins to install them
+5. Naviagte to the "Plugins" Tab
+6. And now your done and you can adjust the settings to your liking <3
+
 ### Installing from URL
 ### (They are in the store by default now)
-1. Open TidalLuna after Building & Serving
+1. Open TidaLuna after Building & Serving
 2. Navigate to Luna Settings (Top right of Tidal)
 3. Click "Plugin Store" Tab
 4. Paste in the "Install from URL" Bar `https://github.com/meowarex/tidalluna-plugins/releases/download/latest/store.json`
@@ -83,7 +95,7 @@ pnpm run watch
 ```
 
 ### Installing Plugins in TidalLuna
-1. Open TidalLuna after Building & Serving
+1. Open TidaLuna after Building & Serving
 2. Navigate to Luna Settings (Top right of Tidal)
 3. Click "Plugin Store" Tab
 4. Click Install on the Plugins at the top Labeled with "[Dev]"
@@ -92,7 +104,7 @@ pnpm run watch
 ## Development
 
 This project is made for:
-- **TidalLuna** - Modern plugin framework for Tidal | Inrixia
+- **[TidaLuna](https://github.com/Inrixia/TidaLuna)** - Modern plugin framework for Tidal | Inrixia
 
 ## GitHub Actions
 
@@ -100,10 +112,7 @@ This project is made for:
 - **Release automation** for distributing plugins
 - **Artifact uploads** for easy plugin distribution
 
-## Based On <3
-
-- **itzzexcel** - [GitHub](https://github.com/ItzzExcel)
-
 ## Credits
 
-Original Neptune versions by itzzexcel. Ported to Luna framework following the Luna plugin template structure by meowarex with help from Inrixia <3 
+Inrixia | [TidalLuna](https://github.com/Inrixia/TidaLuna) Plugin Framework (The successor Neptune)
+ItzzExcel | The Original Neptune version of "Radiant Lyrics" (Which was ported to Luna and Rewritten by me!)
