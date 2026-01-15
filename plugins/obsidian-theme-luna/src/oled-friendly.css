@@ -114,7 +114,8 @@
 	margin: 5px;
 }
 
-[data-test="media-table"] > div > div > div {
+[data-test="media-table"] > div > div {
+	border-radius: 8px;
 	border: 1px solid rgb(25, 25, 25) !important;
 }
 
