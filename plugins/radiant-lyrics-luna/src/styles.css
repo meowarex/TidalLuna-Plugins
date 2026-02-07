@@ -72,3 +72,36 @@
 		backdrop-filter 0.3s ease-in-out,
 		color 0.3s ease-in-out !important;
 }
+
+/* Fixes the new Sticky Header Tidal added.. in the shittest jankiest way possible */
+[class*="_stickyHeader"] {
+	background: transparent !important;
+	backdrop-filter: blur(50px);
+	background-color: transparent !important;
+	width: fit-content !important;
+	padding-right: 3.5% !important;
+	-webkit-mask-image:
+		linear-gradient(to bottom, black 60%, transparent),
+		linear-gradient(to right, black 85%, transparent) !important;
+	mask-image:
+		linear-gradient(to bottom, black 60%, transparent),
+		linear-gradient(to right, black 85%, transparent) !important;
+	-webkit-mask-composite: source-in !important;
+	mask-composite: intersect !important;
+	/* border-radius: 3px 0 0 0 !important; */
+	padding-bottom: 5px !important;
+}
+
+[class*="_playQueueItems"]{
+	border-radius: 2.5px 0 0 0 !important;
+}
+
+[data-test="playqueue-sticky-clear-active-items"] {
+	visibility: collapse !important;
+	width: 0px !important;
+}
+
+[data-test="playqueue-sticky-clear-source-items"] {
+	visibility: collapse !important;
+	width: 0px !important;
+}
