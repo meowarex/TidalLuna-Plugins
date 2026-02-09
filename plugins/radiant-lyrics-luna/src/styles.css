@@ -73,6 +73,7 @@
 		color 0.3s ease-in-out !important;
 }
 
+
 /* Fixes the new Sticky Header Tidal added.. in the shittest jankiest way possible */
 [class*="_stickyHeader"] {
 	background: transparent !important;
@@ -104,4 +105,10 @@
 [data-test="playqueue-sticky-clear-source-items"] {
 	visibility: collapse !important;
 	width: 0px !important;
+}
+
+
+/* Remove the background color from the small header */
+[class*="_smallHeader"]::before {
+	background-color: transparent !important;
 }

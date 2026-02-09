@@ -254,3 +254,9 @@
 	visibility: collapse !important;
 	width: 0px !important;
 }
+
+
+/* Remove the background color from the small header */
+[class*="_smallHeader"]::before {
+	background-color: transparent !important;
+}
