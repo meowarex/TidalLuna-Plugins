@@ -815,11 +815,11 @@ const cleanUpDynamicArt = function (): void {
 		element.remove();
 	});
 
-	// Also clean up global spinning backgrounds
+	// Clean up spinning background
 	cleanUpGlobalSpinningBackground();
 };
 
-// Reduce work when tab hidden: pause animations; restore on visible
+// I may or may not have forgotten what this does..
 document.addEventListener("visibilitychange", () => {
 	const isHiddenDoc = document.hidden;
 	const images = document.querySelectorAll(
@@ -846,27 +846,28 @@ document.addEventListener("visibilitychange", () => {
 	});
 });
 
-// Apply initial performance mode class
+// Init performance mode
 if (settings.performanceMode) {
 	document.body.classList.add("performance-mode");
 }
 
-// Initialize text glow CSS variables on load
+// Init text glow
 updateRadiantLyricsTextGlow();
 
+// Init global background
 updateCoverArtBackground(1);
 
-// Add cleanup to unloads
+// Cleanups
 unloads.add(() => {
 	cleanUpDynamicArt();
 
-	// Clean up auto-fade timeout
+	// Clean up HideUI button auto-fade timeout
 	if (unhideButtonAutoFadeTimeout != null) {
 		window.clearTimeout(unhideButtonAutoFadeTimeout);
 		unhideButtonAutoFadeTimeout = null;
 	}
 
-	// Clean up our custom buttons
+	// Clean up HideUI button
 	const hideButton = document.querySelector(".hide-ui-button");
 	if (hideButton && hideButton.parentNode) {
 		hideButton.parentNode.removeChild(hideButton);
@@ -877,15 +878,259 @@ unloads.add(() => {
 		unhideButton.parentNode.removeChild(unhideButton);
 	}
 
+	// Clean up sticky lyrics elements
+	document.querySelectorAll(".sticky-lyrics-trigger, .sticky-lyrics-dropdown").forEach((el) => {
+		el.remove();
+	});
+
 	// Clean up spin animations
 	const spinAnimationStyle = document.querySelector("#spinAnimation");
 	if (spinAnimationStyle && spinAnimationStyle.parentNode) {
 		spinAnimationStyle.parentNode.removeChild(spinAnimationStyle);
 	}
 
-	// Clean up global spinning backgrounds
+	// Clean up spinning background
 	cleanUpGlobalSpinningBackground();
 });
+
+
+// MARKER: Sticky Lyrics Feature
+
+const STICKY_ICONS: Record<string, string> = {
+	chevron: '<svg viewBox="0 0 24 24" width="10" height="10" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.29289 8.29289C4.68342 7.90237 5.31658 7.90237 5.70711 8.29289L12 14.5858L18.2929 8.29289C18.6834 7.90237 19.3166 7.90237 19.7071 8.29289C20.0976 8.68342 20.0976 9.31658 19.7071 9.70711L12.7071 16.7071C12.3166 17.0976 11.6834 17.0976 11.2929 16.7071L4.29289 9.70711C3.90237 9.31658 3.90237 8.68342 4.29289 8.29289Z" fill="currentColor"/></svg>',
+	sparkle: '<svg viewBox="0 0 512 512" width="12" height="12"><path fill="currentColor" d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Zm66.85-254.84h0Z"/><path fill="currentColor" d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path fill="currentColor" d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>',
+};
+
+const getStickyIcon = (): string => STICKY_ICONS[settings.stickyLyricsIcon] ?? STICKY_ICONS.chevron;
+
+const applyStickyIcon = (): void => {
+	const trigger = document.querySelector(".sticky-lyrics-trigger") as HTMLElement;
+	if (!trigger) return;
+	trigger.innerHTML = getStickyIcon();
+	trigger.style.paddingLeft = settings.stickyLyricsIcon === "sparkle" ? "5px" : "5px";
+};
+
+// Console: StickyLyrics.icon = "sparkle" or "chevron"
+// I'm picky and prefer the Sparkle.. shhh
+(window as any).StickyLyrics = {
+	get icon() { return settings.stickyLyricsIcon; },
+	set icon(value: string) {
+		const key = value.toLowerCase();
+		if (!STICKY_ICONS[key]) {
+			console.log(`[Radiant Lyrics] Unknown icon "${value}". Available: ${Object.keys(STICKY_ICONS).join(", ")}`);
+			return;
+		}
+		settings.stickyLyricsIcon = key;
+		applyStickyIcon();
+		console.log(`[Radiant Lyrics] Sticky Lyrics icon set to "${key}"`);
+	},
+};
+
+// Tear down all sticky lyrics UI (trigger + dropdown + classes)
+// For when the feature is disabled in plugin settings
+const teardownStickyLyrics = (): void => {
+	document.querySelectorAll(".sticky-lyrics-trigger").forEach((el) => el.remove());
+	document.querySelectorAll(".sticky-lyrics-dropdown").forEach((el) => el.remove());
+	const lyricsTab = document.querySelector('[data-test="tabs-lyrics"]');
+	if (lyricsTab) lyricsTab.classList.remove("sticky-lyrics-open");
+};
+
+// Called from Settings
+const updateStickyLyricsFeature = (): void => {
+	if (settings.stickyLyricsFeature) {
+		// Feature enabled - inject the dropdown
+		const tab = document.querySelector('[data-test="tabs-lyrics"]');
+		if (tab && !tab.querySelector(".sticky-lyrics-trigger")) {
+			createStickyLyricsDropdown();
+		}
+	} else {
+		// Feature disabled — remove everything & disable inner toggle
+		settings.stickyLyrics = false;
+		teardownStickyLyrics();
+	}
+};
+(window as any).updateStickyLyricsFeature = updateStickyLyricsFeature;
+
+const createStickyLyricsDropdown = (): void => {
+	if (!settings.stickyLyricsFeature) return;
+	const lyricsTab = document.querySelector(
+		'[data-test="tabs-lyrics"]',
+	) as HTMLElement;
+	if (!lyricsTab) return;
+	if (lyricsTab.querySelector(".sticky-lyrics-trigger")) return;
+
+	// Trigger
+	// lives inside the Lyrics <li>
+	const trigger = document.createElement("div");
+	trigger.className = "sticky-lyrics-trigger";
+	trigger.setAttribute("title", "Sticky Lyrics");
+
+	// Set the icon & it's styling
+	// is only needed because i'm picky and prefer the Sparkle.. shhh
+	trigger.innerHTML = getStickyIcon();
+	//trigger.style.paddingLeft = settings.stickyLyricsIcon === "sparkle" ? "5px" : "5px";
+
+	// Block non-click events on trigger from reaching the Lyrics tab (capture phase)
+	// (capture phase stops the tab from activating & runs the toggle before the event is consumed by the SVG child) - Thx React.. again..
+	for (const evtName of ["pointerdown", "pointerup", "mousedown", "mouseup"] as const) {
+		trigger.addEventListener(evtName, (e: Event) => {
+			e.stopPropagation();
+		}, true);
+	}
+
+	// Dropdown 
+	// lives in document.body so its events never touch the Lyrics tab - Thx React..
+	const dropdown = document.createElement("div");
+	dropdown.className = "sticky-lyrics-dropdown";
+	dropdown.style.display = "none";
+
+	dropdown.innerHTML = `
+		<div class="sticky-lyrics-dropdown-row">
+			<span class="sticky-lyrics-label">Sticky Lyrics</span>
+			<label class="sticky-lyrics-switch">
+				<input type="checkbox" ${settings.stickyLyrics ? "checked" : ""}>
+				<span class="sticky-lyrics-slider"></span>
+			</label>
+		</div>
+	`;
+
+	// Toggle dropdown on trigger click 
+	const openDropdown = (): void => {
+		const buttonRect = lyricsTab.getBoundingClientRect();
+		dropdown.style.top = `${buttonRect.bottom}px`;
+		dropdown.style.left = `${buttonRect.left}px`;
+		dropdown.style.width = `${buttonRect.width}px`;
+		dropdown.style.display = "block";
+		lyricsTab.classList.add("sticky-lyrics-open");
+	};
+	const closeDropdown = (): void => {
+		dropdown.style.display = "none";
+		lyricsTab.classList.remove("sticky-lyrics-open");
+	};
+
+	trigger.addEventListener("click", (e: MouseEvent) => {
+		e.stopPropagation();
+		const isActive = lyricsTab.getAttribute("aria-selected") === "true";
+		if (!isActive) {
+			// Navigate to Lyrics & open dropdown
+			lyricsTab.click();
+			// Delay to let the tab activate
+			setTimeout(() => openDropdown(), 150);
+			return;
+		}
+		// Toggle dropdown
+		if (dropdown.style.display === "none") {
+			openDropdown();
+		} else {
+			closeDropdown();
+		}
+	}, true);
+
+	// Handle toggle switch change
+	const checkbox = dropdown.querySelector(
+		'input[type="checkbox"]',
+	) as HTMLInputElement;
+	checkbox.addEventListener("change", () => {
+		settings.stickyLyrics = checkbox.checked;
+		if (settings.stickyLyrics) {
+			handleStickyLyricsTrackChange();
+		}
+	});
+
+	// Close dropdown when clicking outside trigger & dropdown
+	const handleOutsideClick = (e: MouseEvent): void => {
+		if (!trigger.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
+			closeDropdown();
+		}
+	};
+	document.addEventListener("click", handleOutsideClick);
+
+	// Trigger goes inside the Lyrics <li> & dropdown goes in <body>
+	lyricsTab.appendChild(trigger);
+	document.body.appendChild(dropdown);
+
+	// Register cleanup
+	unloads.add(() => {
+		document.removeEventListener("click", handleOutsideClick);
+		lyricsTab.classList.remove("sticky-lyrics-open");
+		trigger.remove();
+		dropdown.remove();
+	});
+};
+
+// Handle switching tabs on track change
+const handleStickyLyricsTrackChange = (): void => {
+	if (!settings.stickyLyricsFeature || !settings.stickyLyrics) return;
+
+	// Process the track change and update tab state
+	// Tidal takes a while to process the track change sometimes :(
+	setTimeout(() => {
+		if (!settings.stickyLyricsFeature || !settings.stickyLyrics) return;
+
+		const lyricsTab = document.querySelector(
+			'[data-test="tabs-lyrics"]',
+		) as HTMLElement;
+		const playQueueTab = document.querySelector(
+			'[data-test="tabs-play-queue"]',
+		) as HTMLElement;
+
+		if (!lyricsTab) {
+			// fall back to play queue
+			if (playQueueTab) playQueueTab.click();
+			return;
+		}
+
+		// Attempt to switch to lyrics
+		lyricsTab.click();
+
+		// Verify we actually stayed on lyrics after a short delay
+		// TODO: Make not shitty (one day maybe)
+		setTimeout(() => {
+			if (!settings.stickyLyrics) return;
+			const onLyrics = document.querySelector(
+				'[data-test="tabs-lyrics"][aria-selected="true"]',
+			);
+			if (!onLyrics && playQueueTab) {
+				// Got redirected away from lyrics - fall back to play queue
+				playQueueTab.click();
+			}
+		}, 800);
+	}, 1200);
+};
+
+// Observer: create dropdown when lyrics tab appears & detect track changes
+function setupStickyLyricsObserver(): void {
+	// Create dropdown if lyrics tab already exists
+	if (settings.stickyLyricsFeature) {
+		const existing = document.querySelector('[data-test="tabs-lyrics"]');
+		if (existing && !existing.querySelector(".sticky-lyrics-trigger")) {
+			createStickyLyricsDropdown();
+		}
+	}
+
+	// Re-create dropdown whenever lyrics tab is back from the ether
+	observe<HTMLElement>(unloads, '[data-test="tabs-lyrics"]', () => {
+		if (!settings.stickyLyricsFeature) return;
+		const tab = document.querySelector('[data-test="tabs-lyrics"]');
+		if (tab && !tab.querySelector(".sticky-lyrics-trigger")) {
+			createStickyLyricsDropdown();
+		}
+	});
+
+	// Detect track changes & trigger sticky lyrics switching
+	let stickyLastTrackId: string | null =
+		PlayState.playbackContext?.actualProductId ?? null;
+	const checkStickyTrackChange = (): void => {
+		if (!settings.stickyLyricsFeature || !settings.stickyLyrics) return;
+		const currentTrackId = PlayState.playbackContext?.actualProductId;
+		if (currentTrackId && currentTrackId !== stickyLastTrackId) {
+			stickyLastTrackId = currentTrackId;
+			handleStickyLyricsTrackChange();
+		}
+	};
+	const stickyIntervalId = setInterval(checkStickyTrackChange, 500);
+	unloads.add(() => clearInterval(stickyIntervalId));
+}
 
 // Marker: Observers
 // Shared observer-based hooks and polling fallbacks
@@ -957,8 +1202,9 @@ function setupTrackTitleObserver(): void {
 	);
 }
 
-// Initialize the button creation and observers (non-polling)
+// Init observers
 setupHeaderObserver();
 setupNowPlayingObserver();
 setupTrackTitleObserver();
 observeTrackChanges();
+setupStickyLyricsObserver();

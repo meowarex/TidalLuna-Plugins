@@ -18,6 +18,9 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	backgroundBrightness: 40,
 	spinSpeed: 45,
 	settingsAffectNowPlaying: true,
+	stickyLyricsFeature: true,
+	stickyLyrics: false,
+	stickyLyricsIcon: "chevron" as string,
 });
 
 export const Settings = () => {
@@ -61,6 +64,9 @@ export const Settings = () => {
 	const [backgroundRadius, setBackgroundRadius] = React.useState(
 		settings.backgroundRadius,
 	);
+	const [stickyLyricsFeature, setStickyLyricsFeature] = React.useState(
+		settings.stickyLyricsFeature,
+	);
 
 	// Derive props and override onChange to accept a broader first param type
 	type BaseSwitchProps = React.ComponentProps<typeof LunaSwitchSetting>;
@@ -94,6 +100,17 @@ export const Settings = () => {
 					setTrackTitleGlow((settings.trackTitleGlow = checked));
 					if ((window as any).updateRadiantLyricsStyles) {
 						(window as any).updateRadiantLyricsStyles();
+					}
+				}}
+			/>
+			<AnySwitch
+				title="Sticky Lyrics"
+				desc="Adds a dropdown to the Lyrics tab that auto-switches to Play Queue when lyrics aren't available"
+				checked={stickyLyricsFeature}
+				onChange={(_: unknown, checked: boolean) => {
+					setStickyLyricsFeature((settings.stickyLyricsFeature = checked));
+					if ((window as any).updateStickyLyricsFeature) {
+						(window as any).updateStickyLyricsFeature();
 					}
 				}}
 			/>
