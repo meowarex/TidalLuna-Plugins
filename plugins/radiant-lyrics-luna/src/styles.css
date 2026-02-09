@@ -1,14 +1,14 @@
-/* Sidebar with dynamic hash */
+/* Sidebar */
 [class*="_sidebar_"] {
 	background-color: transparent !important;
 }
 
-/* Section header with dynamic hash */
+/* Section header */
 [class*="_sectionHeader_"] {
 	background-color: transparent !important;
 }
 
-/* Rounded corners for various elements */
+/* Rounded corners */
 [class*="_thumbnail_"],
 [class*="_imageWrapper_"],
 [class*="_coverImage_"],
@@ -16,6 +16,9 @@
 [class*="_playButton_"] {
 	border-radius: 5px !important;
 }
+
+
+/* MARKER: HideUI CSS*/
 
 /* Only apply styles when UI is hidden */
 .radiant-lyrics-ui-hidden [class*="tabItems"] {
@@ -73,6 +76,156 @@
 		color 0.3s ease-in-out !important;
 }
 
+
+/* MARKER: Sticky Lyrics CSS */
+
+/* Lyrics tab */
+[data-test="tabs-lyrics"]:has(.sticky-lyrics-trigger) {
+	position: relative !important;
+	padding-right: 38px !important;
+}
+
+/* Trigger */
+.sticky-lyrics-trigger {
+	position: absolute;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 38px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding-left: 5px;
+	padding-right: 0px;
+	box-sizing: border-box;
+	cursor: default;
+	color: #CCCCD1;
+	transition: color 0.2s ease;
+}
+
+/* Divider line */
+.sticky-lyrics-trigger::before {
+	content: "";
+	position: absolute;
+	left: 5px;
+	top: 4px;
+	bottom: 4px;
+	width: 1px;
+	background: transparent;
+	transition: background 0.2s ease;
+}
+
+/* When Lyrics tab is active — show divider & make icon black*/
+[data-test="tabs-lyrics"][aria-selected="true"] .sticky-lyrics-trigger {
+	color: black;
+	cursor: pointer;
+}
+
+[data-test="tabs-lyrics"][aria-selected="true"] .sticky-lyrics-trigger::before {
+	background: rgba(0, 0, 0, 0.25);
+}
+
+[data-test="tabs-lyrics"][aria-selected="true"] .sticky-lyrics-trigger:hover {
+	color: rgba(0, 0, 0, 0.6);
+}
+
+/* Square the Lyrics button bottom corners when dropdown is open */
+[data-test="tabs-lyrics"].sticky-lyrics-open {
+	border-bottom-left-radius: 0 !important;
+	border-bottom-right-radius: 0 !important;
+}
+
+/* Dropdown */
+.sticky-lyrics-dropdown {
+	position: fixed;
+	background: white;
+	border-radius: 0 0 16px 16px;
+	padding: 8px 12px 10px;
+	box-sizing: border-box;
+	z-index: 10000;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+	clip-path: inset(0 -20px -20px -20px);
+	animation: stickyLyricsDropdownIn 0.12s ease-out;
+}
+
+@keyframes stickyLyricsDropdownIn {
+	from {
+		opacity: 0;
+		clip-path: inset(0 0 100% 0);
+	}
+	to {
+		opacity: 1;
+		clip-path: inset(0 0 0 0);
+	}
+}
+
+/* Row containing label + toggle */
+.sticky-lyrics-dropdown-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.sticky-lyrics-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: rgba(0, 0, 0, 1);
+	white-space: nowrap;
+}
+
+/* Toggle switch */
+.sticky-lyrics-switch {
+	position: relative;
+	display: inline-block;
+	width: 34px;
+	height: 18px;
+	flex-shrink: 0;
+}
+
+.sticky-lyrics-switch input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.sticky-lyrics-slider {
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.2);
+	transition: 0.3s;
+	border-radius: 18px;
+}
+
+.sticky-lyrics-slider::before {
+	position: absolute;
+	content: "";
+	height: 14px;
+	width: 14px;
+	left: 2px;
+	bottom: 2px;
+	background-color: white;
+	transition: 0.3s;
+	border-radius: 50%;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.sticky-lyrics-switch input:checked + .sticky-lyrics-slider {
+	background-color: black;
+}
+
+.sticky-lyrics-switch input:checked + .sticky-lyrics-slider::before {
+	transform: translateX(16px);
+}
+
+
+
+/* MARKER: PATCHES (Random Fixes for Tidals Changes) */
+/* These change allot so i gave them their own section */
 
 /* Fixes the new Sticky Header Tidal added.. in the shittest jankiest way possible */
 [class*="_stickyHeader"] {
