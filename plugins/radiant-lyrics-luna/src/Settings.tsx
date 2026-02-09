@@ -19,7 +19,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	spinSpeed: 45,
 	settingsAffectNowPlaying: true,
 	stickyLyricsFeature: true,
-	stickyLyrics: false,
+	stickyLyrics: true,
 	stickyLyricsIcon: "chevron" as string,
 });
 
