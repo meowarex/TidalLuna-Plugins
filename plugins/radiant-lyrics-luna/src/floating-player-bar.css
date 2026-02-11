@@ -1,0 +1,9 @@
+/* Floating Rounded Player Bar from Obsidian <3 */
+
+/* MARKER: Floating Player Bar CSS*/
+
+[data-test="footer-player"] {
+	position: absolute !important;
+	backdrop-filter: blur(10px);
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
+}

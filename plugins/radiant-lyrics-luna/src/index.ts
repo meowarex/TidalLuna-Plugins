@@ -1,4 +1,4 @@
-// Marker: Core Setup
+// MARKER: Core Setup
 import { LunaUnload, Tracer, ftch } from "@luna/core";
 import { StyleTag, PlayState, observePromise, observe } from "@luna/lib";
 import { settings, Settings } from "./Settings";
@@ -13,6 +13,7 @@ import baseStyles from "file://styles.css?minify";
 import playerBarHidden from "file://player-bar-hidden.css?minify";
 import lyricsGlow from "file://lyrics-glow.css?minify";
 import coverEverywhereCss from "file://cover-everywhere.css?minify";
+import floatingPlayerBarCss from "file://floating-player-bar.css?minify";
 
 // Core tracer and exports
 export const { trace } = Tracer("[Radiant Lyrics]");
@@ -27,11 +28,71 @@ const lyricsStyleTag = new StyleTag("RadiantLyrics-lyrics", unloads);
 const baseStyleTag = new StyleTag("RadiantLyrics-base", unloads);
 const playerBarStyleTag = new StyleTag("RadiantLyrics-player-bar", unloads);
 const lyricsGlowStyleTag = new StyleTag("RadiantLyrics-lyrics-glow", unloads);
+const floatingPlayerBarStyleTag = new StyleTag("RadiantLyrics-floating-player-bar", unloads);
 
 // Apply lyrics glow styles if enabled
 if (settings.lyricsGlowEnabled) {
 	lyricsGlowStyleTag.css = lyricsGlow;
 }
+
+// MARKER: Floating Player Bar
+
+// Hex color to RGB
+// (i'm deranged and love Hexadecimal)
+const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
+	const cleaned = (hex || "#000000").replace("#", "");
+	return {
+		r: parseInt(cleaned.substring(0, 2), 16) || 0,
+		g: parseInt(cleaned.substring(2, 4), 16) || 0,
+		b: parseInt(cleaned.substring(4, 6), 16) || 0,
+	};
+};
+
+// Apply Settings to Floating Player Bar using inline styles because idk.. CSS is hard (Change my mind!)
+const applyPlayerBarTintToElement = (): void => {
+	const footerPlayer = document.querySelector('[data-test="footer-player"]') as HTMLElement;
+	if (!footerPlayer) return;
+	// Always apply tint regardless of floating state
+	const alpha = settings.playerBarTint / 10;
+	const { r, g, b } = hexToRgb(settings.playerBarTintColor);
+	footerPlayer.style.setProperty("background-color", `rgba(${r}, ${g}, ${b}, ${alpha})`, "important");
+	if (settings.floatingPlayerBar) {
+		footerPlayer.style.setProperty("border-radius", `${settings.playerBarRadius}px`, "important");
+		const spacing = settings.playerBarSpacing;
+		footerPlayer.style.setProperty("bottom", `${spacing}px`, "important");
+		footerPlayer.style.setProperty("left", `${spacing}px`, "important");
+		footerPlayer.style.setProperty("width", `calc(100% - ${spacing * 2}px)`, "important");
+	} else {
+		footerPlayer.style.removeProperty("border-radius");
+		footerPlayer.style.removeProperty("bottom");
+		footerPlayer.style.removeProperty("left");
+		footerPlayer.style.removeProperty("width");
+	}
+};
+
+// Apply/update the floating player bar stylesheet + tint
+const applyFloatingPlayerBar = (): void => {
+	if (settings.floatingPlayerBar) {
+		floatingPlayerBarStyleTag.css = floatingPlayerBarCss;
+	} else {
+		floatingPlayerBarStyleTag.remove();
+	}
+	applyPlayerBarTintToElement();
+};
+
+// Alias for settings callback
+const updateRadiantLyricsPlayerBarTint = applyFloatingPlayerBar;
+
+// Apply floating player bar styles if enabled
+if (settings.floatingPlayerBar) {
+	floatingPlayerBarStyleTag.css = floatingPlayerBarCss;
+}
+
+// Apply Tint and Observe in case doesn't exist yet (ik this isnt the best way to do it but.. make a PR i dare ya!)
+applyPlayerBarTintToElement();
+observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
+	applyPlayerBarTintToElement();
+});
 
 // Apply base styles always (contains global fixes and conditional UI hiding styles)
 baseStyleTag.css = baseStyles;
@@ -55,6 +116,9 @@ const updateRadiantLyricsStyles = function (): void {
 	} else {
 		playerBarStyleTag.remove();
 	}
+
+	// Handle Floating Player Bar
+	applyFloatingPlayerBar();
 
 	// Update lyrics glow based on setting (Always apply if enabled, even when UI is hidden)
 	const lyricsContainer = document.querySelector('[class^="_lyricsContainer"]');
@@ -96,7 +160,7 @@ const updateRadiantLyricsStyles = function (): void {
 	}
 };
 
-// Marker: UI Visibility Control
+// MARKER: UI Visibility Control
 // UI state shared across features
 var isHidden = false;
 let unhideButtonAutoFadeTimeout: number | null = null;
@@ -303,7 +367,7 @@ const createUnhideUIButton = function (): void {
 	}, 1500);
 };
 
-// Marker: Background Rendering
+// MARKER: Background Rendering
 // Variable setup
 let globalSpinningBgStyleTag: StyleTag | null = null;
 let globalBackgroundContainer: HTMLElement | null = null;
@@ -790,6 +854,7 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 (window as any).updateRadiantLyricsNowPlayingBackground =
 	updateRadiantLyricsNowPlayingBackground;
 (window as any).updateRadiantLyricsTextGlow = updateRadiantLyricsTextGlow;
+(window as any).updateRadiantLyricsPlayerBarTint = updateRadiantLyricsPlayerBarTint;
 
 const cleanUpDynamicArt = function (): void {
 	// Clean up cached Now Playing elements
@@ -860,6 +925,16 @@ updateCoverArtBackground(1);
 // Cleanups
 unloads.add(() => {
 	cleanUpDynamicArt();
+
+	// Clean up floating player bar inline styles
+	const footerPlayer = document.querySelector('[data-test="footer-player"]') as HTMLElement;
+	if (footerPlayer) {
+		footerPlayer.style.removeProperty("background-color");
+		footerPlayer.style.removeProperty("border-radius");
+		footerPlayer.style.removeProperty("bottom");
+		footerPlayer.style.removeProperty("left");
+		footerPlayer.style.removeProperty("width");
+	}
 
 	// Clean up HideUI button auto-fade timeout
 	if (unhideButtonAutoFadeTimeout != null) {
