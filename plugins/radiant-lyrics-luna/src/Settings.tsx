@@ -2,6 +2,18 @@ import { ReactiveStore } from "@luna/core";
 import { LunaSettings, LunaSwitchSetting, LunaNumberSetting } from "@luna/ui";
 import React from "react";
 
+declare global {
+	interface Window {
+		updateRadiantLyricsStyles?: () => void;
+		updateRadiantLyricsTextGlow?: () => void;
+		updateStickyLyricsFeature?: () => void;
+		updateRadiantLyricsPlayerBarTint?: () => void;
+		updateRadiantLyricsGlobalBackground?: () => void;
+		updateRadiantLyricsNowPlayingBackground?: () => void;
+		updateStickyLyricsIcon?: () => void;
+	}
+}
+
 export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	lyricsGlowEnabled: true,
 	trackTitleGlow: false,
@@ -115,8 +127,8 @@ export const Settings = () => {
 					settings.lyricsGlowEnabled = checked;
 				setLyricsGlowEnabled(checked);
 					// Update styles immediately when setting changes
-					if ((window as any).updateRadiantLyricsStyles) {
-						(window as any).updateRadiantLyricsStyles();
+					if (window.updateRadiantLyricsStyles) {
+						window.updateRadiantLyricsStyles();
 					}
 				}}
 			/>
@@ -127,8 +139,8 @@ export const Settings = () => {
 				onChange={(_: unknown, checked: boolean) => {
 					settings.trackTitleGlow = checked;
 				setTrackTitleGlow(checked);
-					if ((window as any).updateRadiantLyricsStyles) {
-						(window as any).updateRadiantLyricsStyles();
+					if (window.updateRadiantLyricsStyles) {
+						window.updateRadiantLyricsStyles();
 					}
 				}}
 			/>
@@ -144,8 +156,8 @@ export const Settings = () => {
 					settings.textGlow = value;
 				setTextGlow(value);
 					// Update variables immediately when setting changes
-					if ((window as any).updateRadiantLyricsTextGlow) {
-						(window as any).updateRadiantLyricsTextGlow();
+					if (window.updateRadiantLyricsTextGlow) {
+						window.updateRadiantLyricsTextGlow();
 					}
 				}}
 			/>
@@ -157,8 +169,8 @@ export const Settings = () => {
 				onChange={(_: unknown, checked: boolean) => {
 					settings.stickyLyricsFeature = checked;
 				setStickyLyricsFeature(checked);
-					if ((window as any).updateStickyLyricsFeature) {
-						(window as any).updateStickyLyricsFeature();
+					if (window.updateStickyLyricsFeature) {
+						window.updateStickyLyricsFeature();
 					}
 				}}
 			/>
@@ -181,8 +193,8 @@ export const Settings = () => {
 					settings.playerBarVisible = checked;
 				setPlayerBarVisible(checked);
 					// Update styles immediately when setting changes
-					if ((window as any).updateRadiantLyricsStyles) {
-						(window as any).updateRadiantLyricsStyles();
+					if (window.updateRadiantLyricsStyles) {
+						window.updateRadiantLyricsStyles();
 					}
 				}}
 			/>
@@ -194,8 +206,8 @@ export const Settings = () => {
 				onChange={(_: unknown, checked: boolean) => {
 					settings.floatingPlayerBar = checked;
 				setFloatingPlayerBar(checked);
-					if ((window as any).updateRadiantLyricsStyles) {
-						(window as any).updateRadiantLyricsStyles();
+					if (window.updateRadiantLyricsStyles) {
+						window.updateRadiantLyricsStyles();
 					}
 				}}
 			/>
@@ -211,7 +223,7 @@ export const Settings = () => {
 						onNumber={(value: number) => {
 							settings.playerBarRadius = value;
 						setPlayerBarRadius(value);
-							(window as any).updateRadiantLyricsPlayerBarTint?.();
+							window.updateRadiantLyricsPlayerBarTint?.();
 						}}
 					/>
 					<LunaNumberSetting
@@ -224,7 +236,7 @@ export const Settings = () => {
 						onNumber={(value: number) => {
 							settings.playerBarSpacing = value;
 						setPlayerBarSpacing(value);
-							(window as any).updateRadiantLyricsPlayerBarTint?.();
+							window.updateRadiantLyricsPlayerBarTint?.();
 						}}
 					/>
 				</>
@@ -248,7 +260,7 @@ export const Settings = () => {
 					setPlayerBarTintColor(color);
 					setTintCustomInput(color);
 					settings.playerBarTintColor = color;
-					(window as any).updateRadiantLyricsPlayerBarTint?.();
+					window.updateRadiantLyricsPlayerBarTint?.();
 				};
 
 				const addTintCustomColor = () => {
@@ -299,7 +311,7 @@ export const Settings = () => {
 							onNumber={(value: number) => {
 								settings.playerBarTint = value;
 							setPlayerBarTint(value);
-								(window as any).updateRadiantLyricsPlayerBarTint?.();
+								window.updateRadiantLyricsPlayerBarTint?.();
 							}}
 						/>
 						{/* Color swatch — positioned just left of the value box */}
@@ -327,17 +339,23 @@ export const Settings = () => {
 						{/* Color Picker Modal */}
 						{shouldRenderTintPicker && (
 							<>
-								<div
-									style={{
-										position: "fixed",
-										top: 0, left: 0, right: 0, bottom: 0,
-										background: "rgba(0,0,0,0.6)",
-										zIndex: 1000,
-										opacity: isTintAnimatingIn ? 1 : 0,
-										transition: "opacity 0.2s ease",
-									}}
-									onClick={closeTintColorPicker}
-								/>
+							<button
+								type="button"
+								aria-label="Close color picker"
+								onClick={closeTintColorPicker}
+								style={{
+									position: "fixed",
+									top: 0, left: 0, right: 0, bottom: 0,
+									background: "rgba(0,0,0,0.6)",
+									zIndex: 1000,
+									opacity: isTintAnimatingIn ? 1 : 0,
+									transition: "opacity 0.2s ease",
+									border: "none",
+									padding: 0,
+									cursor: "default",
+									width: "100%",
+								}}
+							/>
 								<div
 									style={{
 										position: "fixed",
@@ -367,15 +385,16 @@ export const Settings = () => {
 
 									<div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "8px", marginBottom: "16px" }}>
 										{allTintColors.map((color, index) => {
-											const isCustomColor = tintCustomColors.includes(color);
-											const isHovered = tintHoveredColorIndex === index;
-											return (
-											<div
-												key={color}
-												style={{ position: "relative", width: "32px", height: "32px", cursor: "pointer" }}
-												onMouseEnter={() => setTintHoveredColorIndex(index)}
-												onMouseLeave={() => setTintHoveredColorIndex(null)}
-											>
+										const isCustomColor = tintCustomColors.includes(color);
+										const isHovered = tintHoveredColorIndex === index;
+										return (
+										// biome-ignore lint/a11y/noStaticElementInteractions: cosmetic hover tracking on wrapper containing interactive buttons
+										<div
+											key={color}
+											style={{ position: "relative", width: "32px", height: "32px", cursor: "pointer" }}
+											onMouseEnter={() => setTintHoveredColorIndex(index)}
+											onMouseLeave={() => setTintHoveredColorIndex(null)}
+										>
 											<button
 													type="button"
 													onClick={() => { updateTintColor(color); closeTintColorPicker(); }}
@@ -507,8 +526,8 @@ export const Settings = () => {
 					settings.CoverEverywhere = checked;
 				setCoverEverywhere(checked);
 					// Update styles immediately when setting changes
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 				}}
 			/>
@@ -522,11 +541,11 @@ export const Settings = () => {
 					settings.performanceMode = checked;
 				setPerformanceMode(checked);
 					// Update background animations immediately when setting changes
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
-					if ((window as any).updateRadiantLyricsNowPlayingBackground) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+					if (window.updateRadiantLyricsNowPlayingBackground) {
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
@@ -543,14 +562,14 @@ export const Settings = () => {
 					);
 					settings.spinningArt = checked;
 				setspinningArt(checked);
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
@@ -566,14 +585,14 @@ export const Settings = () => {
 				onNumber={(value: number) => {
 					settings.backgroundScale = value;
 				setBackgroundScale(value);
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
@@ -589,14 +608,14 @@ export const Settings = () => {
 				onNumber={(value: number) => {
 					settings.backgroundRadius = value;
 				setBackgroundRadius(value);
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
@@ -612,14 +631,14 @@ export const Settings = () => {
 				onNumber={(value: number) => {
 					settings.backgroundContrast = value;
 				setBackgroundContrast(value);
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
@@ -636,14 +655,14 @@ export const Settings = () => {
 					console.log("Background Blur:", value);
 					settings.backgroundBlur = value;
 				setBackgroundBlur(value);
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
@@ -660,14 +679,14 @@ export const Settings = () => {
 					console.log("Background Brightness:", value);
 					settings.backgroundBrightness = value;
 				setBackgroundBrightness(value);
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
@@ -684,14 +703,14 @@ export const Settings = () => {
 					console.log("Spin Speed:", value);
 					settings.spinSpeed = value;
 				setSpinSpeed(value);
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
@@ -709,8 +728,8 @@ export const Settings = () => {
 					settings.settingsAffectNowPlaying = checked;
 				setSettingsAffectNowPlaying(checked);
 					// Update Now Playing background immediately when setting changes
-					if ((window as any).updateRadiantLyricsNowPlayingBackground) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+					if (window.updateRadiantLyricsNowPlayingBackground) {
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
