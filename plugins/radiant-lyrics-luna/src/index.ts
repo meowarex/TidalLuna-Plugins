@@ -40,7 +40,13 @@ if (settings.lyricsGlowEnabled) {
 // Hex color to RGB
 // (i'm deranged and love Hexadecimal)
 const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
-	const cleaned = (hex || "#000000").replace("#", "");
+	let cleaned = (hex || "#000000").replace("#", "");
+	if (cleaned.length === 3) {
+		cleaned = cleaned[0] + cleaned[0] + cleaned[1] + cleaned[1] + cleaned[2] + cleaned[2];
+	}
+	if (cleaned.length !== 6) {
+		return { r: 0, g: 0, b: 0 };
+	}
 	return {
 		r: parseInt(cleaned.substring(0, 2), 16) || 0,
 		g: parseInt(cleaned.substring(2, 4), 16) || 0,

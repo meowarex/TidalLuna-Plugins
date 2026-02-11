@@ -112,7 +112,8 @@ export const Settings = () => {
 				desc="Enable glowing effect for lyrics & Font Styling Changes"
 				checked={lyricsGlowEnabled}
 				onChange={(_: unknown, checked: boolean) => {
-					setLyricsGlowEnabled((settings.lyricsGlowEnabled = checked));
+					settings.lyricsGlowEnabled = checked;
+				setLyricsGlowEnabled(checked);
 					// Update styles immediately when setting changes
 					if ((window as any).updateRadiantLyricsStyles) {
 						(window as any).updateRadiantLyricsStyles();
@@ -124,7 +125,8 @@ export const Settings = () => {
 				desc="Apply glow to the track title"
 				checked={trackTitleGlow}
 				onChange={(_: unknown, checked: boolean) => {
-					setTrackTitleGlow((settings.trackTitleGlow = checked));
+					settings.trackTitleGlow = checked;
+				setTrackTitleGlow(checked);
 					if ((window as any).updateRadiantLyricsStyles) {
 						(window as any).updateRadiantLyricsStyles();
 					}
@@ -139,7 +141,8 @@ export const Settings = () => {
 				step={1}
 				value={textGlow}
 				onNumber={(value: number) => {
-					setTextGlow((settings.textGlow = value));
+					settings.textGlow = value;
+				setTextGlow(value);
 					// Update variables immediately when setting changes
 					if ((window as any).updateRadiantLyricsTextGlow) {
 						(window as any).updateRadiantLyricsTextGlow();
@@ -152,7 +155,8 @@ export const Settings = () => {
 				desc="Adds a dropdown to the Lyrics tab that auto-switches to Play Queue when lyrics aren't available"
 				checked={stickyLyricsFeature}
 				onChange={(_: unknown, checked: boolean) => {
-					setStickyLyricsFeature((settings.stickyLyricsFeature = checked));
+					settings.stickyLyricsFeature = checked;
+				setStickyLyricsFeature(checked);
 					if ((window as any).updateStickyLyricsFeature) {
 						(window as any).updateStickyLyricsFeature();
 					}
@@ -163,7 +167,8 @@ export const Settings = () => {
 				desc="Enable hide/unhide UI functionality with toggle buttons"
 				checked={hideUIEnabled}
 				onChange={(_: unknown, checked: boolean) => {
-					setHideUIEnabled((settings.hideUIEnabled = checked));
+					settings.hideUIEnabled = checked;
+				setHideUIEnabled(checked);
 				}}
 			/>
 		{hideUIEnabled && (
@@ -173,7 +178,8 @@ export const Settings = () => {
 				checked={playerBarVisible}
 				onChange={(_: unknown, checked: boolean) => {
 					console.log("Player Bar Visibility:", checked ? "visible" : "hidden");
-					setPlayerBarVisible((settings.playerBarVisible = checked));
+					settings.playerBarVisible = checked;
+				setPlayerBarVisible(checked);
 					// Update styles immediately when setting changes
 					if ((window as any).updateRadiantLyricsStyles) {
 						(window as any).updateRadiantLyricsStyles();
@@ -186,7 +192,8 @@ export const Settings = () => {
 				desc="Floating rounded player bar with backdrop blur"
 				checked={floatingPlayerBar}
 				onChange={(_: unknown, checked: boolean) => {
-					setFloatingPlayerBar((settings.floatingPlayerBar = checked));
+					settings.floatingPlayerBar = checked;
+				setFloatingPlayerBar(checked);
 					if ((window as any).updateRadiantLyricsStyles) {
 						(window as any).updateRadiantLyricsStyles();
 					}
@@ -202,7 +209,8 @@ export const Settings = () => {
 						step={1}
 						value={playerBarRadius}
 						onNumber={(value: number) => {
-							setPlayerBarRadius((settings.playerBarRadius = value));
+							settings.playerBarRadius = value;
+						setPlayerBarRadius(value);
 							(window as any).updateRadiantLyricsPlayerBarTint?.();
 						}}
 					/>
@@ -214,7 +222,8 @@ export const Settings = () => {
 						step={1}
 						value={playerBarSpacing}
 						onNumber={(value: number) => {
-							setPlayerBarSpacing((settings.playerBarSpacing = value));
+							settings.playerBarSpacing = value;
+						setPlayerBarSpacing(value);
 							(window as any).updateRadiantLyricsPlayerBarTint?.();
 						}}
 					/>
@@ -288,16 +297,18 @@ export const Settings = () => {
 							step={1}
 							value={playerBarTint}
 							onNumber={(value: number) => {
-								setPlayerBarTint((settings.playerBarTint = value));
+								settings.playerBarTint = value;
+							setPlayerBarTint(value);
 								(window as any).updateRadiantLyricsPlayerBarTint?.();
 							}}
 						/>
 						{/* Color swatch — positioned just left of the value box */}
-						<button
-							onClick={() => showTintColorPicker ? closeTintColorPicker() : openTintColorPicker()}
-							style={{
-								width: "28px",
-								height: "28px",
+					<button
+						type="button"
+						onClick={() => showTintColorPicker ? closeTintColorPicker() : openTintColorPicker()}
+						style={{
+							width: "28px",
+							height: "28px",
 								border: "1px solid rgba(255,255,255,0.15)",
 								borderRadius: "6px",
 								cursor: "pointer",
@@ -359,15 +370,16 @@ export const Settings = () => {
 											const isCustomColor = tintCustomColors.includes(color);
 											const isHovered = tintHoveredColorIndex === index;
 											return (
-												<div
-													kwey={index}
-													style={{ position: "relative", width: "32px", height: "32px", cursor: "pointer" }}
-													onMouseEnter={() => setTintHoveredColorIndex(index)}
-													onMouseLeave={() => setTintHoveredColorIndex(null)}
-												>
-													<button
-														onClick={() => { updateTintColor(color); closeTintColorPicker(); }}
-														style={{
+											<div
+												key={color}
+												style={{ position: "relative", width: "32px", height: "32px", cursor: "pointer" }}
+												onMouseEnter={() => setTintHoveredColorIndex(index)}
+												onMouseLeave={() => setTintHoveredColorIndex(null)}
+											>
+											<button
+													type="button"
+													onClick={() => { updateTintColor(color); closeTintColorPicker(); }}
+													style={{
 															width: "100%",
 															height: "100%",
 															borderRadius: "6px",
@@ -380,9 +392,10 @@ export const Settings = () => {
 														}}
 													/>
 													{isCustomColor && (
-														<button
-															onClick={(e) => { e.stopPropagation(); removeTintCustomColor(color); }}
-															style={{
+													<button
+														type="button"
+														onClick={(e) => { e.stopPropagation(); removeTintCustomColor(color); }}
+														style={{
 																position: "absolute",
 																top: "-4px", right: "-4px",
 																width: "16px", height: "16px",
@@ -436,10 +449,11 @@ export const Settings = () => {
 													boxSizing: "border-box",
 												}}
 											/>
-											<button
-												onClick={() => { updateTintColor(tintCustomInput); addTintCustomColor(); }}
-												style={{
-													width: "32px", height: "32px",
+										<button
+											type="button"
+											onClick={() => { updateTintColor(tintCustomInput); addTintCustomColor(); }}
+											style={{
+												width: "32px", height: "32px",
 													borderRadius: "6px",
 													border: "1px solid rgba(255,255,255,0.3)",
 													background: "rgba(255,255,255,0.15)",
@@ -459,11 +473,12 @@ export const Settings = () => {
 										</div>
 									</div>
 
-									<button
-										onClick={closeTintColorPicker}
-										style={{
-											width: "100%",
-											padding: "8px",
+								<button
+									type="button"
+									onClick={closeTintColorPicker}
+									style={{
+										width: "100%",
+										padding: "8px",
 											borderRadius: "6px",
 											border: "1px solid rgba(255,255,255,0.2)",
 											background: "rgba(255,255,255,0.1)",
@@ -489,9 +504,8 @@ export const Settings = () => {
 						"Spinning Cover Everywhere:",
 						checked ? "enabled" : "disabled",
 					);
-					setCoverEverywhere(
-						(settings.CoverEverywhere = checked),
-					);
+					settings.CoverEverywhere = checked;
+				setCoverEverywhere(checked);
 					// Update styles immediately when setting changes
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
@@ -505,7 +519,8 @@ export const Settings = () => {
 				checked={performanceMode}
 				onChange={(_: unknown, checked: boolean) => {
 					console.log("Performance Mode:", checked ? "enabled" : "disabled");
-					setPerformanceMode((settings.performanceMode = checked));
+					settings.performanceMode = checked;
+				setPerformanceMode(checked);
 					// Update background animations immediately when setting changes
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
@@ -526,7 +541,8 @@ export const Settings = () => {
 						"Background Cover Spin:",
 						checked ? "enabled" : "disabled",
 					);
-					setspinningArt((settings.spinningArt = checked));
+					settings.spinningArt = checked;
+				setspinningArt(checked);
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
@@ -548,7 +564,8 @@ export const Settings = () => {
 				step={1}
 				value={backgroundScale}
 				onNumber={(value: number) => {
-					setBackgroundScale((settings.backgroundScale = value));
+					settings.backgroundScale = value;
+				setBackgroundScale(value);
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
@@ -570,7 +587,8 @@ export const Settings = () => {
 				step={1}
 				value={backgroundRadius}
 				onNumber={(value: number) => {
-					setBackgroundRadius((settings.backgroundRadius = value));
+					settings.backgroundRadius = value;
+				setBackgroundRadius(value);
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
@@ -592,7 +610,8 @@ export const Settings = () => {
 				step={1}
 				value={backgroundContrast}
 				onNumber={(value: number) => {
-					setBackgroundContrast((settings.backgroundContrast = value));
+					settings.backgroundContrast = value;
+				setBackgroundContrast(value);
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
@@ -615,7 +634,8 @@ export const Settings = () => {
 				value={backgroundBlur}
 				onNumber={(value: number) => {
 					console.log("Background Blur:", value);
-					setBackgroundBlur((settings.backgroundBlur = value));
+					settings.backgroundBlur = value;
+				setBackgroundBlur(value);
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
@@ -638,7 +658,8 @@ export const Settings = () => {
 				value={backgroundBrightness}
 				onNumber={(value: number) => {
 					console.log("Background Brightness:", value);
-					setBackgroundBrightness((settings.backgroundBrightness = value));
+					settings.backgroundBrightness = value;
+				setBackgroundBrightness(value);
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
@@ -661,7 +682,8 @@ export const Settings = () => {
 				value={spinSpeed}
 				onNumber={(value: number) => {
 					console.log("Spin Speed:", value);
-					setSpinSpeed((settings.spinSpeed = value));
+					settings.spinSpeed = value;
+				setSpinSpeed(value);
 					if ((window as any).updateRadiantLyricsGlobalBackground) {
 						(window as any).updateRadiantLyricsGlobalBackground();
 					}
@@ -684,9 +706,8 @@ export const Settings = () => {
 						"Settings Affect Now Playing:",
 						checked ? "enabled" : "disabled",
 					);
-					setSettingsAffectNowPlaying(
-						(settings.settingsAffectNowPlaying = checked),
-					);
+					settings.settingsAffectNowPlaying = checked;
+				setSettingsAffectNowPlaying(checked);
 					// Update Now Playing background immediately when setting changes
 					if ((window as any).updateRadiantLyricsNowPlayingBackground) {
 						(window as any).updateRadiantLyricsNowPlayingBackground();
