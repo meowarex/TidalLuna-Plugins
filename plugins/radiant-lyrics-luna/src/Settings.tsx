@@ -2,11 +2,29 @@ import { ReactiveStore } from "@luna/core";
 import { LunaSettings, LunaSwitchSetting, LunaNumberSetting } from "@luna/ui";
 import React from "react";
 
+declare global {
+	interface Window {
+		updateRadiantLyricsStyles?: () => void;
+		updateRadiantLyricsTextGlow?: () => void;
+		updateStickyLyricsFeature?: () => void;
+		updateRadiantLyricsPlayerBarTint?: () => void;
+		updateRadiantLyricsGlobalBackground?: () => void;
+		updateRadiantLyricsNowPlayingBackground?: () => void;
+		updateStickyLyricsIcon?: () => void;
+	}
+}
+
 export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	lyricsGlowEnabled: true,
 	trackTitleGlow: false,
 	hideUIEnabled: true,
 	playerBarVisible: false,
+	floatingPlayerBar: true,
+	playerBarTint: 5,
+	playerBarTintColor: "#000000" as string,
+	playerBarTintCustomColors: [] as string[],
+	playerBarRadius: 5,
+	playerBarSpacing: 10,
 	CoverEverywhere: true,
 	performanceMode: false,
 	spinningArt: true,
@@ -64,6 +82,27 @@ export const Settings = () => {
 	const [backgroundRadius, setBackgroundRadius] = React.useState(
 		settings.backgroundRadius,
 	);
+	const [floatingPlayerBar, setFloatingPlayerBar] = React.useState(
+		settings.floatingPlayerBar,
+	);
+	const [playerBarTint, setPlayerBarTint] = React.useState(
+		settings.playerBarTint,
+	);
+	const [playerBarTintColor, setPlayerBarTintColor] = React.useState(
+		settings.playerBarTintColor,
+	);
+	const [playerBarRadius, setPlayerBarRadius] = React.useState(
+		settings.playerBarRadius,
+	);
+	const [playerBarSpacing, setPlayerBarSpacing] = React.useState(
+		settings.playerBarSpacing,
+	);
+	const [showTintColorPicker, setShowTintColorPicker] = React.useState(false);
+	const [isTintAnimatingIn, setIsTintAnimatingIn] = React.useState(false);
+	const [shouldRenderTintPicker, setShouldRenderTintPicker] = React.useState(false);
+	const [tintCustomInput, setTintCustomInput] = React.useState(settings.playerBarTintColor);
+	const [tintCustomColors, setTintCustomColors] = React.useState(settings.playerBarTintCustomColors);
+	const [tintHoveredColorIndex, setTintHoveredColorIndex] = React.useState<number | null>(null);
 	const [stickyLyricsFeature, setStickyLyricsFeature] = React.useState(
 		settings.stickyLyricsFeature,
 	);
@@ -85,10 +124,11 @@ export const Settings = () => {
 				desc="Enable glowing effect for lyrics & Font Styling Changes"
 				checked={lyricsGlowEnabled}
 				onChange={(_: unknown, checked: boolean) => {
-					setLyricsGlowEnabled((settings.lyricsGlowEnabled = checked));
+					settings.lyricsGlowEnabled = checked;
+				setLyricsGlowEnabled(checked);
 					// Update styles immediately when setting changes
-					if ((window as any).updateRadiantLyricsStyles) {
-						(window as any).updateRadiantLyricsStyles();
+					if (window.updateRadiantLyricsStyles) {
+						window.updateRadiantLyricsStyles();
 					}
 				}}
 			/>
@@ -97,20 +137,40 @@ export const Settings = () => {
 				desc="Apply glow to the track title"
 				checked={trackTitleGlow}
 				onChange={(_: unknown, checked: boolean) => {
-					setTrackTitleGlow((settings.trackTitleGlow = checked));
-					if ((window as any).updateRadiantLyricsStyles) {
-						(window as any).updateRadiantLyricsStyles();
+					settings.trackTitleGlow = checked;
+				setTrackTitleGlow(checked);
+					if (window.updateRadiantLyricsStyles) {
+						window.updateRadiantLyricsStyles();
 					}
 				}}
 			/>
+		{(lyricsGlowEnabled || trackTitleGlow) && (
+			<LunaNumberSetting
+				title="Text Glow"
+				desc="Adjust the glow size of lyrics (0-100, default: 20)"
+				min={0}
+				max={100}
+				step={1}
+				value={textGlow}
+				onNumber={(value: number) => {
+					settings.textGlow = value;
+				setTextGlow(value);
+					// Update variables immediately when setting changes
+					if (window.updateRadiantLyricsTextGlow) {
+						window.updateRadiantLyricsTextGlow();
+					}
+				}}
+			/>
+		)}
 			<AnySwitch
 				title="Sticky Lyrics"
 				desc="Adds a dropdown to the Lyrics tab that auto-switches to Play Queue when lyrics aren't available"
 				checked={stickyLyricsFeature}
 				onChange={(_: unknown, checked: boolean) => {
-					setStickyLyricsFeature((settings.stickyLyricsFeature = checked));
-					if ((window as any).updateStickyLyricsFeature) {
-						(window as any).updateStickyLyricsFeature();
+					settings.stickyLyricsFeature = checked;
+				setStickyLyricsFeature(checked);
+					if (window.updateStickyLyricsFeature) {
+						window.updateStickyLyricsFeature();
 					}
 				}}
 			/>
@@ -119,22 +179,341 @@ export const Settings = () => {
 				desc="Enable hide/unhide UI functionality with toggle buttons"
 				checked={hideUIEnabled}
 				onChange={(_: unknown, checked: boolean) => {
-					setHideUIEnabled((settings.hideUIEnabled = checked));
+					settings.hideUIEnabled = checked;
+				setHideUIEnabled(checked);
 				}}
 			/>
+		{hideUIEnabled && (
 			<AnySwitch
 				title="Player Bar Visibility in Hide UI Mode"
 				desc="Keep player bar visible when UI is hidden"
 				checked={playerBarVisible}
 				onChange={(_: unknown, checked: boolean) => {
 					console.log("Player Bar Visibility:", checked ? "visible" : "hidden");
-					setPlayerBarVisible((settings.playerBarVisible = checked));
+					settings.playerBarVisible = checked;
+				setPlayerBarVisible(checked);
 					// Update styles immediately when setting changes
-					if ((window as any).updateRadiantLyricsStyles) {
-						(window as any).updateRadiantLyricsStyles();
+					if (window.updateRadiantLyricsStyles) {
+						window.updateRadiantLyricsStyles();
 					}
 				}}
 			/>
+		)}
+			<AnySwitch
+				title="Floating Player Bar"
+				desc="Floating rounded player bar with backdrop blur"
+				checked={floatingPlayerBar}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.floatingPlayerBar = checked;
+				setFloatingPlayerBar(checked);
+					if (window.updateRadiantLyricsStyles) {
+						window.updateRadiantLyricsStyles();
+					}
+				}}
+			/>
+			{floatingPlayerBar && (
+				<>
+					<LunaNumberSetting
+						title="Floating Bar Corner Radius"
+						desc="Adjust the corner rounding of the player bar (0-50, default: 5)"
+						min={0}
+						max={50}
+						step={1}
+						value={playerBarRadius}
+						onNumber={(value: number) => {
+							settings.playerBarRadius = value;
+						setPlayerBarRadius(value);
+							window.updateRadiantLyricsPlayerBarTint?.();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Floating Bar Spacing"
+						desc="Adjust the spacing of the player bar from the edges (0-50, default: 10)"
+						min={0}
+						max={50}
+						step={1}
+						value={playerBarSpacing}
+						onNumber={(value: number) => {
+							settings.playerBarSpacing = value;
+						setPlayerBarSpacing(value);
+							window.updateRadiantLyricsPlayerBarTint?.();
+						}}
+					/>
+				</>
+			)}
+			{(() => {
+				const closeTintColorPicker = () => {
+					setIsTintAnimatingIn(false);
+					setTimeout(() => {
+						setShowTintColorPicker(false);
+						setShouldRenderTintPicker(false);
+					}, 200);
+				};
+
+				const openTintColorPicker = () => {
+					setShowTintColorPicker(true);
+					setShouldRenderTintPicker(true);
+					setTimeout(() => setIsTintAnimatingIn(true), 10);
+				};
+
+				const updateTintColor = (color: string) => {
+					setPlayerBarTintColor(color);
+					setTintCustomInput(color);
+					settings.playerBarTintColor = color;
+					window.updateRadiantLyricsPlayerBarTint?.();
+				};
+
+				const addTintCustomColor = () => {
+					if (tintCustomInput) {
+						const trimmedInput = tintCustomInput.trim().toLowerCase();
+						const hexColorRegex = /^#([0-9a-f]{6}|[0-9a-f]{3})$/i;
+						if (
+							hexColorRegex.test(trimmedInput) &&
+							!tintColorPresets.includes(trimmedInput) &&
+							!tintCustomColors.includes(trimmedInput)
+						) {
+							const newCustomColors = [...tintCustomColors, trimmedInput];
+							setTintCustomColors(newCustomColors);
+							settings.playerBarTintCustomColors = newCustomColors;
+						}
+					}
+				};
+
+				const removeTintCustomColor = (colorToRemove: string) => {
+					const newCustomColors = tintCustomColors.filter(
+						(color) => color !== colorToRemove,
+					);
+					setTintCustomColors(newCustomColors);
+					settings.playerBarTintCustomColors = newCustomColors;
+					if (playerBarTintColor === colorToRemove) {
+						updateTintColor("#000000");
+					}
+				};
+
+				const tintColorPresets = [
+					"#000000", "#111111", "#222222", "#333333", "#444444",
+					"#555555", "#666666", "#888888", "#aaaaaa", "#cccccc",
+					"#ffffff", "#0d1117", "#1a1a2e", "#16213e", "#0f3460",
+					"#1b1b2f", "#162447", "#1f4068", "#e94560",
+				];
+
+				const allTintColors = [...tintColorPresets, ...tintCustomColors];
+
+				return (
+					<div style={{ position: "relative" }}>
+						<LunaNumberSetting
+							title="Player Bar Tint"
+							desc="Tint color & opacity (0-10, default: 5)"
+							min={0}
+							max={10}
+							step={1}
+							value={playerBarTint}
+							onNumber={(value: number) => {
+								settings.playerBarTint = value;
+							setPlayerBarTint(value);
+								window.updateRadiantLyricsPlayerBarTint?.();
+							}}
+						/>
+						{/* Color swatch — positioned just left of the value box */}
+					<button
+						type="button"
+						onClick={() => showTintColorPicker ? closeTintColorPicker() : openTintColorPicker()}
+						style={{
+							width: "28px",
+							height: "28px",
+								border: "1px solid rgba(255,255,255,0.15)",
+								borderRadius: "6px",
+								cursor: "pointer",
+								background: playerBarTintColor,
+								position: "absolute",
+								right: "135px",
+								top: "50%",
+								transform: "translateY(-50%)",
+								overflow: "hidden",
+								zIndex: 1,
+							}}
+						>
+							<div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.1)", backdropFilter: "blur(2px)" }} />
+						</button>
+
+						{/* Color Picker Modal */}
+						{shouldRenderTintPicker && (
+							<>
+							<button
+								type="button"
+								aria-label="Close color picker"
+								onClick={closeTintColorPicker}
+								style={{
+									position: "fixed",
+									top: 0, left: 0, right: 0, bottom: 0,
+									background: "rgba(0,0,0,0.6)",
+									zIndex: 1000,
+									opacity: isTintAnimatingIn ? 1 : 0,
+									transition: "opacity 0.2s ease",
+									border: "none",
+									padding: 0,
+									cursor: "default",
+									width: "100%",
+								}}
+							/>
+								<div
+									style={{
+										position: "fixed",
+										top: "50%",
+										left: "50%",
+										background: "rgba(20,20,20,0.98)",
+										backdropFilter: "blur(20px)",
+										WebkitBackdropFilter: "blur(20px)",
+										border: "1px solid rgba(255,255,255,0.15)",
+										borderRadius: "16px",
+										padding: "20px",
+										minWidth: "320px",
+										maxWidth: "90vw",
+										maxHeight: "90vh",
+										zIndex: 1001,
+										boxShadow: "0 20px 40px rgba(0,0,0,0.7)",
+										opacity: isTintAnimatingIn ? 1 : 0,
+										transform: isTintAnimatingIn
+											? "translate(-50%, -50%) scale(1)"
+											: "translate(-50%, -50%) scale(0.9)",
+										transition: "all 0.2s ease",
+									}}
+								>
+									<div style={{ marginBottom: "12px", color: "#fff", fontWeight: "bold", fontSize: "14px" }}>
+										Choose Tint Color
+									</div>
+
+									<div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "8px", marginBottom: "16px" }}>
+										{allTintColors.map((color, index) => {
+										const isCustomColor = tintCustomColors.includes(color);
+										const isHovered = tintHoveredColorIndex === index;
+										return (
+										// biome-ignore lint/a11y/noStaticElementInteractions: cosmetic hover tracking on wrapper containing interactive buttons
+										<div
+											key={color}
+											style={{ position: "relative", width: "32px", height: "32px", cursor: "pointer" }}
+											onMouseEnter={() => setTintHoveredColorIndex(index)}
+											onMouseLeave={() => setTintHoveredColorIndex(null)}
+										>
+											<button
+													type="button"
+													onClick={() => { updateTintColor(color); closeTintColorPicker(); }}
+													style={{
+															width: "100%",
+															height: "100%",
+															borderRadius: "6px",
+															border: playerBarTintColor === color
+																? "2px solid #fff"
+																: "1px solid rgba(255,255,255,0.2)",
+															background: color,
+															cursor: "pointer",
+															transition: "all 0.2s ease",
+														}}
+													/>
+													{isCustomColor && (
+													<button
+														type="button"
+														onClick={(e) => { e.stopPropagation(); removeTintCustomColor(color); }}
+														style={{
+																position: "absolute",
+																top: "-4px", right: "-4px",
+																width: "16px", height: "16px",
+																borderRadius: "50%",
+																border: "1px solid rgba(255,255,255,0.8)",
+																background: "rgba(0,0,0,0.8)",
+																color: "#fff",
+																cursor: "pointer",
+																fontSize: "10px",
+																display: "flex",
+																alignItems: "center",
+																justifyContent: "center",
+																opacity: isHovered ? 1 : 0,
+																transition: "opacity 0.2s ease",
+																zIndex: 10,
+															}}
+														>
+															×
+														</button>
+													)}
+												</div>
+											);
+										})}
+									</div>
+
+									<div style={{ marginBottom: "12px" }}>
+										<div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12px", marginBottom: "6px" }}>
+											Add Custom Color
+										</div>
+										<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+											<input
+												type="text"
+												value={tintCustomInput}
+												onChange={(e) => setTintCustomInput(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														updateTintColor(tintCustomInput);
+														addTintCustomColor();
+													}
+												}}
+												placeholder="#000000"
+												style={{
+													flex: 1,
+													padding: "8px 12px",
+													borderRadius: "6px",
+													border: "1px solid rgba(255,255,255,0.2)",
+													background: "rgba(255,255,255,0.1)",
+													color: "#fff",
+													fontSize: "14px",
+													fontFamily: "monospace",
+													boxSizing: "border-box",
+												}}
+											/>
+										<button
+											type="button"
+											onClick={() => { updateTintColor(tintCustomInput); addTintCustomColor(); }}
+											style={{
+												width: "32px", height: "32px",
+													borderRadius: "6px",
+													border: "1px solid rgba(255,255,255,0.3)",
+													background: "rgba(255,255,255,0.15)",
+													color: "#fff",
+													cursor: "pointer",
+													fontSize: "16px",
+													display: "flex",
+													alignItems: "center",
+													justifyContent: "center",
+													transition: "all 0.2s ease",
+												}}
+												onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.25)"; }}
+												onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.15)"; }}
+											>
+												+
+											</button>
+										</div>
+									</div>
+
+								<button
+									type="button"
+									onClick={closeTintColorPicker}
+									style={{
+										width: "100%",
+										padding: "8px",
+											borderRadius: "6px",
+											border: "1px solid rgba(255,255,255,0.2)",
+											background: "rgba(255,255,255,0.1)",
+											color: "#fff",
+											cursor: "pointer",
+											fontSize: "12px",
+										}}
+									>
+										Done
+									</button>
+								</div>
+							</>
+						)}
+					</div>
+				);
+			})()}
 			<AnySwitch
 				title="Cover Everywhere"
 				desc="Apply the spinning Cover Art background to the entire app, not just the Now Playing view, Heavily Inspired by Cover-Theme by @Inrixia"
@@ -144,31 +523,34 @@ export const Settings = () => {
 						"Spinning Cover Everywhere:",
 						checked ? "enabled" : "disabled",
 					);
-					setCoverEverywhere(
-						(settings.CoverEverywhere = checked),
-					);
+					settings.CoverEverywhere = checked;
+				setCoverEverywhere(checked);
 					// Update styles immediately when setting changes
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 				}}
 			/>
+			{CoverEverywhere && (
 			<AnySwitch
 				title="Performance Mode | Experimental"
 				desc="Performance mode: Reduces blur effects & uses smaller image sizes, to optimize GPU usage"
 				checked={performanceMode}
 				onChange={(_: unknown, checked: boolean) => {
 					console.log("Performance Mode:", checked ? "enabled" : "disabled");
-					setPerformanceMode((settings.performanceMode = checked));
+					settings.performanceMode = checked;
+				setPerformanceMode(checked);
 					// Update background animations immediately when setting changes
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
-					if ((window as any).updateRadiantLyricsNowPlayingBackground) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+					if (window.updateRadiantLyricsNowPlayingBackground) {
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
+		)}
+		{CoverEverywhere && (
 			<AnySwitch
 				title="Background Cover Spin" // Cheers @Max/n0201 for the idea <3
 				desc="Enable the spinning cover art background animation"
@@ -178,73 +560,67 @@ export const Settings = () => {
 						"Background Cover Spin:",
 						checked ? "enabled" : "disabled",
 					);
-					setspinningArt((settings.spinningArt = checked));
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					settings.spinningArt = checked;
+				setspinningArt(checked);
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
+		)}
+	{CoverEverywhere && (
 			<LunaNumberSetting
-				title="Text Glow"
-				desc="Adjust the glow size of lyrics (0-100, default: 20)"
-				min={0}
-				max={100}
-				step={1}
-				value={textGlow}
-				onNumber={(value: number) => {
-					setTextGlow((settings.textGlow = value));
-					// Update variables immediately when setting changes
-					if ((window as any).updateRadiantLyricsTextGlow) {
-						(window as any).updateRadiantLyricsTextGlow();
-					}
-				}}
-			/>
-						<LunaNumberSetting
 				title="Background Scale"
-				desc="Adjust the scale of the background cover (1=10% - 50=500%)"
+				desc="Adjust the scale of the background cover (1=10% - 50=500%, default: 15)"
 				min={1}
 				max={50}
 				step={1}
 				value={backgroundScale}
 				onNumber={(value: number) => {
-					setBackgroundScale((settings.backgroundScale = value));
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					settings.backgroundScale = value;
+				setBackgroundScale(value);
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
+		)}
+		{CoverEverywhere && (
 			<LunaNumberSetting
 				title="Background Radius"
-				desc="Adjust the cover art corner radius (0-100%, 100% = circle)"
+				desc="Adjust the cover art corner radius (0-100%, default: 25)"
 				min={0}
 				max={100}
 				step={1}
 				value={backgroundRadius}
 				onNumber={(value: number) => {
-					setBackgroundRadius((settings.backgroundRadius = value));
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					settings.backgroundRadius = value;
+				setBackgroundRadius(value);
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
+		)}
+		{CoverEverywhere && (
 			<LunaNumberSetting
 				title="Background Contrast"
 				desc="Adjust the contrast of the spinning background (0-200, default: 120)"
@@ -253,18 +629,21 @@ export const Settings = () => {
 				step={1}
 				value={backgroundContrast}
 				onNumber={(value: number) => {
-					setBackgroundContrast((settings.backgroundContrast = value));
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					settings.backgroundContrast = value;
+				setBackgroundContrast(value);
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
+		)}
+		{CoverEverywhere && (
 			<LunaNumberSetting
 				title="Background Blur"
 				desc="Adjust the blur amount of the spinning background (0-200, default: 80)"
@@ -274,18 +653,21 @@ export const Settings = () => {
 				value={backgroundBlur}
 				onNumber={(value: number) => {
 					console.log("Background Blur:", value);
-					setBackgroundBlur((settings.backgroundBlur = value));
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					settings.backgroundBlur = value;
+				setBackgroundBlur(value);
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
+		)}
+		{CoverEverywhere && (
 			<LunaNumberSetting
 				title="Background Brightness"
 				desc="Adjust the brightness of the spinning background (0-100, default: 40)"
@@ -295,18 +677,21 @@ export const Settings = () => {
 				value={backgroundBrightness}
 				onNumber={(value: number) => {
 					console.log("Background Brightness:", value);
-					setBackgroundBrightness((settings.backgroundBrightness = value));
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					settings.backgroundBrightness = value;
+				setBackgroundBrightness(value);
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
+		)}
+		{CoverEverywhere && spinningArt && (
 			<LunaNumberSetting
 				title="Spin Speed"
 				desc="Adjust the rotation speed in seconds (10-120, default: 45) - Lower values = Faster rotation"
@@ -316,18 +701,21 @@ export const Settings = () => {
 				value={spinSpeed}
 				onNumber={(value: number) => {
 					console.log("Spin Speed:", value);
-					setSpinSpeed((settings.spinSpeed = value));
-					if ((window as any).updateRadiantLyricsGlobalBackground) {
-						(window as any).updateRadiantLyricsGlobalBackground();
+					settings.spinSpeed = value;
+				setSpinSpeed(value);
+					if (window.updateRadiantLyricsGlobalBackground) {
+						window.updateRadiantLyricsGlobalBackground();
 					}
 					if (
 						settings.settingsAffectNowPlaying &&
-						(window as any).updateRadiantLyricsNowPlayingBackground
+						window.updateRadiantLyricsNowPlayingBackground
 					) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
+		)}
+			{CoverEverywhere && (
 			<AnySwitch
 				title="Settings Affect Now Playing"
 				desc="Apply background settings to Now Playing view"
@@ -337,15 +725,15 @@ export const Settings = () => {
 						"Settings Affect Now Playing:",
 						checked ? "enabled" : "disabled",
 					);
-					setSettingsAffectNowPlaying(
-						(settings.settingsAffectNowPlaying = checked),
-					);
+					settings.settingsAffectNowPlaying = checked;
+				setSettingsAffectNowPlaying(checked);
 					// Update Now Playing background immediately when setting changes
-					if ((window as any).updateRadiantLyricsNowPlayingBackground) {
-						(window as any).updateRadiantLyricsNowPlayingBackground();
+					if (window.updateRadiantLyricsNowPlayingBackground) {
+						window.updateRadiantLyricsNowPlayingBackground();
 					}
 				}}
 			/>
+		)}
 		</LunaSettings>
 	);
 };
