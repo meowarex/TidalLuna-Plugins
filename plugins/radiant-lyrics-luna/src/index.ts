@@ -100,11 +100,11 @@ observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
 });
 
 // MARKER: Quality-Based Seeker Color
-// Colors for the quality tier (Max, High, Low)
+// Maps data-test-media-state-indicator-streaming-quality values to colors
 const qualityColors: Record<string, string> = {
-	Max: "#ffd432",
-	High: "#3fe",
-	Low: "#FFFFFF",
+	HI_RES_LOSSLESS: "#ffd432", //Max
+	LOSSLESS: "#3fe", 			//High
+	HIGH: "#FFFFFF", 			//Low
 };
 
 const applyQualityProgressColor = (): void => {
@@ -113,20 +113,21 @@ const applyQualityProgressColor = (): void => {
 	) as HTMLElement | null;
 	if (!progressIndicator) return;
 
-	// Reset to white (for when the setting gets disabled)
+	// Remove inline style if disabled
 	if (!settings.qualityProgressColor) {
-		progressIndicator.style.setProperty("background-color", "#FFFFFF", "important");
+		progressIndicator.style.removeProperty("background-color");
 		return;
 	}
 
-	// get the media-state tag (Max, High, Low)
+	// Read quality from the media-state tag
+	// (using data-test-media-state-indicator-streaming-quality)
 	const qualityButton = document.querySelector(
-		'[data-test="media-state-max"], [data-test="media-state-high"], [data-test="media-state-low"]',
+		"[data-test-media-state-indicator-streaming-quality]",
 	) as HTMLElement | null;
 	if (!qualityButton) return;
 
-	const qualityText = qualityButton.textContent?.trim() ?? "";
-	const color = qualityColors[qualityText];
+	const quality = qualityButton.getAttribute("data-test-media-state-indicator-streaming-quality") ?? "";
+	const color = qualityColors[quality];
 	if (!color) return;
 
 	progressIndicator.style.setProperty("background-color", color, "important");
