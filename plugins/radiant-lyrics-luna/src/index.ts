@@ -22,7 +22,6 @@ export { Settings };
 // clean up resources
 export const unloads = new Set<LunaUnload>();
 
-// Marker: Styles and Settings Integration
 // StyleTag instances for different CSS modules
 const lyricsStyleTag = new StyleTag("RadiantLyrics-lyrics", unloads);
 const baseStyleTag = new StyleTag("RadiantLyrics-base", unloads);
@@ -100,7 +99,53 @@ observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
 	applyPlayerBarTintToElement();
 });
 
-// Apply base styles always (contains global fixes and conditional UI hiding styles)
+// MARKER: Quality-Based Seeker Color
+// Maps data-test-media-state-indicator-streaming-quality values to colors
+const qualityColors: Record<string, string> = {
+	HI_RES_LOSSLESS: "#ffd432", //Max
+	LOSSLESS: "#3fe", 			//High
+	HIGH: "#FFFFFF", 			//Low
+};
+
+const applyQualityProgressColor = (): void => {
+	const progressIndicator = document.querySelector(
+		'[data-test="progress-indicator"]',
+	) as HTMLElement | null;
+	if (!progressIndicator) return;
+
+	// Remove inline style if disabled
+	if (!settings.qualityProgressColor) {
+		progressIndicator.style.removeProperty("background-color");
+		return;
+	}
+
+	// Read quality from the media-state tag
+	// (using data-test-media-state-indicator-streaming-quality)
+	const qualityButton = document.querySelector(
+		"[data-test-media-state-indicator-streaming-quality]",
+	) as HTMLElement | null;
+	if (!qualityButton) return;
+
+	const quality = qualityButton.getAttribute("data-test-media-state-indicator-streaming-quality") ?? "";
+	const color = qualityColors[quality];
+	if (!color) return;
+
+	progressIndicator.style.setProperty("background-color", color, "important");
+};
+
+// Called Settings
+const updateQualityProgressColor = (): void => {
+	applyQualityProgressColor();
+};
+
+function setupQualityProgressObserver(): void {
+	// Apply on load (uses observeTrackChanges instead of polling yay me <3)
+	if (settings.qualityProgressColor) {
+		applyQualityProgressColor();
+	}
+}
+
+// Apply base styles always (I kinda dont really remember what this does but it's important i guess)
 baseStyleTag.css = baseStyles;
 
 // Update CSS variables for lyrics text glow based on settings
@@ -861,6 +906,7 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 	updateRadiantLyricsNowPlayingBackground;
 (window as any).updateRadiantLyricsTextGlow = updateRadiantLyricsTextGlow;
 (window as any).updateRadiantLyricsPlayerBarTint = updateRadiantLyricsPlayerBarTint;
+(window as any).updateQualityProgressColor = updateQualityProgressColor;
 
 const cleanUpDynamicArt = function (): void {
 	// Clean up cached Now Playing elements
@@ -1224,6 +1270,7 @@ const observeTrackChanges = (): void => {
 		if (currentTrackId && currentTrackId !== lastTrackId) {
 			lastTrackId = currentTrackId;
 			updateCoverArtBackground();
+			if (settings.qualityProgressColor) applyQualityProgressColor();
 			checkCount = 0;
 			currentInterval = 250;
 		}
@@ -1237,6 +1284,7 @@ const observeTrackChanges = (): void => {
 	if (currentTrackId) {
 		lastTrackId = currentTrackId;
 		setTimeout(() => updateCoverArtBackground(), 100);
+		if (settings.qualityProgressColor) setTimeout(() => applyQualityProgressColor(), 100);
 	}
 };
 
@@ -1289,3 +1337,4 @@ setupNowPlayingObserver();
 setupTrackTitleObserver();
 observeTrackChanges();
 setupStickyLyricsObserver();
+setupQualityProgressObserver();

@@ -11,6 +11,7 @@ declare global {
 		updateRadiantLyricsGlobalBackground?: () => void;
 		updateRadiantLyricsNowPlayingBackground?: () => void;
 		updateStickyLyricsIcon?: () => void;
+		updateQualityProgressColor?: () => void;
 	}
 }
 
@@ -19,6 +20,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	trackTitleGlow: false,
 	hideUIEnabled: true,
 	playerBarVisible: false,
+	qualityProgressColor: true,
 	floatingPlayerBar: true,
 	playerBarTint: 5,
 	playerBarTintColor: "#000000" as string,
@@ -105,6 +107,9 @@ export const Settings = () => {
 	const [tintHoveredColorIndex, setTintHoveredColorIndex] = React.useState<number | null>(null);
 	const [stickyLyricsFeature, setStickyLyricsFeature] = React.useState(
 		settings.stickyLyricsFeature,
+	);
+	const [qualityProgressColor, setQualityProgressColor] = React.useState(
+		settings.qualityProgressColor,
 	);
 
 	// Derive props and override onChange to accept a broader first param type
@@ -199,6 +204,18 @@ export const Settings = () => {
 				}}
 			/>
 		)}
+			<AnySwitch
+				title="Quality Matched Seeker Color"
+				desc="Color the progress/seeker bar based on streaming quality"
+				checked={qualityProgressColor}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.qualityProgressColor = checked;
+				setQualityProgressColor(checked);
+					if (window.updateQualityProgressColor) {
+						window.updateQualityProgressColor();
+					}
+				}}
+			/>
 			<AnySwitch
 				title="Floating Player Bar"
 				desc="Floating rounded player bar with backdrop blur"
