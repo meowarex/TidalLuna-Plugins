@@ -12,6 +12,7 @@ declare global {
 		updateRadiantLyricsNowPlayingBackground?: () => void;
 		updateStickyLyricsIcon?: () => void;
 		updateQualityProgressColor?: () => void;
+		updateLyricsStyle?: () => void;
 	}
 }
 
@@ -40,7 +41,8 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	settingsAffectNowPlaying: true,
 	stickyLyricsFeature: true,
 	stickyLyrics: true,
-	stickyLyricsIcon: "chevron" as string,
+	stickyLyricsIcon: "sparkle" as string,
+	lyricsStyle: 0,
 });
 
 export const Settings = () => {
@@ -169,7 +171,7 @@ export const Settings = () => {
 		)}
 			<AnySwitch
 				title="Sticky Lyrics"
-				desc="Adds a dropdown to the Lyrics tab that auto-switches to Play Queue when lyrics aren't available"
+				desc="auto-switches to Play Queue when lyrics aren't available (mirrored in lyrics dropdown)"
 				checked={stickyLyricsFeature}
 				onChange={(_: unknown, checked: boolean) => {
 					settings.stickyLyricsFeature = checked;
@@ -179,7 +181,21 @@ export const Settings = () => {
 					}
 				}}
 			/>
-			<AnySwitch
+		<LunaNumberSetting
+				title="Lyrics Style"
+				desc="0 = Line (default), 1 = Word, 2 = Syllable (coming soon) (mirrored in lyrics dropdown)"
+				min={0}
+				max={1}
+				step={1}
+				value={settings.lyricsStyle}
+				onNumber={(value: number) => {
+					settings.lyricsStyle = value;
+					if (window.updateLyricsStyle) {
+						window.updateLyricsStyle();
+					}
+				}}
+			/>
+		<AnySwitch
 				title="Hide UI Feature"
 				desc="Enable hide/unhide UI functionality with toggle buttons"
 				checked={hideUIEnabled}

@@ -109,7 +109,73 @@
 	font-size: 38px !important;
 }
 
-/* Reset all lyrics styling when disabled */
+/* MARKER: WBW lyrics CSS */
+
+/* hide tidal spans for wbw */
+.rl-wbw-active span[data-test="lyrics-line"] {
+	/* biome-ignore lint: Must hide original lines when word-by-word is on */
+	display: none !important;
+}
+
+/* Active line slide */
+.rl-wbw-line {
+	padding-left: 0;
+	transition:
+		padding-left 0.7s ease-in-out;
+}
+
+.rl-wbw-line.rl-wbw-line-active {
+	padding-left: 20px;
+}
+
+/* Word span */
+.rl-wbw-word {
+	text-shadow:
+		0 0 0px transparent,
+		0 0 0px transparent;
+	color: rgba(128, 128, 128, 0.4);
+	transition:
+		text-shadow 0.15s ease-out,
+		color 0.15s ease-out;
+}
+
+/* Hover word */
+.rl-wbw-word:hover {
+	text-shadow:
+		0 0 var(--rl-glow-inner, 2px) lightgray,
+		/* biome-ignore lint: Hover glow should override defaults */
+		0 0 var(--rl-glow-outer, 20px) lightgray !important;
+	/* biome-ignore lint: Hover color override */
+	color: lightgray !important;
+	cursor: pointer;
+}
+
+/* Active word */
+.rl-wbw-word.rl-wbw-active {
+	text-shadow:
+		0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #fff),
+		/* biome-ignore lint: Glow priority for active word */
+		0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #fff) !important;
+	/* biome-ignore lint: Active word must be white */
+	color: white !important;
+}
+
+/* Finished word */
+
+/* Tidals "..." at the top of the container */
+.rl-wbw-active > span:not([data-test="lyrics-line"]) {
+	display: block;
+	font-size: 40px;
+	font-family:
+		"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+	font-weight: 700;
+	color: rgba(128, 128, 128, 0.4);
+	text-shadow: 0 0 0px transparent;
+	margin-bottom: 2rem;
+}
+
+/* Reset lyrics styling when disabled */
 .lyrics-glow-disabled [class*="_lyricsText"] > div > span[data-current="true"],
 .lyrics-glow-disabled [class*="_lyricsText"] > div > span,
 .lyrics-glow-disabled [class*="_lyricsText"] > div > span:hover,
@@ -134,3 +200,5 @@
 	/* biome-ignore lint: Hard reset when disabled */
 	opacity: inherit !important;
 }
+
+/* thats right biome.. shut upp */
