@@ -1298,6 +1298,7 @@ interface WordLyricsResponse {
 }
 
 // syllable state
+let trackChangeToken = 0;
 let lyricsData: WordLine[] | null = null;
 let tickLoopId: number | null = null;
 let isActive = false;
@@ -1696,6 +1697,7 @@ const clearTickLoop = (): void => {
 
 // teardown (cleanup)
 const teardown = (): void => {
+	trackChangeToken++;
 	clearTickLoop();
 	unwatchRerender();
 	unhookUserScroll();
@@ -1990,7 +1992,10 @@ const onTrackChange = async (): Promise<void> => {
 
 	if (settings.lyricsStyle === 0) return;
 
+	const token = ++trackChangeToken;
+
 	const trackInfo = await getTrackInfo();
+	if (token !== trackChangeToken) return;
 	if (!trackInfo) {
 		trace.log("Word lyrics: could not get track info from playback state");
 		return;
@@ -2004,6 +2009,7 @@ const onTrackChange = async (): Promise<void> => {
 		trackInfo.title,
 		trackInfo.artist,
 	);
+	if (token !== trackChangeToken) return;
 	if (!response) {
 		trace.log("Word lyrics: no word-level lyrics for this track");
 		return;
