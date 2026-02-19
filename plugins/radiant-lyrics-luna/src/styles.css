@@ -222,7 +222,45 @@
 	transform: translateX(16px);
 }
 
+/* Segmented control (Line | Word | Syllable) */
+.rl-style-row {
+	justify-content: center;
+	margin-top: 6px;
+}
 
+.rl-seg-control {
+	display: flex;
+	background: rgba(0, 0, 0, 0.08);
+	border-radius: 10px;
+	padding: 2px;
+	gap: 2px;
+	width: 100%;
+}
+
+.rl-seg-btn {
+	flex: 1;
+	border: none;
+	background: transparent;
+	color: rgba(0, 0, 0, 0.5);
+	font-size: 10px;
+	font-weight: 600;
+	padding: 5px 0;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	white-space: nowrap;
+}
+
+.rl-seg-btn:hover {
+	color: rgba(0, 0, 0, 0.7);
+	background: rgba(0, 0, 0, 0.05);
+}
+
+.rl-seg-btn.rl-seg-active {
+	background: white;
+	color: black;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
 
 /* MARKER: PATCHES (Random Fixes for Tidals Changes) */
 /* These change allot so i gave them their own section */

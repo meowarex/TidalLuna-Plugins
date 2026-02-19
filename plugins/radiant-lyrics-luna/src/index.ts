@@ -1,6 +1,6 @@
 // MARKER: Core Setup
 import { LunaUnload, Tracer, ftch } from "@luna/core";
-import { StyleTag, PlayState, observePromise, observe } from "@luna/lib";
+import { StyleTag, PlayState, MediaItem, observePromise, observe } from "@luna/lib";
 import { settings, Settings } from "./Settings";
 // Interpret integer backgroundScale (e.g., 10=1.0x, 20=2.0x)
 const getScaledMultiplier = (): number => {
@@ -23,7 +23,6 @@ export { Settings };
 export const unloads = new Set<LunaUnload>();
 
 // StyleTag instances for different CSS modules
-const lyricsStyleTag = new StyleTag("RadiantLyrics-lyrics", unloads);
 const baseStyleTag = new StyleTag("RadiantLyrics-base", unloads);
 const playerBarStyleTag = new StyleTag("RadiantLyrics-player-bar", unloads);
 const lyricsGlowStyleTag = new StyleTag("RadiantLyrics-lyrics-glow", unloads);
@@ -1053,33 +1052,15 @@ const applyStickyIcon = (): void => {
 	},
 };
 
-// Tear down all sticky lyrics UI (trigger + dropdown + classes)
-// For when the feature is disabled in plugin settings
-const teardownStickyLyrics = (): void => {
-	document.querySelectorAll(".sticky-lyrics-trigger").forEach((el) => el.remove());
-	document.querySelectorAll(".sticky-lyrics-dropdown").forEach((el) => el.remove());
-	const lyricsTab = document.querySelector('[data-test="tabs-lyrics"]');
-	if (lyricsTab) lyricsTab.classList.remove("sticky-lyrics-open");
-};
-
-// Called from Settings
+// Called from Settings — sync the dropdown toggle with the setting
 const updateStickyLyricsFeature = (): void => {
-	if (settings.stickyLyricsFeature) {
-		// Feature enabled - inject the dropdown
-		const tab = document.querySelector('[data-test="tabs-lyrics"]');
-		if (tab && !tab.querySelector(".sticky-lyrics-trigger")) {
-			createStickyLyricsDropdown();
-		}
-	} else {
-		// Feature disabled — remove everything & disable inner toggle
-		settings.stickyLyrics = false;
-		teardownStickyLyrics();
-	}
+	settings.stickyLyrics = settings.stickyLyricsFeature;
+	const checkbox = document.querySelector('input[data-setting="stickyLyrics"]') as HTMLInputElement;
+	if (checkbox) checkbox.checked = settings.stickyLyrics;
 };
 (window as any).updateStickyLyricsFeature = updateStickyLyricsFeature;
 
 const createStickyLyricsDropdown = (): void => {
-	if (!settings.stickyLyricsFeature) return;
 	const lyricsTab = document.querySelector(
 		'[data-test="tabs-lyrics"]',
 	) as HTMLElement;
@@ -1115,9 +1096,16 @@ const createStickyLyricsDropdown = (): void => {
 		<div class="sticky-lyrics-dropdown-row">
 			<span class="sticky-lyrics-label">Sticky Lyrics</span>
 			<label class="sticky-lyrics-switch">
-				<input type="checkbox" ${settings.stickyLyrics ? "checked" : ""}>
+				<input type="checkbox" data-setting="stickyLyrics" ${settings.stickyLyrics ? "checked" : ""}>
 				<span class="sticky-lyrics-slider"></span>
 			</label>
+		</div>
+		<div class="sticky-lyrics-dropdown-row rl-style-row">
+			<div class="rl-seg-control">
+				<button type="button" class="rl-seg-btn${settings.lyricsStyle === 0 ? " rl-seg-active" : ""}" data-style="0">Line</button>
+				<button type="button" class="rl-seg-btn${settings.lyricsStyle === 1 ? " rl-seg-active" : ""}" data-style="1">Word</button>
+				<button type="button" class="rl-seg-btn${settings.lyricsStyle === 2 ? " rl-seg-active" : ""}" data-style="2">Syllable</button>
+			</div>
 		</div>
 	`;
 
@@ -1153,16 +1141,39 @@ const createStickyLyricsDropdown = (): void => {
 		}
 	}, true);
 
-	// Handle toggle switch change
-	const checkbox = dropdown.querySelector(
-		'input[type="checkbox"]',
+	// Handle toggle switch
+	const stickyCheckbox = dropdown.querySelector(
+		'input[data-setting="stickyLyrics"]',
 	) as HTMLInputElement;
-	checkbox.addEventListener("change", () => {
-		settings.stickyLyrics = checkbox.checked;
+	stickyCheckbox.addEventListener("change", () => {
+		settings.stickyLyrics = stickyCheckbox.checked;
 		if (settings.stickyLyrics) {
 			handleStickyLyricsTrackChange();
 		}
 	});
+
+	const styleNames = ["Line", "Word", "Syllable"];
+	const segButtons = dropdown.querySelectorAll(".rl-seg-btn");
+	for (const btn of segButtons) {
+		btn.addEventListener("click", (e: Event) => {
+			e.stopPropagation();
+			const raw = (btn as HTMLElement).dataset.style;
+			if (raw === undefined) return;
+			const style = Number(raw);
+			if (style === settings.lyricsStyle) return;
+
+			if (style === 2) {
+				trace.msg.log("Syllables are coming very soon");
+				return;
+			}
+
+			settings.lyricsStyle = style;
+			for (const b of segButtons) b.classList.remove("rl-seg-active");
+			btn.classList.add("rl-seg-active");
+			console.log(`[RL-Syllable] Lyrics style changed to "${styleNames[style]}"`);
+			toggle();
+		});
+	}
 
 	// Close dropdown when clicking outside trigger & dropdown
 	const handleOutsideClick = (e: MouseEvent): void => {
@@ -1187,12 +1198,12 @@ const createStickyLyricsDropdown = (): void => {
 
 // Handle switching tabs on track change
 const handleStickyLyricsTrackChange = (): void => {
-	if (!settings.stickyLyricsFeature || !settings.stickyLyrics) return;
+	if (!settings.stickyLyrics) return;
 
 	// Process the track change and update tab state
 	// Tidal takes a while to process the track change sometimes :(
 	setTimeout(() => {
-		if (!settings.stickyLyricsFeature || !settings.stickyLyrics) return;
+		if (!settings.stickyLyrics) return;
 
 		const lyricsTab = document.querySelector(
 			'[data-test="tabs-lyrics"]',
@@ -1228,63 +1239,833 @@ const handleStickyLyricsTrackChange = (): void => {
 // Observer: create dropdown when lyrics tab appears & detect track changes
 function setupStickyLyricsObserver(): void {
 	// Create dropdown if lyrics tab already exists
-	if (settings.stickyLyricsFeature) {
-		const existing = document.querySelector('[data-test="tabs-lyrics"]');
-		if (existing && !existing.querySelector(".sticky-lyrics-trigger")) {
-			createStickyLyricsDropdown();
-		}
+	const existing = document.querySelector('[data-test="tabs-lyrics"]');
+	if (existing && !existing.querySelector(".sticky-lyrics-trigger")) {
+		createStickyLyricsDropdown();
 	}
 
 	// Re-create dropdown whenever lyrics tab is back from the ether
 	observe<HTMLElement>(unloads, '[data-test="tabs-lyrics"]', () => {
-		if (!settings.stickyLyricsFeature) return;
 		const tab = document.querySelector('[data-test="tabs-lyrics"]');
 		if (tab && !tab.querySelector(".sticky-lyrics-trigger")) {
 			createStickyLyricsDropdown();
 		}
 	});
 
-	// Detect track changes & trigger sticky lyrics switching
-	let stickyLastTrackId: string | null =
-		PlayState.playbackContext?.actualProductId ?? null;
-	const checkStickyTrackChange = (): void => {
-		if (!settings.stickyLyricsFeature || !settings.stickyLyrics) return;
-		const currentTrackId = PlayState.playbackContext?.actualProductId;
-		if (currentTrackId && currentTrackId !== stickyLastTrackId) {
-			stickyLastTrackId = currentTrackId;
+	// sticky lyrics track changes
+	onGlobalTrackChange(() => {
+		if (settings.stickyLyrics) {
 			handleStickyLyricsTrackChange();
 		}
-	};
-	const stickyIntervalId = setInterval(checkStickyTrackChange, 500);
-	unloads.add(() => clearInterval(stickyIntervalId));
+	});
 }
 
-// Marker: Observers
-// Shared observer-based hooks and polling fallbacks
-const observeTrackChanges = (): void => {
-	let lastTrackId: string | null = null;
-	let checkCount = 0;
-	let currentInterval = 500;
-	const checkTrackChange = () => {
-		const currentTrackId = PlayState.playbackContext?.actualProductId;
-		if (currentTrackId && currentTrackId !== lastTrackId) {
-			lastTrackId = currentTrackId;
-			updateCoverArtBackground();
-			if (settings.qualityProgressColor) applyQualityProgressColor();
-			checkCount = 0;
-			currentInterval = 250;
-		}
-		checkCount++;
-		if (checkCount > 10 && currentInterval < 1000)
-			currentInterval = Math.min(currentInterval * 1.2, 1000);
+// track change system (used everywhere)
+const trackChangeListeners: (() => void)[] = [];
+const onGlobalTrackChange = (listener: () => void): void => {
+	trackChangeListeners.push(listener);
+};
+
+// MARKER: Syllable Lyrics
+
+interface WordTiming {
+	text: string;
+	time: number; // ms
+	duration: number; // ms
+	isBackground: boolean;
+}
+
+interface WordLine {
+	text: string;
+	startTime: number; // s
+	duration: number; // s
+	endTime: number; // s
+	syllabus: WordTiming[];
+	element: { key: string; songPart: string; singer: string };
+	translation: string | null;
+}
+
+interface WordLyricsResponse {
+	type: string;
+	data: WordLine[];
+	metadata: {
+		source: string;
+		title: string;
+		language: string;
+		totalDuration: string;
 	};
-	const intervalId = setInterval(() => checkTrackChange(), currentInterval);
-	unloads.add(() => clearInterval(intervalId));
-	const currentTrackId = PlayState.playbackContext?.actualProductId;
-	if (currentTrackId) {
-		lastTrackId = currentTrackId;
-		setTimeout(() => updateCoverArtBackground(), 100);
-		if (settings.qualityProgressColor) setTimeout(() => applyQualityProgressColor(), 100);
+	_cached?: boolean;
+}
+
+// syllable state
+let trackChangeToken = 0;
+let lyricsData: WordLine[] | null = null;
+let tickLoopId: number | null = null;
+let isActive = false;
+let savedTidalClasses: string[] | null = null;
+
+interface WordEntry {
+	el: HTMLSpanElement;
+	start: number; // ms
+	end: number; // ms
+}
+
+interface LineEntry {
+	el: HTMLElement;
+	tidalSpan: HTMLElement | null; // matching tidal span for data-current
+	startMs: number; // first word start
+	endMs: number; // last word end
+	words: WordEntry[];
+}
+
+let lines: LineEntry[] = [];
+let allWords: WordEntry[] = [];
+let rerenderObserver: MutationObserver | null = null;
+let rerenderDebounce: number | null = null;
+let activeWordEl: HTMLSpanElement | null = null;
+let activeLineIdx = -1;
+
+// Scroll sync (unhook on user scroll)
+let scrollSynced = true;
+let userScrollListener: (() => void) | null = null;
+let syncButtonListener: (() => void) | null = null;
+let syncButtonEl: HTMLElement | null = null;
+
+// scroll lock (for scroll gate)
+let scrollParentRef: HTMLElement | null = null;
+let savedScrollTo: any = null;
+let savedScroll: any = null;
+let savedScrollBy: any = null;
+let scrollAllowed = false;
+
+// playback time in ms (interpolated between currentTime updates)
+let lastPlayerTime = 0;
+let lastPlayerTimeAt = 0;
+let wasPlaying = false;
+const getPlaybackMs = (): number => {
+	const playerTime = PlayState.currentTime;
+	const playing = PlayState.playing;
+	const now = performance.now();
+
+	// reset interpolation for pause/resume resyncs
+	if (playing !== wasPlaying) {
+		wasPlaying = playing;
+		lastPlayerTimeAt = now;
+		lastPlayerTime = playerTime;
+		return playerTime * 1000;
+	}
+
+	if (playerTime !== lastPlayerTime) {
+		lastPlayerTime = playerTime;
+		lastPlayerTimeAt = now;
+		return playerTime * 1000;
+	}
+
+	if (playing && lastPlayerTimeAt > 0) {
+		const elapsed = now - lastPlayerTimeAt;
+		return (lastPlayerTime * 1000) + elapsed;
+	}
+
+	return playerTime * 1000;
+};
+
+// get title + artist from media item (Used everywhere now <3)
+const getTrackInfo = async (): Promise<{ title: string; artist: string } | null> => {
+	const mi = await MediaItem.fromPlaybackContext();
+	if (!mi?.tidalItem) return null;
+
+	const title = mi.tidalItem.title ?? "";
+	const artist = mi.tidalItem.artist?.name ?? mi.tidalItem.artists?.[0]?.name ?? "";
+
+	if (!title || !artist) return null;
+	return { title, artist };
+};
+
+// fetch syllables from the API
+const fetchWordLyrics = async (
+	title: string,
+	artist: string,
+): Promise<WordLyricsResponse | null> => {
+	const params = `lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
+	const urls = [
+		`https://rl-api.atomix.one/${params}`,
+		`https://lyricsplus-api.atomix.one/${params}`,
+		`https://rl-api.kineticsand.net/${params}`,
+	];
+
+	for (const url of urls) {
+		try {
+			trace.log(`Fetching word lyrics: ${url}`);
+			const res = await fetch(url);
+			if (!res.ok) {
+				trace.log(`Word lyrics fetch failed: ${res.status} from ${url}`);
+				continue;
+			}
+			const data: WordLyricsResponse = await res.json();
+			if (data.type !== "Word" || !data.data) {
+				trace.log(`Word lyrics not available (type: ${data.type})`);
+				return null;
+			}
+			return data;
+		} catch (err) {
+			trace.log(`Word lyrics fetch error from ${url}: ${err}`);
+		}
+	}
+
+	trace.log("All word lyrics endpoints failed");
+	return null;
+};
+
+// strip tidal css classes (prevent conflict)
+const hideTidalLyrics = (): boolean => {
+	const lyricsContainer = document.querySelector(
+		'[data-test="lyrics-lines"]',
+	) as HTMLElement;
+	if (!lyricsContainer) return false;
+
+	// collect _ tidal classes
+	const tidalClasses = Array.from(lyricsContainer.classList).filter((c) =>
+		c.startsWith("_"),
+	);
+
+	if (tidalClasses.length === 0) return true;
+
+	// Save classes on first call (for teardown)
+	if (!savedTidalClasses) {
+		savedTidalClasses = tidalClasses;
+		trace.log(`Saved Tidal classes: ${savedTidalClasses.join(", ")}`);
+	}
+
+	for (const c of tidalClasses) lyricsContainer.classList.remove(c);
+	return true;
+};
+
+// restore tidal classes (remove our container + cleanup)
+const restoreTidalLyrics = (): void => {
+	const lyricsContainer = document.querySelector(
+		'[data-test="lyrics-lines"]',
+	) as HTMLElement;
+	if (lyricsContainer) {
+		// re-add the exact _ classes
+		if (savedTidalClasses) {
+			for (const c of savedTidalClasses) {
+				if (!lyricsContainer.classList.contains(c)) {
+					lyricsContainer.classList.add(c);
+				}
+			}
+			trace.log(`Restored Tidal classes: ${savedTidalClasses.join(", ")}`);
+		}
+
+		lyricsContainer.classList.remove("rl-wbw-active");
+		lyricsContainer.style.removeProperty("overflow");
+
+		const innerDiv = lyricsContainer.querySelector(":scope > div") as HTMLElement;
+		if (innerDiv) {
+			innerDiv.style.removeProperty("overflow");
+			innerDiv.style.removeProperty("position");
+		}
+
+		lyricsContainer.querySelectorAll(".rl-wbw-line[data-current]").forEach((el) => {
+			el.removeAttribute("data-current");
+		});
+
+		lyricsContainer.querySelector(".rl-wbw-container")?.remove();
+	}
+	savedTidalClasses = null;
+};
+
+// build word/syllable container over tidal spans
+const buildWordSpans = (): {
+	words: WordEntry[];
+	lines: LineEntry[];
+} => {
+	const words: WordEntry[] = [];
+	const lines: LineEntry[] = [];
+	if (!lyricsData) return { words, lines };
+
+	const lyricsContainer = document.querySelector(
+		'[data-test="lyrics-lines"]',
+	) as HTMLElement;
+	if (!lyricsContainer) return { words, lines };
+
+	const innerDiv = lyricsContainer.querySelector(":scope > div") as HTMLElement;
+	if (!innerDiv) return { words, lines };
+
+	// remove existing container
+	innerDiv.querySelector(".rl-wbw-container")?.remove();
+
+	// hide tidal spans + take over scroll
+	lyricsContainer.classList.add("rl-wbw-active");
+
+	// force overflow visible to fix glow clipping (WIP doesnt work yet)
+	lyricsContainer.style.setProperty("overflow", "visible", "important");
+	innerDiv.style.setProperty("overflow", "visible", "important");
+
+	// helper for setting !important styles (got sick of pathing all the time)
+	const forceStyle = (el: HTMLElement, props: Record<string, string>) => {
+		for (const [k, v] of Object.entries(props)) {
+			el.style.setProperty(k, v, "important");
+		}
+	};
+
+	// create lyrics container for word/syllable lines
+	const wbwContainer = document.createElement("div");
+	wbwContainer.className = "rl-wbw-container";
+	forceStyle(wbwContainer, {
+		display: "block",
+		width: "100%",
+		"box-sizing": "border-box",
+		margin: "0",
+		padding: "0",
+		float: "none",
+		flex: "none",
+		"column-count": "auto",
+		overflow: "visible",
+	});
+
+	const FONT_STACK =
+		'"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif';
+
+	for (const apiLine of lyricsData) {
+		// skip empty/stanza-end lines
+		if (!apiLine.syllabus || apiLine.syllabus.length === 0) {
+			const spacer = document.createElement("div");
+			spacer.className = "rl-wbw-line rl-wbw-spacer";
+			forceStyle(spacer, {
+				display: "block",
+				height: "1rem",
+				margin: "0 0 1rem 0",
+			});
+			wbwContainer.appendChild(spacer);
+			continue;
+		}
+
+		const lineDiv = document.createElement("div");
+		lineDiv.className = "rl-wbw-line";
+		forceStyle(lineDiv, {
+			display: "block",
+			"text-align": "left",
+			"white-space": "normal",
+			"word-spacing": "normal",
+			"letter-spacing": "normal",
+			"margin-bottom": "2rem",
+			"padding-top": "0",
+			"padding-right": "0",
+			"padding-bottom": "0",
+			"font-size": "40px",
+			"font-family": FONT_STACK,
+			"font-weight": "700",
+			color: "rgba(128, 128, 128, 0.4)",
+			overflow: "visible",
+			flex: "none",
+			"column-count": "auto",
+			gap: "0",
+			"justify-content": "initial",
+			"align-items": "initial",
+		});
+
+		const lineWords: WordEntry[] = [];
+
+		for (const syl of apiLine.syllabus) {
+			const wordSpan = document.createElement("span");
+			wordSpan.className = "rl-wbw-word";
+			wordSpan.textContent = syl.text.trimEnd();
+			forceStyle(wordSpan, {
+				display: "inline",
+				float: "none",
+				flex: "none",
+				margin: "0",
+				padding: "0",
+				"word-spacing": "normal",
+				"letter-spacing": "normal",
+			});
+			if (syl.isBackground) {
+				wordSpan.classList.add("rl-wbw-bg");
+			}
+
+			const seekTimeMs = syl.time;
+			wordSpan.addEventListener("click", () => {
+				PlayState.seek(seekTimeMs / 1000);
+				if (!PlayState.playing) PlayState.play();
+				resync();
+			});
+
+			lineDiv.appendChild(wordSpan);
+
+			// insert text spacebar between words (most reliable inline spacing)
+			lineDiv.appendChild(document.createTextNode(" "));
+
+			const wordEntry: WordEntry = {
+				el: wordSpan,
+				start: syl.time,
+				end: syl.time + syl.duration,
+			};
+			lineWords.push(wordEntry);
+			words.push(wordEntry);
+		}
+
+		wbwContainer.appendChild(lineDiv);
+
+		// build entry from syllables
+		if (lineWords.length > 0) {
+			lines.push({
+				el: lineDiv,
+				tidalSpan: null,
+				startMs: lineWords[0].start,
+				endMs: lineWords[lineWords.length - 1].end,
+				words: lineWords,
+			});
+		}
+	}
+
+	// match lines to tidal spans by index
+	const tidalSpans = Array.from(
+		innerDiv.querySelectorAll('span[data-test="lyrics-line"]'),
+	) as HTMLElement[];
+	for (let i = 0; i < lines.length && i < tidalSpans.length; i++) {
+		lines[i].tidalSpan = tidalSpans[i];
+	}
+	trace.log(
+		`Matched ${Math.min(lines.length, tidalSpans.length)} word-by-word lines to Tidal spans (${lines.length} lines, ${tidalSpans.length} spans)`,
+	);
+
+	// append lyrics container (yea ik i was gonan edit tidals but uhh shhhh)
+	innerDiv.appendChild(wbwContainer);
+
+	trace.log(
+		`Word-by-word DOM: ${words.length} word spans across ${lines.length} lines`,
+	);
+	return { words, lines };
+};
+
+// watch for re-renders
+const watchForRerender = (): void => {
+	unwatchRerender();
+
+	const lyricsContainer = document.querySelector(
+		'[data-test="lyrics-lines"]',
+	) as HTMLElement;
+	if (!lyricsContainer) return;
+
+	rerenderObserver = new MutationObserver(() => {
+		// tidal fire mutations in bursts
+		if (rerenderDebounce !== null) {
+			clearTimeout(rerenderDebounce);
+		}
+		rerenderDebounce = window.setTimeout(() => {
+			rerenderDebounce = null;
+			if (!isActive || !lyricsData) return;
+
+			// check if our container has been nuked by a react re-render (thx react again again..)
+			const existing = lyricsContainer.querySelector(".rl-wbw-container");
+			if (!existing) {
+				trace.log(
+					"Word-by-word: re-applying after Tidal re-render",
+				);
+				hideTidalLyrics();
+				const result = buildWordSpans();
+				allWords = result.words;
+				lines = result.lines;
+			}
+		}, 100);
+	});
+
+	rerenderObserver.observe(lyricsContainer, {
+		childList: true,
+		subtree: true,
+	});
+};
+
+const unwatchRerender = (): void => {
+	if (rerenderDebounce !== null) {
+		clearTimeout(rerenderDebounce);
+		rerenderDebounce = null;
+	}
+	if (rerenderObserver) {
+		rerenderObserver.disconnect();
+		rerenderObserver = null;
+	}
+};
+
+// clear tick loop
+const clearTickLoop = (): void => {
+	if (tickLoopId !== null) {
+		clearInterval(tickLoopId);
+		tickLoopId = null;
+	}
+};
+
+// teardown (cleanup)
+const teardown = (): void => {
+	trackChangeToken++;
+	clearTickLoop();
+	unwatchRerender();
+	unhookUserScroll();
+	unhookSyncButton();
+	unlockScroll();
+	scrollSynced = true;
+	isActive = false;
+	lyricsData = null;
+	allWords = [];
+	lines = [];
+	activeWordEl = null;
+	activeLineIdx = -1;
+	restoreTidalLyrics();
+};
+
+// find scrollable parent
+const findScroller = (el: HTMLElement): HTMLElement => {
+	let parent = el.parentElement;
+	while (parent) {
+		const style = window.getComputedStyle(parent);
+		if (
+			style.overflowY === "auto" ||
+			style.overflowY === "scroll" ||
+			style.overflow === "auto" ||
+			style.overflow === "scroll"
+		) {
+			return parent;
+		}
+		parent = parent.parentElement;
+	}
+	return document.documentElement;
+};
+
+// Lock scroll parent so tidal can't scroll to line spans
+const lockScroll = (parent: HTMLElement): void => {
+	if (scrollParentRef === parent) return;
+	unlockScroll();
+
+	scrollParentRef = parent;
+	savedScrollTo = parent.scrollTo;
+	savedScroll = parent.scroll;
+	savedScrollBy = parent.scrollBy;
+
+	// scroll gate to stop tidal scrolling to line spans
+	const makeGated = (original: any) =>
+		function (this: HTMLElement, ...args: unknown[]) {
+			if (scrollAllowed || !isActive) {
+				original.apply(parent, args);
+			}
+		};
+
+	parent.scrollTo = makeGated(savedScrollTo);
+	parent.scroll = makeGated(savedScroll);
+	parent.scrollBy = makeGated(savedScrollBy);
+
+	// gate the scrollTop setter
+	const desc = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
+	if (desc?.set && desc.get) {
+		const origGet = desc.get;
+		const origSet = desc.set;
+		Object.defineProperty(parent, "scrollTop", {
+			get() {
+				return origGet.call(this);
+			},
+			set(value: number) {
+				if (scrollAllowed || !isActive) {
+					origSet.call(this, value);
+				}
+			},
+			configurable: true,
+		});
+	}
+};
+
+// Restore original scroll methods
+const unlockScroll = (): void => {
+	if (!scrollParentRef) return;
+	if (savedScrollTo) scrollParentRef.scrollTo = savedScrollTo as typeof Element.prototype.scrollTo;
+	if (savedScroll) scrollParentRef.scroll = savedScroll as typeof Element.prototype.scroll;
+	if (savedScrollBy) scrollParentRef.scrollBy = savedScrollBy as typeof Element.prototype.scrollBy;
+	// Remove instance-level scrollTop override
+	delete (scrollParentRef as any).scrollTop;
+	scrollParentRef = null;
+	savedScrollTo = null;
+	savedScroll = null;
+	savedScrollBy = null;
+};
+
+// Scroll bypassing scroll lock (probably not the best way to do this)
+const scrollTo = (parent: HTMLElement, options: ScrollToOptions): void => {
+	scrollAllowed = true;
+	parent.scrollTo(options);
+	scrollAllowed = false;
+};
+
+// Scroll to active line (resync)
+const scrollToActiveLine = (): void => {
+	if (activeLineIdx < 0 || activeLineIdx >= lines.length) return;
+	const line = lines[activeLineIdx];
+	const scroller = findScroller(line.el);
+	lockScroll(scroller);
+	const lineRect = line.el.getBoundingClientRect();
+	const parentRect = scroller.getBoundingClientRect();
+	const targetOffset = parentRect.height * 0.2;
+	const scrollTarget = scroller.scrollTop + (lineRect.top - parentRect.top) - targetOffset;
+	scrollTo(scroller, { top: Math.max(0, scrollTarget), behavior: "smooth" });
+};
+
+// Resync lyric scroll (scrubbing and lyric jumps)
+const resync = (): void => {
+	scrollSynced = true;
+	scrollToActiveLine();
+	const tidalSyncBtn = document.querySelector('div[class*="_syncButton"] button') as HTMLElement;
+	if (tidalSyncBtn) tidalSyncBtn.click();
+	unhookSyncButton();
+	console.log("[RL-Syllable] Scroll resynced");
+};
+
+// Hook user scroll
+const hookUserScroll = (parent: HTMLElement): void => {
+	unhookUserScroll();
+	const onUserScroll = () => {
+		if (!scrollSynced) return;
+		scrollSynced = false;
+		console.log("[RL-Syllable] User scrolled — auto-scroll unhooked");
+	};
+	parent.addEventListener("wheel", onUserScroll, { passive: true });
+	parent.addEventListener("touchmove", onUserScroll, { passive: true });
+	userScrollListener = () => {
+		parent.removeEventListener("wheel", onUserScroll);
+		parent.removeEventListener("touchmove", onUserScroll);
+	};
+};
+
+const unhookUserScroll = (): void => {
+	if (userScrollListener) {
+		userScrollListener();
+		userScrollListener = null;
+	}
+};
+
+// Hook lyric scroll sync button
+const hookSyncButton = (): void => {
+	unhookSyncButton();
+	const btn = document.querySelector('div[class*="_syncButton"] button') as HTMLElement;
+	if (!btn) return;
+	syncButtonEl = btn;
+	const handler = () => resync();
+	btn.addEventListener("click", handler);
+	syncButtonListener = () => btn.removeEventListener("click", handler);
+};
+
+const unhookSyncButton = (): void => {
+	if (syncButtonListener) {
+		syncButtonListener();
+		syncButtonListener = null;
+		syncButtonEl = null;
+	}
+};
+
+// Tick Loop: determine active line and word
+const startTickLoop = (): void => {
+	clearTickLoop();
+
+	console.log("[RL-Syllable] Tick loop started");
+
+	let lastLogTime = 0;
+
+	tickLoopId = window.setInterval(() => {
+		if (!isActive || lines.length === 0) return;
+
+		const nowMs = getPlaybackMs();
+
+		// remove data-current from tidals hidden spans
+		const tidalCurrentSpans = document.querySelectorAll(
+			'span[data-test="lyrics-line"][data-current]',
+		);
+		for (const span of tidalCurrentSpans) {
+			span.removeAttribute("data-current");
+		}
+
+		if (nowMs - lastLogTime >= 1000) {
+			lastLogTime = nowMs;
+			console.log(`[RL-Syllable] Playback | ${nowMs.toFixed(0)} ms`);
+		}
+
+		// find active line
+		let newLineIdx = activeLineIdx;
+
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			const nextLine = lines[i + 1];
+
+			// Line is active until the next line start
+			const lineEnd = nextLine ? nextLine.startMs : Number.MAX_SAFE_INTEGER;
+
+			if (nowMs >= line.startMs && nowMs < lineEnd) {
+				newLineIdx = i;
+				break;
+			}
+		}
+
+		// Scroll to new line and set active/inactive + Hook scroll
+		if (newLineIdx !== activeLineIdx && newLineIdx >= 0) {
+			if (activeLineIdx >= 0 && activeLineIdx < lines.length) {
+				const oldLine = lines[activeLineIdx];
+				oldLine.el.classList.remove("rl-wbw-line-active");
+				oldLine.el.removeAttribute("data-current");
+			}
+			activeLineIdx = newLineIdx;
+			const newLine = lines[activeLineIdx];
+			newLine.el.classList.add("rl-wbw-line-active");
+			newLine.el.setAttribute("data-current", "true");
+
+			const scrollParent = findScroller(newLine.el);
+			lockScroll(scrollParent);
+			hookUserScroll(scrollParent);
+
+			if (scrollSynced) {
+				const lineRect = newLine.el.getBoundingClientRect();
+				const parentRect = scrollParent.getBoundingClientRect();
+				const targetOffset = parentRect.height * 0.2;
+				const scrollTarget = scrollParent.scrollTop + (lineRect.top - parentRect.top) - targetOffset;
+				scrollTo(scrollParent, { top: Math.max(0, scrollTarget), behavior: "smooth" });
+			}
+
+			console.log(
+				`[RL-Syllable] Line ${activeLineIdx} Active "${newLine.el.textContent?.slice(0, 40)}" | ${newLine.startMs} ms - ${newLine.endMs} ms   [${nowMs.toFixed(0)} ms]`,
+			);
+		}
+
+		// hook lyric scroll sync button
+		if (!scrollSynced && !syncButtonEl) {
+			hookSyncButton();
+		}
+
+		// find latest word that just started (for scrubbing and lyric jumps)
+		if (activeLineIdx < 0) return;
+		const currentLine = lines[activeLineIdx];
+
+		let activeWordIdx = -1;
+		for (let i = currentLine.words.length - 1; i >= 0; i--) {
+			if (nowMs >= currentLine.words[i].start) {
+				activeWordIdx = i;
+				break;
+			}
+		}
+
+		if (activeWordIdx >= 0) {
+			const word = currentLine.words[activeWordIdx];
+
+			// make all words before are marked finished
+			for (let i = 0; i < activeWordIdx; i++) {
+				const prev = currentLine.words[i].el;
+				if (prev.classList.contains("rl-wbw-active") || !prev.classList.contains("rl-wbw-finished")) {
+					prev.classList.remove("rl-wbw-active");
+					prev.classList.add("rl-wbw-finished");
+				}
+			}
+
+			const isStillSinging = nowMs <= word.end;
+			if (isStillSinging) {
+				if (activeWordEl !== word.el) {
+					if (activeWordEl) {
+						activeWordEl.classList.remove("rl-wbw-active");
+						activeWordEl.classList.add("rl-wbw-finished");
+					}
+					word.el.classList.add("rl-wbw-active");
+					word.el.classList.remove("rl-wbw-finished");
+					activeWordEl = word.el;
+					console.log(
+						`[RL-Syllable] Word "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
+					);
+				}
+			} else {
+				// Past this words end, waiting for next word
+				word.el.classList.remove("rl-wbw-active");
+				if (!word.el.classList.contains("rl-wbw-finished")) {
+					word.el.classList.add("rl-wbw-finished");
+				}
+				if (activeWordEl === word.el) {
+					activeWordEl = null;
+				}
+			}
+		}
+	}, 50);
+};
+
+// Called by track change or style toggle
+const onTrackChange = async (): Promise<void> => {
+	teardown();
+
+	if (settings.lyricsStyle === 0) return;
+
+	const token = ++trackChangeToken;
+
+	const trackInfo = await getTrackInfo();
+	if (token !== trackChangeToken) return;
+	if (!trackInfo) {
+		trace.log("Word lyrics: could not get track info from playback state");
+		return;
+	}
+
+	trace.log(
+		`Word lyrics: looking up "${trackInfo.title}" by "${trackInfo.artist}"`,
+	);
+
+	const response = await fetchWordLyrics(
+		trackInfo.title,
+		trackInfo.artist,
+	);
+	if (token !== trackChangeToken) return;
+	if (!response) {
+		trace.log("Word lyrics: no word-level lyrics for this track");
+		return;
+	}
+
+	trace.log(
+		`Word lyrics: loaded ${response.data.length} lines (source: ${response.metadata.source})`,
+	);
+	console.log(
+		`[RL-Syllable] Loaded "${trackInfo.title}" by "${trackInfo.artist}" — ${response.data.length} lines`,
+	);
+
+	// Store data
+	lyricsData = response.data;
+	isActive = true;
+
+	// Remove Tidal classes
+	hideTidalLyrics();
+
+	// Build word spans and line entries
+	const result = buildWordSpans();
+	allWords = result.words;
+	lines = result.lines;
+
+	// Watch React re-renders
+	watchForRerender();
+
+	// Start the highlight loop
+	startTickLoop();
+};
+
+// Called by Settings or dropdown
+const toggle = (): void => {
+	teardown();
+	if (settings.lyricsStyle !== 0) {
+		onTrackChange();
+	}
+};
+(window as any).updateLyricsStyle = toggle;
+
+// Update lyrics on track change
+onGlobalTrackChange(() => {
+	if (settings.lyricsStyle !== 0) onTrackChange();
+});
+unloads.add(() => teardown());
+
+// MARKER: Observers
+
+const setupTrackChangeListener = (): void => {
+	MediaItem.onMediaTransition(unloads, () => {
+		for (const listener of trackChangeListeners) listener();
+	});
+
+	// Fire if already playing
+	if (PlayState.playbackContext?.actualProductId) {
+		for (const listener of trackChangeListeners) listener();
 	}
 };
 
@@ -1331,10 +2112,16 @@ function setupTrackTitleObserver(): void {
 	);
 }
 
+// Apply seeker color on track change
+onGlobalTrackChange(() => {
+	updateCoverArtBackground();
+	if (settings.qualityProgressColor) applyQualityProgressColor();
+});
+
 // Init observers
 setupHeaderObserver();
 setupNowPlayingObserver();
 setupTrackTitleObserver();
-observeTrackChanges();
 setupStickyLyricsObserver();
 setupQualityProgressObserver();
+setupTrackChangeListener();
