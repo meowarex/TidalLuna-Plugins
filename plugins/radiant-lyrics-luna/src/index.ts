@@ -1910,7 +1910,7 @@ const startTickLoop = (): void => {
 	console.log("[RL-Syllable] Tick loop started");
 
 	let lastLogTime = 0;
-	let lastTickMs = 0;
+	let lastTickMs = -1;
 
 	tickLoopUnload = safeInterval(unloads, () => {
 		if (!isActive || lines.length === 0) return;
