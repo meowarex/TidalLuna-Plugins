@@ -1317,18 +1317,28 @@ const getTrackInfo = async (): Promise<{ title: string; artist: string } | null>
 	const mi = await MediaItem.fromPlaybackContext();
 	if (!mi?.tidalItem) return null;
 
-	const title = mi.tidalItem.title ?? "";
-	const artist = mi.tidalItem.artist?.name ?? mi.tidalItem.artists?.[0]?.name ?? "";
+	const baseTitle = mi.tidalItem.title ?? "";
+	const version = mi.tidalItem.version; // REMIX Detection
+	const title = version ? `${baseTitle} (${version})` : baseTitle;
+	const artist = mi.tidalItem.artist?.name ?? mi.tidalItem.artists?.[0]?.name ?? ""; // REMIX Detection
 
-	if (!title || !artist) return null;
+	if (!baseTitle || !artist) return null;
 	return { title, artist };
 };
 
-// fetch syllables from the API
+// fetch syllables from the API (wiped on track change)
+let cachedLyricsKey: string | null = null;
+let cachedLyricsData: WordLyricsResponse | null = null;
 const fetchWordLyrics = async (
 	title: string,
 	artist: string,
 ): Promise<WordLyricsResponse | null> => {
+	const cacheKey = `${title}\0${artist}`;
+	if (cachedLyricsKey === cacheKey) {
+		sylLog(`[RL-Syllable] Cache hit for "${title}" by "${artist}"`);
+		return cachedLyricsData;
+	}
+
 	const params = `lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
 	const urls = [
 		`https://rl-api.atomix.one/${params}`,
@@ -1338,24 +1348,30 @@ const fetchWordLyrics = async (
 
 	for (const url of urls) {
 		try {
-			sylTrace(`Fetching word lyrics: ${url}`);
+			sylTrace(`RL API: Fetching word/syllable lyrics: ${url}`);
 			const res = await fetch(url);
 			if (!res.ok) {
-				trace.log(`Word lyrics fetch failed: ${res.status} from ${url}`);
+				trace.log(`RL API: fetch failed: ${res.status} from ${url}`);
 				continue;
 			}
 			const data: WordLyricsResponse = await res.json();
 			if (data.type !== "Word" || !data.data) {
-				trace.log(`Word lyrics not available (type: ${data.type})`);
+				trace.log(`Word/Syllable lyrics not available (type: ${data.type})`);
+				cachedLyricsKey = cacheKey;
+				cachedLyricsData = null;
 				return null;
 			}
+			cachedLyricsKey = cacheKey;
+			cachedLyricsData = data;
 			return data;
 		} catch (err) {
-			trace.log(`Word lyrics fetch error from ${url}: ${err}`);
+			trace.log(`RL API: fetch error from ${url}: ${err}`);
 		}
 	}
 
-	trace.log("All word lyrics endpoints failed");
+	trace.log("RL API: All Endpoints Failed");
+	cachedLyricsKey = cacheKey;
+	cachedLyricsData = null;
 	return null;
 };
 
@@ -2025,12 +2041,12 @@ const onTrackChange = async (): Promise<void> => {
 	const trackInfo = await getTrackInfo();
 	if (token !== trackChangeToken) return;
 	if (!trackInfo) {
-		trace.log("Word lyrics: could not get track info from playback state");
+		trace.log("could not get track info from playback state");
 		return;
 	}
 
 	sylTrace(
-		`Word lyrics: looking up "${trackInfo.title}" by "${trackInfo.artist}"`,
+		`RL API: looking up "${trackInfo.title}" by "${trackInfo.artist}"`,
 	);
 
 	const response = await fetchWordLyrics(
@@ -2039,12 +2055,12 @@ const onTrackChange = async (): Promise<void> => {
 	);
 	if (token !== trackChangeToken) return;
 	if (!response) {
-		trace.log("Word lyrics: no word/syllable lyrics for this track");
+		trace.log("RL API: no word/syllable lyrics available");
 		return;
 	}
 
 	sylTrace(
-		`Word lyrics: loaded ${response.data.length} lines (source: ${response.metadata.source})`,
+		`RL API: loaded ${response.data.length} lines (source: ${response.metadata.source})`,
 	);
 	sylLog(
 		`[RL-Syllable] Loaded "${trackInfo.title}" by "${trackInfo.artist}" — ${response.data.length} lines`,
@@ -2107,8 +2123,10 @@ const updateLyricsStyleFromSettings = (): void => {
 };
 (window as any).updateLyricsStyle = updateLyricsStyleFromSettings;
 
-// Update lyrics on track change
+// Update lyrics on track change (wipe cache for new song)
 onGlobalTrackChange(() => {
+	cachedLyricsKey = null;
+	cachedLyricsData = null;
 	if (settings.lyricsStyle !== 0) onTrackChange();
 });
 unloads.add(() => teardown());
