@@ -43,6 +43,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	stickyLyrics: false,
 	stickyLyricsIcon: "sparkle" as string,
 	lyricsStyle: 0,
+	syllableStyle: 0, // MARKER: Syllable animations SETTINGS (WIP coming soon)
 	syllableLogging: false,
 });
 

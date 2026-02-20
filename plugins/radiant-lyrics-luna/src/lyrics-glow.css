@@ -209,6 +209,40 @@
 	filter: none !important;
 }
 
+/* MARKER: Syllable animations CSS (WIP coming soon) */
+/* syllableStyle: 0 = none, 1 = Pop!, 2 = Jump */
+
+@keyframes rl-pop {
+	0%, 100% {
+		transform: scale(1);
+	}
+	25%, 35% {
+		transform: scale(1.03) translateY(-0.5%);
+	}
+}
+
+@keyframes rl-jump {
+	0%   { transform: translateY(8px); }
+	50%  { transform: translateY(-3px); }
+	100% { transform: translateY(0); }
+}
+
+/* Pop! for word mode */
+.rl-syl-pop .rl-wbw-word.rl-wbw-active {
+	transform-origin: center bottom;
+	animation: rl-pop 0.6s ease-out;
+}
+
+/* Pop! for syllable mode */
+.rl-syl-pop .rl-wbw-word.rl-syl-active {
+	transform-origin: center bottom;
+}
+
+/* Jump for word mode */
+.rl-syl-jump .rl-wbw-word.rl-wbw-active {
+	animation: rl-jump 0.35s ease-out;
+}
+
 /* Tidals "..." at the top of the container */
 .rl-wbw-active > span:not([data-test="lyrics-line"]) {
 	display: block;
