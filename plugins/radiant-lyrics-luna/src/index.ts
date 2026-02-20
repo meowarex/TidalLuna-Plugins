@@ -992,6 +992,20 @@ const sylTrace = (...args: unknown[]) => { if (settings.syllableLogging) trace.l
 		settings.syllableLogging = value;
 		console.log(`[Radiant Lyrics] Syllable logging ${value ? "enabled" : "disabled"}`);
 	},
+	// MARKER: Syllable animations (WIP coming soon)
+	get style() { return settings.syllableStyle; },
+	set style(value: number) {
+		const names = ["none", "Pop!", "Jump"];
+		const clamped = Math.max(0, Math.min(2, Math.floor(value)));
+		settings.syllableStyle = clamped;
+		const container = document.querySelector(".rl-wbw-container");
+		if (container) {
+			container.classList.remove("rl-syl-pop", "rl-syl-jump");
+			if (clamped === 1) container.classList.add("rl-syl-pop");
+			else if (clamped === 2) container.classList.add("rl-syl-jump");
+		}
+		console.log(`[Radiant Lyrics] Syllable style: ${names[clamped] ?? clamped}`);
+	},
 };
 
 // Called from Settings (mirrors dropdown checkbox)
@@ -1468,6 +1482,9 @@ const buildWordSpans = (): {
 	// create lyrics container for word/syllable lines
 	const wbwContainer = document.createElement("div");
 	wbwContainer.className = "rl-wbw-container";
+	// MARKER: Syllable animations (WIP coming soon)
+	if (settings.syllableStyle === 1) wbwContainer.classList.add("rl-syl-pop");
+	else if (settings.syllableStyle === 2) wbwContainer.classList.add("rl-syl-jump");
 	forceStyle(wbwContainer, {
 		display: "block",
 		width: "100%",
@@ -1526,7 +1543,7 @@ const buildWordSpans = (): {
 		const isSylMode = settings.lyricsStyle === 2;
 
 		const WORD_SPAN_STYLE: Record<string, string> = {
-			display: "inline",
+			display: "inline-block",
 			float: "none",
 			flex: "none",
 			margin: "0",
@@ -2009,8 +2026,11 @@ const startTickLoop = (): void => {
 				}
 				word.el.classList.add(CLS_ACTIVE);
 				word.el.classList.remove(CLS_FINISHED);
-				if (isSyl) {
-					word.el.style.animation = `rl-wipe ${word.duration}ms linear forwards`;
+				if (isSyl) { // MARKER: Syllable animations (WIP coming soon)
+					const wipe = `rl-wipe ${word.duration}ms linear forwards`;
+					const sylAnim = settings.syllableStyle === 1 ? ", rl-pop 0.6s ease-out"
+						: settings.syllableStyle === 2 ? ", rl-jump 0.35s ease-out" : "";
+					word.el.style.animation = wipe + sylAnim;
 				}
 				activeWordEl = word.el;
 				sylLog(
