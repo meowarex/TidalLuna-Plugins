@@ -1,6 +1,6 @@
 // MARKER: Core Setup
 import { LunaUnload, Tracer, ftch } from "@luna/core";
-import { StyleTag, PlayState, MediaItem, observePromise, observe } from "@luna/lib";
+import { StyleTag, PlayState, MediaItem, observePromise, observe, safeInterval, safeTimeout } from "@luna/lib";
 import { settings, Settings } from "./Settings";
 // Interpret integer backgroundScale (e.g., 10=1.0x, 20=2.0x)
 const getScaledMultiplier = (): number => {
@@ -235,7 +235,7 @@ const updateButtonStates = function (): void {
 		if (settings.hideUIEnabled && !isHidden) {
 			hideButton.style.display = "flex";
 			// Small delay to ensure display is set first, then fade in
-			setTimeout(() => {
+			safeTimeout(unloads, () => {
 				hideButton.style.opacity = "1";
 				hideButton.style.visibility = "visible";
 				hideButton.style.pointerEvents = "auto";
@@ -261,7 +261,7 @@ const updateButtonStates = function (): void {
 			unhideButton.classList.remove("hide-immediately");
 			unhideButton.classList.remove("auto-faded");
 			// Small delay to ensure display is set first, then fade in - (Works for unhide button.. but not hide button.. because uhh idk)
-			setTimeout(() => {
+			safeTimeout(unloads, () => {
 				unhideButton.style.opacity = "1";
 				unhideButton.style.visibility = "visible";
 				unhideButton.style.pointerEvents = "auto";
@@ -284,11 +284,11 @@ const updateButtonStates = function (): void {
 			unhideButton.style.pointerEvents = "none";
 			unhideButton.classList.remove("auto-faded");
 			// Keep display: flex to maintain transitions, then hide after fade
-			setTimeout(() => {
+			safeTimeout(unloads, () => {
 				if (unhideButton.style.opacity === "0") {
 					unhideButton.style.display = "none";
 				}
-			}, 500); // Wait for transition to complete
+			}, 500);
 		}
 	}
 };
@@ -307,7 +307,7 @@ const toggleRadiantLyrics = function (): void {
 		if (nowPlayingContainer)
 			nowPlayingContainer.classList.remove("radiant-lyrics-ui-hidden");
 		document.body.classList.remove("radiant-lyrics-ui-hidden");
-		setTimeout(() => {
+		safeTimeout(unloads, () => {
 			if (!isHidden) {
 				updateRadiantLyricsStyles();
 			}
@@ -316,7 +316,7 @@ const toggleRadiantLyrics = function (): void {
 	} else {
 		isHidden = !isHidden;
 		updateButtonStates();
-		setTimeout(() => {
+		safeTimeout(unloads, () => {
 			updateRadiantLyricsStyles();
 			if (nowPlayingContainer)
 				nowPlayingContainer.classList.add("radiant-lyrics-ui-hidden");
@@ -327,13 +327,13 @@ const toggleRadiantLyrics = function (): void {
 
 // Create buttons
 const createHideUIButton = function (): void {
-	setTimeout(() => {
+	safeTimeout(unloads, () => {
 		if (!settings.hideUIEnabled) return;
 		const fullscreenButton = document.querySelector(
 			'[data-test="request-fullscreen"]',
 		);
 		if (!fullscreenButton || !fullscreenButton.parentElement) {
-			setTimeout(() => createHideUIButton(), 1000);
+			safeTimeout(unloads, () => createHideUIButton(), 1000);
 			return;
 		}
 		if (document.querySelector(".hide-ui-button")) return;
@@ -370,7 +370,7 @@ const createHideUIButton = function (): void {
 		});
 		hideUIButton.onclick = toggleRadiantLyrics;
 		buttonContainer.insertBefore(hideUIButton, fullscreenButton.nextSibling);
-		setTimeout(() => {
+		safeTimeout(unloads, () => {
 			if (settings.hideUIEnabled && !isHidden) {
 				hideUIButton.style.opacity = "1";
 				hideUIButton.style.visibility = "visible";
@@ -381,14 +381,14 @@ const createHideUIButton = function (): void {
 };
 
 const createUnhideUIButton = function (): void {
-	setTimeout(() => {
+	safeTimeout(unloads, () => {
 		if (!settings.hideUIEnabled) return;
 		if (document.querySelector(".unhide-ui-button")) return;
 		const nowPlayingContainer = document.querySelector(
 			'[class*="_nowPlayingContainer"]',
 		) as HTMLElement;
 		if (!nowPlayingContainer) {
-			setTimeout(() => createUnhideUIButton(), 1000);
+			safeTimeout(unloads, () => createUnhideUIButton(), 1000);
 			return;
 		}
 		const unhideUIButton = document.createElement("button");
@@ -405,7 +405,7 @@ const createUnhideUIButton = function (): void {
 		unhideUIButton.addEventListener("mouseleave", () => {
 			unhideUIButton.style.backgroundColor = "rgba(255,255,255,0.2)";
 			unhideUIButton.style.transform = "scale(1)";
-			window.setTimeout(() => {
+			safeTimeout(unloads, () => {
 				if (isHidden && !unhideUIButton.matches(":hover")) {
 					unhideUIButton.classList.add("auto-faded");
 				}
@@ -462,10 +462,10 @@ const applyScaledPixelSize = (img: HTMLImageElement | null): void => {
 // Update Cover Art background for Now Playing and Global
 function updateCoverArtBackground(method: number = 0): void {
 	if (method === 1) {
-		setTimeout(() => {
+		safeTimeout(unloads, () => {
 			updateCoverArtBackground();
-			return;
 		}, 2000);
+		return;
 	}
 
 	let coverArtImageElement = document.querySelector(
@@ -1130,7 +1130,7 @@ const createStickyLyricsDropdown = (): void => {
 			// Navigate to Lyrics & open dropdown
 			lyricsTab.click();
 			// Delay to let the tab activate
-			setTimeout(() => openDropdown(), 150);
+			safeTimeout(unloads, () => openDropdown(), 150);
 			return;
 		}
 		// Toggle dropdown
@@ -1202,7 +1202,7 @@ const handleStickyLyricsTrackChange = (): void => {
 
 	// Process the track change and update tab state
 	// Tidal takes a while to process the track change sometimes :(
-	setTimeout(() => {
+	safeTimeout(unloads, () => {
 		if (!settings.stickyLyrics) return;
 
 		const lyricsTab = document.querySelector(
@@ -1213,23 +1213,20 @@ const handleStickyLyricsTrackChange = (): void => {
 		) as HTMLElement;
 
 		if (!lyricsTab) {
-			// fall back to play queue
 			if (playQueueTab) playQueueTab.click();
 			return;
 		}
 
-		// Attempt to switch to lyrics
 		lyricsTab.click();
 
 		// Verify we actually stayed on lyrics after a short delay
 		// TODO: Make not shitty (one day maybe)
-		setTimeout(() => {
+		safeTimeout(unloads, () => {
 			if (!settings.stickyLyrics) return;
 			const onLyrics = document.querySelector(
 				'[data-test="tabs-lyrics"][aria-selected="true"]',
 			);
 			if (!onLyrics && playQueueTab) {
-				// Got redirected away from lyrics - fall back to play queue
 				playQueueTab.click();
 			}
 		}, 800);
@@ -1249,6 +1246,15 @@ function setupStickyLyricsObserver(): void {
 		const tab = document.querySelector('[data-test="tabs-lyrics"]');
 		if (tab && !tab.querySelector(".sticky-lyrics-trigger")) {
 			createStickyLyricsDropdown();
+		}
+	});
+
+	// Apply word lyrics when lyrics container appears or reappears
+	observe<HTMLElement>(unloads, '[data-test="lyrics-lines"]', () => {
+		if (lyricsData) {
+			reapplyWordLyrics();
+		} else if (settings.lyricsStyle !== 0) {
+			onTrackChange();
 		}
 	});
 
@@ -1300,7 +1306,7 @@ interface WordLyricsResponse {
 // syllable state
 let trackChangeToken = 0;
 let lyricsData: WordLine[] | null = null;
-let tickLoopId: number | null = null;
+let tickLoopUnload: LunaUnload | null = null;
 let isActive = false;
 let savedTidalClasses: string[] | null = null;
 
@@ -1687,11 +1693,10 @@ const unwatchRerender = (): void => {
 	}
 };
 
-// clear tick loop
 const clearTickLoop = (): void => {
-	if (tickLoopId !== null) {
-		clearInterval(tickLoopId);
-		tickLoopId = null;
+	if (tickLoopUnload !== null) {
+		tickLoopUnload();
+		tickLoopUnload = null;
 	}
 };
 
@@ -1866,7 +1871,7 @@ const startTickLoop = (): void => {
 
 	let lastLogTime = 0;
 
-	tickLoopId = window.setInterval(() => {
+	tickLoopUnload = safeInterval(unloads, () => {
 		if (!isActive || lines.length === 0) return;
 
 		const nowMs = getPlaybackMs();
@@ -2041,6 +2046,28 @@ const onTrackChange = async (): Promise<void> => {
 	startTickLoop();
 };
 
+// Reapply word lyrics (for tab switch back)
+const reapplyWordLyrics = (): void => {
+	if (settings.lyricsStyle === 0 || !lyricsData) return;
+
+	clearTickLoop();
+	unwatchRerender();
+	unhookUserScroll();
+	unhookSyncButton();
+	unlockScroll();
+	activeWordEl = null;
+	activeLineIdx = -1;
+
+	isActive = true;
+	hideTidalLyrics();
+	const result = buildWordSpans();
+	allWords = result.words;
+	lines = result.lines;
+	watchForRerender();
+	startTickLoop();
+	console.log("[RL-Syllable] Reapplied word lyrics (cached)");
+};
+
 // Called by Settings or dropdown
 const toggle = (): void => {
 	teardown();
@@ -2063,9 +2090,20 @@ const setupTrackChangeListener = (): void => {
 		for (const listener of trackChangeListeners) listener();
 	});
 
-	// Fire if already playing
+	// Applies on app reopen (most ppl close the app while smthn playing)
+	let hasFiredInitial = false;
 	if (PlayState.playbackContext?.actualProductId) {
+		hasFiredInitial = true;
 		for (const listener of trackChangeListeners) listener();
+	}
+	if (!hasFiredInitial) {
+		PlayState.onState(unloads, (state) => {
+			if (hasFiredInitial) return;
+			if (state === "PLAYING" && PlayState.playbackContext?.actualProductId) {
+				hasFiredInitial = true;
+				for (const listener of trackChangeListeners) listener();
+			}
+		});
 	}
 };
 
