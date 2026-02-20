@@ -1162,11 +1162,6 @@ const createStickyLyricsDropdown = (): void => {
 			const style = Number(raw);
 			if (style === settings.lyricsStyle) return;
 
-			if (style === 2) {
-				trace.msg.log("Syllables are coming very soon");
-				return;
-			}
-
 			settings.lyricsStyle = style;
 			for (const b of segButtons) b.classList.remove("rl-seg-active");
 			btn.classList.add("rl-seg-active");
@@ -1314,6 +1309,7 @@ interface WordEntry {
 	el: HTMLSpanElement;
 	start: number; // ms
 	end: number; // ms
+	duration: number; // ms
 }
 
 interface LineEntry {
@@ -1571,43 +1567,72 @@ const buildWordSpans = (): {
 		});
 
 		const lineWords: WordEntry[] = [];
+		const syllabus = apiLine.syllabus;
+		const isSylMode = settings.lyricsStyle === 2;
 
-		for (const syl of apiLine.syllabus) {
-			const wordSpan = document.createElement("span");
-			wordSpan.className = "rl-wbw-word";
-			wordSpan.textContent = syl.text.trimEnd();
-			forceStyle(wordSpan, {
-				display: "inline",
-				float: "none",
-				flex: "none",
-				margin: "0",
-				padding: "0",
-				"word-spacing": "normal",
-				"letter-spacing": "normal",
-			});
-			if (syl.isBackground) {
-				wordSpan.classList.add("rl-wbw-bg");
-			}
+		const WORD_SPAN_STYLE: Record<string, string> = {
+			display: "inline",
+			float: "none",
+			flex: "none",
+			margin: "0",
+			padding: "0",
+			"word-spacing": "normal",
+			"letter-spacing": "normal",
+		};
 
-			const seekTimeMs = syl.time;
-			wordSpan.addEventListener("click", () => {
-				PlayState.seek(seekTimeMs / 1000);
+		const makeSpan = (text: string, seekMs: number, bg: boolean): HTMLSpanElement => {
+			const span = document.createElement("span");
+			span.className = "rl-wbw-word";
+			span.textContent = text;
+			forceStyle(span, WORD_SPAN_STYLE);
+			if (bg) span.classList.add("rl-wbw-bg");
+			span.addEventListener("click", () => {
+				PlayState.seek(seekMs / 1000);
 				if (!PlayState.playing) PlayState.play();
 				resync();
 			});
+			return span;
+		};
 
-			lineDiv.appendChild(wordSpan);
+		// Group syllables into words: trailing whitespace in syl.text marks a word boundary
+		const wordGroups: number[][] = [];
+		let currentGroup: number[] = [];
+		for (let si = 0; si < syllabus.length; si++) {
+			currentGroup.push(si);
+			const isWordEnd = syllabus[si].text !== syllabus[si].text.trimEnd() || si === syllabus.length - 1;
+			if (isWordEnd) {
+				wordGroups.push(currentGroup);
+				currentGroup = [];
+			}
+		}
 
-			// insert text spacebar between words (most reliable inline spacing)
+		for (const group of wordGroups) {
+			if (isSylMode) {
+				// Syllable mode: separate span per syllable, no space within same word
+				for (const si of group) {
+					const syl = syllabus[si];
+					const span = makeSpan(syl.text.trimEnd(), syl.time, syl.isBackground);
+					lineDiv.appendChild(span);
+					const entry: WordEntry = { el: span, start: syl.time, end: syl.time + syl.duration, duration: syl.duration };
+					lineWords.push(entry);
+					words.push(entry);
+				}
+			} else {
+				// Word mode: merge syllables into one span
+				const mergedText = group.map(si => syllabus[si].text.trimEnd()).join("");
+				const first = syllabus[group[0]];
+				const last = syllabus[group[group.length - 1]];
+				const start = first.time;
+				const end = last.time + last.duration;
+				const bg = first.isBackground;
+				const span = makeSpan(mergedText, start, bg);
+				lineDiv.appendChild(span);
+				const entry: WordEntry = { el: span, start, end, duration: end - start };
+				lineWords.push(entry);
+				words.push(entry);
+			}
+			// Space between words (not between syllables of the same word)
 			lineDiv.appendChild(document.createTextNode(" "));
-
-			const wordEntry: WordEntry = {
-				el: wordSpan,
-				start: syl.time,
-				end: syl.time + syl.duration,
-			};
-			lineWords.push(wordEntry);
-			words.push(wordEntry);
 		}
 
 		wbwContainer.appendChild(lineDiv);
@@ -1621,6 +1646,21 @@ const buildWordSpans = (): {
 				endMs: lineWords[lineWords.length - 1].end,
 				words: lineWords,
 			});
+		}
+	}
+
+	// insert spacers between lines with large timing gaps (instrumental breaks)
+	for (let i = 0; i < lines.length - 1; i++) {
+		const gap = lines[i + 1].startMs - lines[i].endMs;
+		if (gap > 2500) {
+			const spacer = document.createElement("div");
+			spacer.className = "rl-wbw-spacer";
+			forceStyle(spacer, {
+				display: "block",
+				height: "2rem",
+				margin: "0 0 1rem 0",
+			});
+			lines[i].el.after(spacer);
 		}
 	}
 
@@ -1870,11 +1910,20 @@ const startTickLoop = (): void => {
 	console.log("[RL-Syllable] Tick loop started");
 
 	let lastLogTime = 0;
+	let lastTickMs = 0;
 
 	tickLoopUnload = safeInterval(unloads, () => {
 		if (!isActive || lines.length === 0) return;
 
 		const nowMs = getPlaybackMs();
+		const isSyl = settings.lyricsStyle === 2;
+		const CLS_ACTIVE = isSyl ? "rl-syl-active" : "rl-wbw-active";
+		const CLS_FINISHED = isSyl ? "rl-syl-finished" : "rl-wbw-finished";
+
+		// scrub/seek detection: time went backward or jumped forward significantly
+		const timeDelta = nowMs - lastTickMs;
+		const didScrub = lastTickMs >= 0 && (timeDelta < -100 || timeDelta > 1000);
+		lastTickMs = nowMs;
 
 		// remove data-current from tidals hidden spans
 		const tidalCurrentSpans = document.querySelectorAll(
@@ -1889,23 +1938,49 @@ const startTickLoop = (): void => {
 			console.log(`[RL-Syllable] Playback | ${nowMs.toFixed(0)} ms`);
 		}
 
-		// find active line
-		let newLineIdx = activeLineIdx;
-
+		// find active line (-1 if before all lyrics or in instrumental)
+		let newLineIdx = -1;
 		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i];
-			const nextLine = lines[i + 1];
-
-			// Line is active until the next line start
-			const lineEnd = nextLine ? nextLine.startMs : Number.MAX_SAFE_INTEGER;
-
-			if (nowMs >= line.startMs && nowMs < lineEnd) {
+			const nextStart = lines[i + 1]?.startMs ?? Number.MAX_SAFE_INTEGER;
+			const effectiveEnd = Math.min(nextStart, lines[i].endMs + 2500);
+			if (nowMs >= lines[i].startMs && nowMs < effectiveEnd) {
 				newLineIdx = i;
 				break;
 			}
 		}
 
-		// Scroll to new line and set active/inactive + Hook scroll
+		// single pass to set correct state for all words (scrub or seek)
+		if (didScrub) {
+			for (let li = 0; li < lines.length; li++) {
+				for (const w of lines[li].words) {
+					if (li < newLineIdx) {
+						w.el.classList.remove(CLS_ACTIVE);
+						if (isSyl) w.el.style.animation = "";
+						if (!w.el.classList.contains(CLS_FINISHED)) w.el.classList.add(CLS_FINISHED);
+					} else {
+						w.el.classList.remove(CLS_ACTIVE, CLS_FINISHED);
+						if (isSyl) w.el.style.animation = "";
+					}
+				}
+			}
+			activeWordEl = null;
+			if (activeLineIdx >= 0 && activeLineIdx < lines.length) {
+				lines[activeLineIdx].el.classList.remove("rl-wbw-line-active");
+				lines[activeLineIdx].el.removeAttribute("data-current");
+			}
+			activeLineIdx = -1;
+			console.log(`[RL-Syllable] Scrub detected (${timeDelta > 0 ? "+" : ""}${timeDelta.toFixed(0)} ms) → resync`);
+		}
+
+		// Deactivate line when entering instrumental
+		if (newLineIdx === -1 && activeLineIdx >= 0 && activeLineIdx < lines.length) {
+			lines[activeLineIdx].el.classList.remove("rl-wbw-line-active");
+			lines[activeLineIdx].el.removeAttribute("data-current");
+			activeLineIdx = -1;
+			activeWordEl = null;
+		}
+
+		// Scroll to new line and set active/inactive
 		if (newLineIdx !== activeLineIdx && newLineIdx >= 0) {
 			if (activeLineIdx >= 0 && activeLineIdx < lines.length) {
 				const oldLine = lines[activeLineIdx];
@@ -1939,7 +2014,7 @@ const startTickLoop = (): void => {
 			hookSyncButton();
 		}
 
-		// find latest word that just started (for scrubbing and lyric jumps)
+		// find and activate current word
 		if (activeLineIdx < 0) return;
 		const currentLine = lines[activeLineIdx];
 
@@ -1951,41 +2026,45 @@ const startTickLoop = (): void => {
 			}
 		}
 
-		if (activeWordIdx >= 0) {
-			const word = currentLine.words[activeWordIdx];
+		if (activeWordIdx < 0) return;
+		const word = currentLine.words[activeWordIdx];
 
-			// make all words before are marked finished
-			for (let i = 0; i < activeWordIdx; i++) {
-				const prev = currentLine.words[i].el;
-				if (prev.classList.contains("rl-wbw-active") || !prev.classList.contains("rl-wbw-finished")) {
-					prev.classList.remove("rl-wbw-active");
-					prev.classList.add("rl-wbw-finished");
-				}
+		// mark all words before as finished
+		for (let i = 0; i < activeWordIdx; i++) {
+			const prev = currentLine.words[i].el;
+			if (prev.classList.contains(CLS_ACTIVE) || !prev.classList.contains(CLS_FINISHED)) {
+				prev.classList.remove(CLS_ACTIVE);
+				if (isSyl) prev.style.animation = "";
+				prev.classList.add(CLS_FINISHED);
 			}
+		}
 
-			const isStillSinging = nowMs <= word.end;
-			if (isStillSinging) {
-				if (activeWordEl !== word.el) {
-					if (activeWordEl) {
-						activeWordEl.classList.remove("rl-wbw-active");
-						activeWordEl.classList.add("rl-wbw-finished");
-					}
-					word.el.classList.add("rl-wbw-active");
-					word.el.classList.remove("rl-wbw-finished");
-					activeWordEl = word.el;
-					console.log(
-						`[RL-Syllable] Word "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
-					);
+		const isStillSinging = nowMs <= word.end;
+		if (isStillSinging) {
+			if (activeWordEl !== word.el) {
+				if (activeWordEl) {
+					activeWordEl.classList.remove(CLS_ACTIVE);
+					if (isSyl) activeWordEl.style.animation = "";
+					activeWordEl.classList.add(CLS_FINISHED);
 				}
-			} else {
-				// Past this words end, waiting for next word
-				word.el.classList.remove("rl-wbw-active");
-				if (!word.el.classList.contains("rl-wbw-finished")) {
-					word.el.classList.add("rl-wbw-finished");
+				word.el.classList.add(CLS_ACTIVE);
+				word.el.classList.remove(CLS_FINISHED);
+				if (isSyl) {
+					word.el.style.animation = `rl-wipe ${word.duration}ms linear forwards`;
 				}
-				if (activeWordEl === word.el) {
-					activeWordEl = null;
-				}
+				activeWordEl = word.el;
+				console.log(
+					`[RL-Syllable] Word "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
+				);
+			}
+		} else {
+			word.el.classList.remove(CLS_ACTIVE);
+			if (isSyl) word.el.style.animation = "";
+			if (!word.el.classList.contains(CLS_FINISHED)) {
+				word.el.classList.add(CLS_FINISHED);
+			}
+			if (activeWordEl === word.el) {
+				activeWordEl = null;
 			}
 		}
 	}, 50);

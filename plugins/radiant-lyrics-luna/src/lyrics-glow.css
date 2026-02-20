@@ -160,7 +160,53 @@
 	color: white !important;
 }
 
-/* Finished word */
+/* MARKER: Syllable sweep animation CSS */
+
+@keyframes rl-wipe {
+	from {
+		background-size: 0.75em 100%, 0% 100%, 100% 100%;
+		background-position: -0.375em 0%, left, left;
+	}
+	to {
+		background-size: 0.75em 100%, 100% 100%, 100% 100%;
+		background-position: calc(100% + 0.375em) 0%, left, left;
+	}
+}
+
+/* Syllable active: gradient sweep L-to-R via background-clip */
+.rl-wbw-word.rl-syl-active {
+	/* biome-ignore lint: Kill base transitions so class swaps are instant */
+	transition: none !important;
+	/* biome-ignore lint: Transparent fill so gradient paints the text */
+	color: transparent !important;
+	/* biome-ignore lint: Clip gradient to text glyphs */
+	-webkit-background-clip: text !important;
+	/* biome-ignore lint: Clip gradient to text glyphs */
+	background-clip: text !important;
+	background-repeat: no-repeat;
+	background-image:
+		linear-gradient(90deg, transparent 0%, var(--cl-glow1, #fff) 50%, transparent 100%),
+		linear-gradient(90deg, var(--cl-glow1, #fff) 100%, transparent 100%),
+		linear-gradient(90deg, rgba(128, 128, 128, 0.4), rgba(128, 128, 128, 0.4));
+	background-size: 0.75em 100%, 0% 100%, 100% 100%;
+	background-position: -0.375em 0%, left, left;
+	/* biome-ignore lint: No glow for syllable mode */
+	text-shadow: none !important;
+	/* biome-ignore lint: No glow for syllable mode */
+	filter: none !important;
+}
+
+/* Syllable finished: word stays white, no glow */
+.rl-wbw-word.rl-syl-finished {
+	/* biome-ignore lint: Kill base transitions so class swaps are instant */
+	transition: none !important;
+	/* biome-ignore lint: Finished syllable word stays white */
+	color: white !important;
+	/* biome-ignore lint: No glow for syllable mode */
+	text-shadow: none !important;
+	/* biome-ignore lint: No glow for syllable mode */
+	filter: none !important;
+}
 
 /* Tidals "..." at the top of the container */
 .rl-wbw-active > span:not([data-test="lyrics-line"]) {
