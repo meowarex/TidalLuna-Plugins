@@ -43,28 +43,6 @@
 	backface-visibility: hidden;
 }
 
-/* Performance mode optimizations - keep spinning but optimize other aspects */
-.global-spinning-image.performance-mode-static {
-	/* Keep animation enabled in performance mode */
-	/* Lighter blur for performance */
-	/* biome-ignore lint: Required to override app styles in performance mode */
-	filter: blur(20px) brightness(0.4) contrast(1.2) saturate(1) !important;
-	/* Smaller size for performance */
-	/* biome-ignore lint: Required to override app layout sizes */
-	width: 120vw !important;
-	/* biome-ignore lint: Required to override app layout sizes */
-	height: 120vh !important;
-}
-
-.now-playing-background-image.performance-mode-static {
-	/* Keep animation enabled in performance mode */
-	/* Optimized size and effects for performance */
-	/* biome-ignore lint: Required to override inline sizes in performance mode */
-	width: 80vw !important;
-	/* biome-ignore lint: Required to override inline sizes in performance mode */
-	height: 80vh !important;
-}
-
 /* Now Playing Background Container Optimization */
 .now-playing-background-container {
 	position: absolute;

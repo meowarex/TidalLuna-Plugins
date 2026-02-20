@@ -1,5 +1,5 @@
 // MARKER: Core Setup
-import { LunaUnload, Tracer, ftch } from "@luna/core";
+import { type LunaUnload, Tracer } from "@luna/core";
 import { StyleTag, PlayState, MediaItem, observePromise, observe, safeInterval, safeTimeout } from "@luna/lib";
 import { settings, Settings } from "./Settings";
 // Interpret integer backgroundScale (e.g., 10=1.0x, 20=2.0x)
@@ -87,11 +87,6 @@ const applyFloatingPlayerBar = (): void => {
 // Alias for settings callback
 const updateRadiantLyricsPlayerBarTint = applyFloatingPlayerBar;
 
-// Apply floating player bar styles if enabled
-if (settings.floatingPlayerBar) {
-	floatingPlayerBarStyleTag.css = floatingPlayerBarCss;
-}
-
 // Apply Tint and Observe in case doesn't exist yet (ik this isnt the best way to do it but.. make a PR i dare ya!)
 applyPlayerBarTintToElement();
 observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
@@ -132,16 +127,9 @@ const applyQualityProgressColor = (): void => {
 	progressIndicator.style.setProperty("background-color", color, "important");
 };
 
-// Called Settings
-const updateQualityProgressColor = (): void => {
+// Apply on load
+if (settings.qualityProgressColor) {
 	applyQualityProgressColor();
-};
-
-function setupQualityProgressObserver(): void {
-	// Apply on load (uses observeTrackChanges instead of polling yay me <3)
-	if (settings.qualityProgressColor) {
-		applyQualityProgressColor();
-	}
 }
 
 // Apply base styles always (I kinda dont really remember what this does but it's important i guess)
@@ -212,7 +200,7 @@ const updateRadiantLyricsStyles = function (): void {
 
 // MARKER: UI Visibility Control
 // UI state shared across features
-var isHidden = false;
+let isHidden = false;
 let unhideButtonAutoFadeTimeout: number | null = null;
 
 // Helper to safely create a one-off timeout that clears previous if any
@@ -433,7 +421,6 @@ let nowPlayingBackgroundContainer: HTMLElement | null = null;
 let nowPlayingBackgroundImage: HTMLImageElement | null = null;
 let nowPlayingBlackBg: HTMLElement | null = null;
 let nowPlayingGradientOverlay: HTMLElement | null = null;
-let currentNowPlayingCoverSrc: string | null = null;
 let spinAnimationAdded = false;
 
 // apply scaled pixel sizes to cover art
@@ -468,7 +455,7 @@ function updateCoverArtBackground(method: number = 0): void {
 		return;
 	}
 
-	let coverArtImageElement = document.querySelector(
+	const coverArtImageElement = document.querySelector(
 		'figure[class*="_albumImage"] > div > div > div > img',
 	) as HTMLImageElement;
 	let coverArtImageSrc: string | null = null;
@@ -590,51 +577,28 @@ function updateCoverArtBackground(method: number = 0): void {
 				nowPlayingBackgroundImage.src !== coverArtImageSrc
 			) {
 				nowPlayingBackgroundImage.src = coverArtImageSrc;
-				currentNowPlayingCoverSrc = coverArtImageSrc;
 			}
 
 			// Apply pixel-based size using intrinsic dimensions
 			applyScaledPixelSize(nowPlayingBackgroundImage);
 
-			// Apply performance-optimized settings (filter/animation); size handled above
 			if (nowPlayingBackgroundImage) {
-				if (settings.performanceMode) {
-					// Performance mode with spinning enabled
-					const blur = Math.min(settings.backgroundBlur, 20);
-					const contrast = Math.min(settings.backgroundContrast, 150);
-					const radiusPm = `${settings.backgroundRadius}%`;
-					if (nowPlayingBackgroundImage.style.borderRadius !== radiusPm)
-						nowPlayingBackgroundImage.style.borderRadius = radiusPm;
-					const filt = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
-					if (nowPlayingBackgroundImage.style.filter !== filt)
-						nowPlayingBackgroundImage.style.filter = filt;
-					const anim = settings.spinningArt
-						? `spin ${settings.spinSpeed}s linear infinite`
-						: "none";
-					const wc = settings.spinningArt ? "transform" : "auto";
-					if (nowPlayingBackgroundImage.style.animation !== anim)
-						nowPlayingBackgroundImage.style.animation = anim;
-					if (nowPlayingBackgroundImage.style.willChange !== wc)
-						nowPlayingBackgroundImage.style.willChange = wc;
-					nowPlayingBackgroundImage.classList.remove("performance-mode-static");
-				} else {
-					// Normal mode
-					const radiusNm = `${settings.backgroundRadius}%`;
-					if (nowPlayingBackgroundImage.style.borderRadius !== radiusNm)
-						nowPlayingBackgroundImage.style.borderRadius = radiusNm;
-					const filt = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
-					if (nowPlayingBackgroundImage.style.filter !== filt)
-						nowPlayingBackgroundImage.style.filter = filt;
-					const anim = settings.spinningArt
-						? `spin ${settings.spinSpeed}s linear infinite`
-						: "none";
-					const wc = settings.spinningArt ? "transform" : "auto";
-					if (nowPlayingBackgroundImage.style.animation !== anim)
-						nowPlayingBackgroundImage.style.animation = anim;
-					if (nowPlayingBackgroundImage.style.willChange !== wc)
-						nowPlayingBackgroundImage.style.willChange = wc;
-					nowPlayingBackgroundImage.classList.remove("performance-mode-static");
-				}
+				const blur = settings.performanceMode ? Math.min(settings.backgroundBlur, 20) : settings.backgroundBlur;
+				const contrast = settings.performanceMode ? Math.min(settings.backgroundContrast, 150) : settings.backgroundContrast;
+				const radius = `${settings.backgroundRadius}%`;
+				if (nowPlayingBackgroundImage.style.borderRadius !== radius)
+					nowPlayingBackgroundImage.style.borderRadius = radius;
+				const filt = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
+				if (nowPlayingBackgroundImage.style.filter !== filt)
+					nowPlayingBackgroundImage.style.filter = filt;
+				const anim = settings.spinningArt
+					? `spin ${settings.spinSpeed}s linear infinite`
+					: "none";
+				const wc = settings.spinningArt ? "transform" : "auto";
+				if (nowPlayingBackgroundImage.style.animation !== anim)
+					nowPlayingBackgroundImage.style.animation = anim;
+				if (nowPlayingBackgroundImage.style.willChange !== wc)
+					nowPlayingBackgroundImage.style.willChange = wc;
 			}
 
 			// Add keyframe animation only once
@@ -764,40 +728,20 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 		globalBackgroundImage.src = coverArtImageSrc;
 	}
 
-	// Apply performance-optimized settings
 	if (globalBackgroundImage) {
-		// Pixel-based sizing based on intrinsic dimensions
 		applyScaledPixelSize(globalBackgroundImage);
+		const blur = settings.performanceMode ? Math.min(settings.backgroundBlur, 20) : settings.backgroundBlur;
+		const contrast = settings.performanceMode ? Math.min(settings.backgroundContrast, 150) : settings.backgroundContrast;
 		const radius = `${settings.backgroundRadius}%`;
-		// Performance mode optimizations
-		if (settings.performanceMode) {
-			// Performance mode with spinning enabled
-			globalBackgroundImage.style.filter = `blur(${Math.min(settings.backgroundBlur, 20)}px) brightness(${settings.backgroundBrightness / 100}) contrast(${Math.min(settings.backgroundContrast, 150)}%)`;
-			if (globalBackgroundImage.style.borderRadius !== radius)
-				globalBackgroundImage.style.borderRadius = radius;
-			// Do not apply radius to vignette overlay; matches Now Playing behavior
-			if (settings.spinningArt) {
-				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
-				globalBackgroundImage.style.willChange = "transform";
-			} else {
-				globalBackgroundImage.style.animation = "none";
-				globalBackgroundImage.style.willChange = "auto";
-			}
-			globalBackgroundImage.classList.remove("performance-mode-static");
+		globalBackgroundImage.style.filter = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
+		if (globalBackgroundImage.style.borderRadius !== radius)
+			globalBackgroundImage.style.borderRadius = radius;
+		if (settings.spinningArt) {
+			globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
+			globalBackgroundImage.style.willChange = "transform";
 		} else {
-			// Normal mode
-			globalBackgroundImage.style.filter = `blur(${settings.backgroundBlur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${settings.backgroundContrast}%)`;
-			if (globalBackgroundImage.style.borderRadius !== radius)
-				globalBackgroundImage.style.borderRadius = radius;
-			// Do not apply radius to vignette overlay; matches Now Playing behavior
-			if (settings.spinningArt) {
-				globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
-				globalBackgroundImage.style.willChange = "transform";
-			} else {
-				globalBackgroundImage.style.animation = "none";
-				globalBackgroundImage.style.willChange = "auto";
-			}
-			globalBackgroundImage.classList.remove("performance-mode-static");
+			globalBackgroundImage.style.animation = "none";
+			globalBackgroundImage.style.willChange = "auto";
 		}
 	}
 };
@@ -869,30 +813,17 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 		const radius = `${settings.backgroundRadius}%`;
 		if (imgElement.style.borderRadius !== radius) imgElement.style.borderRadius = radius;
 
-		// Performance mode optimizations
 		if (settings.performanceMode) {
-			// Reduce blur and effects for better performance, but keep spinning
 			blur = Math.min(blur, 20);
 			contrast = Math.min(contrast, 150);
-			if (settings.spinningArt) {
-				imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
-				imgElement.style.willChange = "transform";
-			} else {
-				imgElement.style.animation = "none";
-				imgElement.style.willChange = "auto";
-			}
-			imgElement.classList.remove("performance-mode-static");
-		} else {
-			if (settings.spinningArt) {
-				imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
-				imgElement.style.willChange = "transform";
-			} else {
-				imgElement.style.animation = "none";
-				imgElement.style.willChange = "auto";
-			}
-			imgElement.classList.remove("performance-mode-static");
 		}
-
+		if (settings.spinningArt) {
+			imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
+			imgElement.style.willChange = "transform";
+		} else {
+			imgElement.style.animation = "none";
+			imgElement.style.willChange = "auto";
+		}
 		imgElement.style.filter = `blur(${blur}px) brightness(${brightness / 100}) contrast(${contrast}%)`;
 	});
 };
@@ -905,7 +836,7 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 	updateRadiantLyricsNowPlayingBackground;
 (window as any).updateRadiantLyricsTextGlow = updateRadiantLyricsTextGlow;
 (window as any).updateRadiantLyricsPlayerBarTint = updateRadiantLyricsPlayerBarTint;
-(window as any).updateQualityProgressColor = updateQualityProgressColor;
+(window as any).updateQualityProgressColor = applyQualityProgressColor;
 
 const cleanUpDynamicArt = function (): void {
 	// Clean up cached Now Playing elements
@@ -921,7 +852,6 @@ const cleanUpDynamicArt = function (): void {
 	nowPlayingBackgroundImage = null;
 	nowPlayingBlackBg = null;
 	nowPlayingGradientOverlay = null;
-	currentNowPlayingCoverSrc = null;
 
 	// Clean up any remaining elements (fallback)
 	const nowPlayingBackgroundImages = document.getElementsByClassName(
@@ -1033,7 +963,7 @@ const applyStickyIcon = (): void => {
 	const trigger = document.querySelector(".sticky-lyrics-trigger") as HTMLElement;
 	if (!trigger) return;
 	trigger.innerHTML = getStickyIcon();
-	trigger.style.paddingLeft = settings.stickyLyricsIcon === "sparkle" ? "5px" : "5px";
+	trigger.style.paddingLeft = "5px";
 };
 
 // Console: StickyLyrics.icon = "sparkle" or "chevron"
@@ -1052,9 +982,20 @@ const applyStickyIcon = (): void => {
 	},
 };
 
-// Called from Settings — sync the dropdown toggle with the setting
+// Console: Syllables.log = true/false
+// Verbose logging for word/syllable lyrics (hidden setting)
+const sylLog = (...args: unknown[]) => { if (settings.syllableLogging) console.log(...args); };
+const sylTrace = (...args: unknown[]) => { if (settings.syllableLogging) trace.log(...args); };
+(window as any).Syllables = {
+	get log() { return settings.syllableLogging; },
+	set log(value: boolean) {
+		settings.syllableLogging = value;
+		console.log(`[Radiant Lyrics] Syllable logging ${value ? "enabled" : "disabled"}`);
+	},
+};
+
+// Called from Settings (mirrors dropdown checkbox)
 const updateStickyLyricsFeature = (): void => {
-	settings.stickyLyrics = settings.stickyLyricsFeature;
 	const checkbox = document.querySelector('input[data-setting="stickyLyrics"]') as HTMLInputElement;
 	if (checkbox) checkbox.checked = settings.stickyLyrics;
 };
@@ -1076,7 +1017,6 @@ const createStickyLyricsDropdown = (): void => {
 	// Set the icon & it's styling
 	// is only needed because i'm picky and prefer the Sparkle.. shhh
 	trigger.innerHTML = getStickyIcon();
-	//trigger.style.paddingLeft = settings.stickyLyricsIcon === "sparkle" ? "5px" : "5px";
 
 	// Block non-click events on trigger from reaching the Lyrics tab (capture phase)
 	// (capture phase stops the tab from activating & runs the toggle before the event is consumed by the SVG child) - Thx React.. again..
@@ -1147,6 +1087,7 @@ const createStickyLyricsDropdown = (): void => {
 	) as HTMLInputElement;
 	stickyCheckbox.addEventListener("change", () => {
 		settings.stickyLyrics = stickyCheckbox.checked;
+		(window as any).updateStickyLyricsSetting?.(stickyCheckbox.checked);
 		if (settings.stickyLyrics) {
 			handleStickyLyricsTrackChange();
 		}
@@ -1165,7 +1106,8 @@ const createStickyLyricsDropdown = (): void => {
 			settings.lyricsStyle = style;
 			for (const b of segButtons) b.classList.remove("rl-seg-active");
 			btn.classList.add("rl-seg-active");
-			console.log(`[RL-Syllable] Lyrics style changed to "${styleNames[style]}"`);
+			(window as any).updateLyricsStyleSetting?.(style);
+			sylLog(`[RL-Syllable] Lyrics style changed to "${styleNames[style]}"`);
 			toggle();
 		});
 	}
@@ -1321,7 +1263,6 @@ interface LineEntry {
 }
 
 let lines: LineEntry[] = [];
-let allWords: WordEntry[] = [];
 let rerenderObserver: MutationObserver | null = null;
 let rerenderDebounce: number | null = null;
 let activeWordEl: HTMLSpanElement | null = null;
@@ -1397,7 +1338,7 @@ const fetchWordLyrics = async (
 
 	for (const url of urls) {
 		try {
-			trace.log(`Fetching word lyrics: ${url}`);
+			sylTrace(`Fetching word lyrics: ${url}`);
 			const res = await fetch(url);
 			if (!res.ok) {
 				trace.log(`Word lyrics fetch failed: ${res.status} from ${url}`);
@@ -1435,7 +1376,7 @@ const hideTidalLyrics = (): boolean => {
 	// Save classes on first call (for teardown)
 	if (!savedTidalClasses) {
 		savedTidalClasses = tidalClasses;
-		trace.log(`Saved Tidal classes: ${savedTidalClasses.join(", ")}`);
+		sylTrace(`Saved Tidal classes: ${savedTidalClasses.join(", ")}`);
 	}
 
 	for (const c of tidalClasses) lyricsContainer.classList.remove(c);
@@ -1455,7 +1396,7 @@ const restoreTidalLyrics = (): void => {
 					lyricsContainer.classList.add(c);
 				}
 			}
-			trace.log(`Restored Tidal classes: ${savedTidalClasses.join(", ")}`);
+			sylTrace(`Restored Tidal classes: ${savedTidalClasses.join(", ")}`);
 		}
 
 		lyricsContainer.classList.remove("rl-wbw-active");
@@ -1478,20 +1419,18 @@ const restoreTidalLyrics = (): void => {
 
 // build word/syllable container over tidal spans
 const buildWordSpans = (): {
-	words: WordEntry[];
 	lines: LineEntry[];
 } => {
-	const words: WordEntry[] = [];
 	const lines: LineEntry[] = [];
-	if (!lyricsData) return { words, lines };
+	if (!lyricsData) return { lines };
 
 	const lyricsContainer = document.querySelector(
 		'[data-test="lyrics-lines"]',
 	) as HTMLElement;
-	if (!lyricsContainer) return { words, lines };
+	if (!lyricsContainer) return { lines };
 
 	const innerDiv = lyricsContainer.querySelector(":scope > div") as HTMLElement;
-	if (!innerDiv) return { words, lines };
+	if (!innerDiv) return { lines };
 
 	// remove existing container
 	innerDiv.querySelector(".rl-wbw-container")?.remove();
@@ -1608,14 +1547,22 @@ const buildWordSpans = (): {
 
 		for (const group of wordGroups) {
 			if (isSylMode) {
-				// Syllable mode: separate span per syllable, no space within same word
+				// Syllable mode: separate span per syllable, seek/hover grouped by word
+				const wordStartMs = syllabus[group[0]].time;
+				const groupSpans: HTMLSpanElement[] = [];
 				for (const si of group) {
 					const syl = syllabus[si];
-					const span = makeSpan(syl.text.trimEnd(), syl.time, syl.isBackground);
+					const span = makeSpan(syl.text.trimEnd(), wordStartMs, syl.isBackground);
+					span.addEventListener("mouseenter", () => {
+						for (const s of groupSpans) s.classList.add("rl-wbw-word-hover");
+					});
+					span.addEventListener("mouseleave", () => {
+						for (const s of groupSpans) s.classList.remove("rl-wbw-word-hover");
+					});
+					groupSpans.push(span);
 					lineDiv.appendChild(span);
 					const entry: WordEntry = { el: span, start: syl.time, end: syl.time + syl.duration, duration: syl.duration };
 					lineWords.push(entry);
-					words.push(entry);
 				}
 			} else {
 				// Word mode: merge syllables into one span
@@ -1629,7 +1576,6 @@ const buildWordSpans = (): {
 				lineDiv.appendChild(span);
 				const entry: WordEntry = { el: span, start, end, duration: end - start };
 				lineWords.push(entry);
-				words.push(entry);
 			}
 			// Space between words (not between syllables of the same word)
 			lineDiv.appendChild(document.createTextNode(" "));
@@ -1671,17 +1617,17 @@ const buildWordSpans = (): {
 	for (let i = 0; i < lines.length && i < tidalSpans.length; i++) {
 		lines[i].tidalSpan = tidalSpans[i];
 	}
-	trace.log(
-		`Matched ${Math.min(lines.length, tidalSpans.length)} word-by-word lines to Tidal spans (${lines.length} lines, ${tidalSpans.length} spans)`,
+	sylTrace(
+		`Matched ${Math.min(lines.length, tidalSpans.length)} word/syllable lines to Tidal spans (${lines.length} lines, ${tidalSpans.length} spans)`,
 	);
 
 	// append lyrics container (yea ik i was gonan edit tidals but uhh shhhh)
 	innerDiv.appendChild(wbwContainer);
 
-	trace.log(
-		`Word-by-word DOM: ${words.length} word spans across ${lines.length} lines`,
+	sylTrace(
+		`Word-by-word DOM: ${lines.reduce((n, l) => n + l.words.length, 0)} word spans across ${lines.length} lines`,
 	);
-	return { words, lines };
+	return { lines };
 };
 
 // watch for re-renders
@@ -1705,12 +1651,11 @@ const watchForRerender = (): void => {
 			// check if our container has been nuked by a react re-render (thx react again again..)
 			const existing = lyricsContainer.querySelector(".rl-wbw-container");
 			if (!existing) {
-				trace.log(
+				sylTrace(
 					"Word-by-word: re-applying after Tidal re-render",
 				);
 				hideTidalLyrics();
 				const result = buildWordSpans();
-				allWords = result.words;
 				lines = result.lines;
 			}
 		}, 100);
@@ -1751,7 +1696,6 @@ const teardown = (): void => {
 	scrollSynced = true;
 	isActive = false;
 	lyricsData = null;
-	allWords = [];
 	lines = [];
 	activeWordEl = null;
 	activeLineIdx = -1;
@@ -1858,7 +1802,7 @@ const resync = (): void => {
 	const tidalSyncBtn = document.querySelector('div[class*="_syncButton"] button') as HTMLElement;
 	if (tidalSyncBtn) tidalSyncBtn.click();
 	unhookSyncButton();
-	console.log("[RL-Syllable] Scroll resynced");
+	sylLog("[RL-Syllable] Scroll resynced");
 };
 
 // Hook user scroll
@@ -1867,7 +1811,7 @@ const hookUserScroll = (parent: HTMLElement): void => {
 	const onUserScroll = () => {
 		if (!scrollSynced) return;
 		scrollSynced = false;
-		console.log("[RL-Syllable] User scrolled — auto-scroll unhooked");
+		sylLog("[RL-Syllable] User scrolled — auto-scroll unhooked");
 	};
 	parent.addEventListener("wheel", onUserScroll, { passive: true });
 	parent.addEventListener("touchmove", onUserScroll, { passive: true });
@@ -1907,10 +1851,10 @@ const unhookSyncButton = (): void => {
 const startTickLoop = (): void => {
 	clearTickLoop();
 
-	console.log("[RL-Syllable] Tick loop started");
+	sylLog("[RL-Syllable] Tick loop started");
 
 	let lastLogTime = 0;
-	let lastTickMs = -1;
+	let lastTickMs = 0;
 
 	tickLoopUnload = safeInterval(unloads, () => {
 		if (!isActive || lines.length === 0) return;
@@ -1935,7 +1879,7 @@ const startTickLoop = (): void => {
 
 		if (nowMs - lastLogTime >= 1000) {
 			lastLogTime = nowMs;
-			console.log(`[RL-Syllable] Playback | ${nowMs.toFixed(0)} ms`);
+			sylLog(`[RL-Syllable] Playback | ${nowMs.toFixed(0)} ms`);
 		}
 
 		// find active line (-1 if before all lyrics or in instrumental)
@@ -1969,7 +1913,7 @@ const startTickLoop = (): void => {
 				lines[activeLineIdx].el.removeAttribute("data-current");
 			}
 			activeLineIdx = -1;
-			console.log(`[RL-Syllable] Scrub detected (${timeDelta > 0 ? "+" : ""}${timeDelta.toFixed(0)} ms) → resync`);
+			sylLog(`[RL-Syllable] Scrub detected (${timeDelta > 0 ? "+" : ""}${timeDelta.toFixed(0)} ms) → resync`);
 		}
 
 		// Deactivate line when entering instrumental
@@ -2004,7 +1948,7 @@ const startTickLoop = (): void => {
 				scrollTo(scrollParent, { top: Math.max(0, scrollTarget), behavior: "smooth" });
 			}
 
-			console.log(
+			sylLog(
 				`[RL-Syllable] Line ${activeLineIdx} Active "${newLine.el.textContent?.slice(0, 40)}" | ${newLine.startMs} ms - ${newLine.endMs} ms   [${nowMs.toFixed(0)} ms]`,
 			);
 		}
@@ -2053,8 +1997,8 @@ const startTickLoop = (): void => {
 					word.el.style.animation = `rl-wipe ${word.duration}ms linear forwards`;
 				}
 				activeWordEl = word.el;
-				console.log(
-					`[RL-Syllable] Word "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
+				sylLog(
+					`[RL-Syllable] Word/Syllable "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
 				);
 			}
 		} else {
@@ -2085,7 +2029,7 @@ const onTrackChange = async (): Promise<void> => {
 		return;
 	}
 
-	trace.log(
+	sylTrace(
 		`Word lyrics: looking up "${trackInfo.title}" by "${trackInfo.artist}"`,
 	);
 
@@ -2095,14 +2039,14 @@ const onTrackChange = async (): Promise<void> => {
 	);
 	if (token !== trackChangeToken) return;
 	if (!response) {
-		trace.log("Word lyrics: no word-level lyrics for this track");
+		trace.log("Word lyrics: no word/syllable lyrics for this track");
 		return;
 	}
 
-	trace.log(
+	sylTrace(
 		`Word lyrics: loaded ${response.data.length} lines (source: ${response.metadata.source})`,
 	);
-	console.log(
+	sylLog(
 		`[RL-Syllable] Loaded "${trackInfo.title}" by "${trackInfo.artist}" — ${response.data.length} lines`,
 	);
 
@@ -2115,7 +2059,6 @@ const onTrackChange = async (): Promise<void> => {
 
 	// Build word spans and line entries
 	const result = buildWordSpans();
-	allWords = result.words;
 	lines = result.lines;
 
 	// Watch React re-renders
@@ -2140,11 +2083,10 @@ const reapplyWordLyrics = (): void => {
 	isActive = true;
 	hideTidalLyrics();
 	const result = buildWordSpans();
-	allWords = result.words;
 	lines = result.lines;
 	watchForRerender();
 	startTickLoop();
-	console.log("[RL-Syllable] Reapplied word lyrics (cached)");
+	sylLog("[RL-Syllable] Reapplied word/syllable lyrics (cached)");
 };
 
 // Called by Settings or dropdown
@@ -2154,7 +2096,16 @@ const toggle = (): void => {
 		onTrackChange();
 	}
 };
-(window as any).updateLyricsStyle = toggle;
+const updateLyricsStyleFromSettings = (): void => {
+	const segButtons = document.querySelectorAll(".rl-seg-btn");
+	for (const btn of segButtons) {
+		const raw = (btn as HTMLElement).dataset.style;
+		if (raw === undefined) continue;
+		btn.classList.toggle("rl-seg-active", Number(raw) === settings.lyricsStyle);
+	}
+	toggle();
+};
+(window as any).updateLyricsStyle = updateLyricsStyleFromSettings;
 
 // Update lyrics on track change
 onGlobalTrackChange(() => {
@@ -2240,5 +2191,4 @@ setupHeaderObserver();
 setupNowPlayingObserver();
 setupTrackTitleObserver();
 setupStickyLyricsObserver();
-setupQualityProgressObserver();
 setupTrackChangeListener();

@@ -139,8 +139,9 @@
 		color 0.15s ease-out;
 }
 
-/* Hover word */
-.rl-wbw-word:hover {
+/* Hover word (Grouped Syllables) */
+.rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word:hover,
+.rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word.rl-wbw-word-hover {
 	text-shadow:
 		0 0 var(--rl-glow-inner, 2px) lightgray,
 		/* biome-ignore lint: Hover glow should override defaults */
