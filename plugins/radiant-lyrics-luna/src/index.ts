@@ -537,11 +537,10 @@ function updateCoverArtBackground(method: number = 0): void {
                     height: 100%;
                     background: #000;
                     z-index: -2;
-                    pointer-events: none;
                 `;
 				nowPlayingBackgroundContainer.appendChild(nowPlayingBlackBg);
 
-				// Create background image
+				// Create image element
 				nowPlayingBackgroundImage = document.createElement("img");
 				nowPlayingBackgroundImage.className = "now-playing-background-image";
 				nowPlayingBackgroundImage.style.cssText = `
@@ -551,6 +550,7 @@ function updateCoverArtBackground(method: number = 0): void {
                     transform: translate(-50%, -50%);
                     object-fit: cover;
                     z-index: -1;
+                    will-change: transform;
                     transform-origin: center center;
                 `;
 				nowPlayingBackgroundContainer.appendChild(nowPlayingBackgroundImage);
@@ -1327,7 +1327,7 @@ const getPlaybackMs = (): number => {
 };
 
 // get title + artist from media item (Used everywhere now <3)
-const getTrackInfo = async (): Promise<{ title: string; artist: string } | null> => {
+const getTrackInfo = async (): Promise<{ title: string; artist: string; isrc?: string } | null> => {
 	const mi = await MediaItem.fromPlaybackContext();
 	if (!mi?.tidalItem) return null;
 
@@ -1335,9 +1335,10 @@ const getTrackInfo = async (): Promise<{ title: string; artist: string } | null>
 	const version = mi.tidalItem.version; // REMIX Detection
 	const title = version ? `${baseTitle} (${version})` : baseTitle;
 	const artist = mi.tidalItem.artist?.name ?? mi.tidalItem.artists?.[0]?.name ?? ""; // REMIX Detection
+	const isrc = mi.tidalItem.isrc ?? undefined;
 
 	if (!baseTitle || !artist) return null;
-	return { title, artist };
+	return { title, artist, isrc };
 };
 
 // fetch syllables from the API (wiped on track change)
@@ -1346,42 +1347,71 @@ let cachedLyricsData: WordLyricsResponse | null = null;
 const fetchWordLyrics = async (
 	title: string,
 	artist: string,
+	isrc?: string,
 ): Promise<WordLyricsResponse | null> => {
-	const cacheKey = `${title}\0${artist}`;
+	const cacheKey = `${title}\0${artist}\0${isrc ?? ""}`;
 	if (cachedLyricsKey === cacheKey) {
 		sylLog(`[RL-Syllable] Cache hit for "${title}" by "${artist}"`);
 		return cachedLyricsData;
 	}
 
-	const params = `lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
-	const urls = [
+	let params = `lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
+	if (isrc) params += `&isrc=${encodeURIComponent(isrc)}`;
+
+	const primaryUrls = [
 		`https://rl-api.atomix.one/${params}`,
 		`https://lyricsplus-api.atomix.one/${params}`,
-		`https://rl-api.kineticsand.net/${params}`,
 	];
+	const fallbackUrl = `https://rl-api.kineticsand.net/${params}`;
 
-	for (const url of urls) {
+	// "ok" = got a response (data may still be null if type != Word)
+	// "500" = serverless timeout, skip remaining primaries and go to fallback
+	// "err" = network/other error, try next host
+	type FetchOutcome =
+		| { status: "ok"; data: WordLyricsResponse | null }
+		| { status: "500" }
+		| { status: "err" };
+
+	const tryFetch = async (url: string): Promise<FetchOutcome> => {
 		try {
 			sylTrace(`RL API: Fetching word/syllable lyrics: ${url}`);
 			const res = await fetch(url);
 			if (!res.ok) {
 				trace.log(`RL API: fetch failed: ${res.status} from ${url}`);
-				continue;
+				return res.status === 500 ? { status: "500" } : { status: "err" };
 			}
 			const data: WordLyricsResponse = await res.json();
 			if (data.type !== "Word" || !data.data) {
 				trace.log(`Word/Syllable lyrics not available (type: ${data.type})`);
-				cachedLyricsKey = cacheKey;
-				cachedLyricsData = null;
-				return null;
+				return { status: "ok", data: null };
 			}
-			cachedLyricsKey = cacheKey;
-			cachedLyricsData = data;
-			return data;
+			return { status: "ok", data };
 		} catch (err) {
 			trace.log(`RL API: fetch error from ${url}: ${err}`);
+			return { status: "err" };
 		}
+	};
+
+	const finish = (data: WordLyricsResponse | null): WordLyricsResponse | null => {
+		cachedLyricsKey = cacheKey;
+		cachedLyricsData = data;
+		return data;
+	};
+
+	// Try primary hosts; bail to fallback immediately on 500
+	for (const url of primaryUrls) {
+		const outcome = await tryFetch(url);
+		if (outcome.status === "ok") return finish(outcome.data);
+		if (outcome.status === "500") {
+			trace.log("RL API: 500 from primary host — skipping to fallback");
+			break;
+		}
+		// "err" → try next primary
 	}
+
+	// Fallback: kineticsand (no serverless timeout)
+	const fallback = await tryFetch(fallbackUrl);
+	if (fallback.status === "ok") return finish(fallback.data);
 
 	trace.log("RL API: All Endpoints Failed");
 	cachedLyricsKey = cacheKey;
@@ -2066,12 +2096,13 @@ const onTrackChange = async (): Promise<void> => {
 	}
 
 	sylTrace(
-		`RL API: looking up "${trackInfo.title}" by "${trackInfo.artist}"`,
+		`RL API: looking up "${trackInfo.title}" by "${trackInfo.artist}"${trackInfo.isrc ? ` (ISRC: ${trackInfo.isrc})` : ""}`,
 	);
 
 	const response = await fetchWordLyrics(
 		trackInfo.title,
 		trackInfo.artist,
+		trackInfo.isrc,
 	);
 	if (token !== trackChangeToken) return;
 	if (!response) {
