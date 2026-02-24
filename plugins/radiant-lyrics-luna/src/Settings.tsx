@@ -224,34 +224,30 @@ export const Settings = () => {
 					}
 				}}
 			/>
-			{lyricsStyle >= 1 && (
-				<>
-					<AnySwitch
-						title="Context Aware Lyrics"
-						desc="Enables background vocal display & duet singer positioning"
-						checked={contextAwareLyrics}
-						onChange={(_: unknown, checked: boolean) => {
-							settings.contextAwareLyrics = checked;
-							setContextAwareLyrics(checked);
-							if (window.updateLyricsStyle) {
-								window.updateLyricsStyle();
-							}
-						}}
-					/>
-					<AnySwitch
-						title="Bubbled Lyrics"
-						desc="Smooth bounce animation on line/word transitions"
-						checked={bubbledLyrics}
-						onChange={(_: unknown, checked: boolean) => {
-							settings.bubbledLyrics = checked;
-							setBubbledLyrics(checked);
-							if (window.updateLyricsStyle) {
-								window.updateLyricsStyle();
-							}
-						}}
-					/>
-				</>
-			)}
+			<AnySwitch
+				title="Context Aware Lyrics"
+				desc="Enables background vocal display & duet singer positioning"
+				checked={contextAwareLyrics}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.contextAwareLyrics = checked;
+					setContextAwareLyrics(checked);
+					if (window.updateLyricsStyle) {
+						window.updateLyricsStyle();
+					}
+				}}
+			/>
+			<AnySwitch
+				title="Bubbled Lyrics"
+				desc="Smooth bounce animation on line/word transitions"
+				checked={bubbledLyrics}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.bubbledLyrics = checked;
+					setBubbledLyrics(checked);
+					if (window.updateLyricsStyle) {
+						window.updateLyricsStyle();
+					}
+				}}
+			/>
 			<AnySwitch
 				title="Sticky Lyrics"
 				desc="auto-switches to Play Queue when lyrics aren't available (mirrored in lyrics dropdown)"
