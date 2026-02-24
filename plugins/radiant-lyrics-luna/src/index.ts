@@ -1204,7 +1204,7 @@ function setupStickyLyricsObserver(): void {
 	observe<HTMLElement>(unloads, '[data-test="lyrics-lines"]', () => {
 		if (lyricsData) {
 			reapplyWordLyrics();
-		} else if (settings.lyricsStyle !== 0) {
+		} else {
 			onTrackChange();
 		}
 	});
@@ -1823,41 +1823,64 @@ const buildWordSpans = (): {
 			}
 		}
 
-		for (const group of wordGroups) {
-			const groupIsBg = splitBg && syllabus[group[0]].isBackground;
-			const targetContainer = groupIsBg ? bgContainer! : mainContainer;
-			const targetWords = groupIsBg ? lineBgWords : lineWords;
+		if (settings.lyricsStyle === 0) {
+			// Line mode: one span per container (main / bg) — no word splitting
+			const mainSyls = syllabus.filter(s => !splitBg || !s.isBackground);
+			const bgSyls = splitBg ? syllabus.filter(s => s.isBackground) : [];
 
-			if (isSylMode) {
-				const wordStartMs = syllabus[group[0]].time;
-				const groupSpans: HTMLSpanElement[] = [];
-				for (const si of group) {
-					const syl = syllabus[si];
-					const span = makeSpan(syl.text.trimEnd(), wordStartMs, syl.isBackground);
-					span.addEventListener("mouseenter", () => {
-						for (const s of groupSpans) s.classList.add("rl-wbw-word-hover");
-					});
-					span.addEventListener("mouseleave", () => {
-						for (const s of groupSpans) s.classList.remove("rl-wbw-word-hover");
-					});
-					groupSpans.push(span);
+			if (mainSyls.length > 0) {
+				const text = mainSyls.map(s => s.text).join("").trim();
+				const first = mainSyls[0];
+				const last = mainSyls[mainSyls.length - 1];
+				const span = makeSpan(text, first.time, false);
+				mainContainer.appendChild(span);
+				lineWords.push({ el: span, start: first.time, end: last.time + last.duration, duration: (last.time + last.duration) - first.time });
+			}
+			if (bgSyls.length > 0 && bgContainer) {
+				const text = bgSyls.map(s => s.text).join("").trim().replace(/[()]/g, "");
+				const first = bgSyls[0];
+				const last = bgSyls[bgSyls.length - 1];
+				const span = makeSpan(text, first.time, true);
+				bgContainer.appendChild(span);
+				lineBgWords.push({ el: span, start: first.time, end: last.time + last.duration, duration: (last.time + last.duration) - first.time });
+			}
+		} else {
+			for (const group of wordGroups) {
+				const groupIsBg = splitBg && syllabus[group[0]].isBackground;
+				const targetContainer = groupIsBg ? bgContainer! : mainContainer;
+				const targetWords = groupIsBg ? lineBgWords : lineWords;
+
+				if (isSylMode) {
+					const wordStartMs = syllabus[group[0]].time;
+					const groupSpans: HTMLSpanElement[] = [];
+					for (const si of group) {
+						const syl = syllabus[si];
+						const span = makeSpan(syl.text.trimEnd(), wordStartMs, syl.isBackground);
+						span.addEventListener("mouseenter", () => {
+							for (const s of groupSpans) s.classList.add("rl-wbw-word-hover");
+						});
+						span.addEventListener("mouseleave", () => {
+							for (const s of groupSpans) s.classList.remove("rl-wbw-word-hover");
+						});
+						groupSpans.push(span);
+						targetContainer.appendChild(span);
+						const entry: WordEntry = { el: span, start: syl.time, end: syl.time + syl.duration, duration: syl.duration };
+						targetWords.push(entry);
+					}
+				} else {
+					const mergedText = group.map(si => syllabus[si].text.trimEnd()).join("");
+					const first = syllabus[group[0]];
+					const last = syllabus[group[group.length - 1]];
+					const start = first.time;
+					const end = last.time + last.duration;
+					const bg = first.isBackground;
+					const span = makeSpan(mergedText, start, bg);
 					targetContainer.appendChild(span);
-					const entry: WordEntry = { el: span, start: syl.time, end: syl.time + syl.duration, duration: syl.duration };
+					const entry: WordEntry = { el: span, start, end, duration: end - start };
 					targetWords.push(entry);
 				}
-			} else {
-				const mergedText = group.map(si => syllabus[si].text.trimEnd()).join("");
-				const first = syllabus[group[0]];
-				const last = syllabus[group[group.length - 1]];
-				const start = first.time;
-				const end = last.time + last.duration;
-				const bg = first.isBackground;
-				const span = makeSpan(mergedText, start, bg);
-				targetContainer.appendChild(span);
-				const entry: WordEntry = { el: span, start, end, duration: end - start };
-				targetWords.push(entry);
+				targetContainer.appendChild(document.createTextNode(" "));
 			}
-			targetContainer.appendChild(document.createTextNode(" "));
 		}
 
 		wbwContainer.appendChild(lineDiv);
@@ -2440,8 +2463,6 @@ const startTickLoop = (): void => {
 const onTrackChange = async (): Promise<void> => {
 	teardown();
 
-	if (settings.lyricsStyle === 0) return;
-
 	const token = ++trackChangeToken;
 
 	const trackInfo = await getTrackInfo();
@@ -2494,7 +2515,7 @@ const onTrackChange = async (): Promise<void> => {
 
 // Reapply word lyrics (for tab switch back)
 const reapplyWordLyrics = (): void => {
-	if (settings.lyricsStyle === 0 || !lyricsData) return;
+	if (!lyricsData) return;
 
 	clearTickLoop();
 	clearScrollAnim();
@@ -2519,9 +2540,7 @@ const reapplyWordLyrics = (): void => {
 // Called by Settings or dropdown
 const toggle = (): void => {
 	teardown();
-	if (settings.lyricsStyle !== 0) {
-		onTrackChange();
-	}
+	onTrackChange();
 };
 const updateLyricsStyleFromSettings = (): void => {
 	const segButtons = document.querySelectorAll(".rl-seg-btn");
@@ -2538,7 +2557,7 @@ const updateLyricsStyleFromSettings = (): void => {
 onGlobalTrackChange(() => {
 	cachedLyricsKey = null;
 	cachedLyricsData = null;
-	if (settings.lyricsStyle !== 0) onTrackChange();
+	onTrackChange();
 });
 unloads.add(() => teardown());
 
