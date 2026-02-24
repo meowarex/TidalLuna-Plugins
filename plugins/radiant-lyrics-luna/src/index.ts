@@ -1298,13 +1298,13 @@ let syncButtonEl: HTMLElement | null = null;
 // scroll bounce animation state
 let scrollAnimIsAnimating = false;
 let scrollAnimPending: { parent: HTMLElement; refIdx: number; target: number } | null = null;
-let scrollUnlockTimeout: ReturnType<typeof setTimeout> | null = null;
-let scrollCleanupTimeout: ReturnType<typeof setTimeout> | null = null;
+let scrollUnlockTimeout: LunaUnload | null = null;
+let scrollCleanupTimeout: LunaUnload | null = null;
 let animatingEls: HTMLElement[] = [];
 
 const clearScrollAnim = (): void => {
-	if (scrollUnlockTimeout) { clearTimeout(scrollUnlockTimeout); scrollUnlockTimeout = null; }
-	if (scrollCleanupTimeout) { clearTimeout(scrollCleanupTimeout); scrollCleanupTimeout = null; }
+	if (scrollUnlockTimeout) { scrollUnlockTimeout(); scrollUnlockTimeout = null; }
+	if (scrollCleanupTimeout) { scrollCleanupTimeout(); scrollCleanupTimeout = null; }
 	for (const el of animatingEls) {
 		el.classList.remove("rl-scroll-animate");
 		el.style.removeProperty("--rl-scroll-delta");
@@ -1323,8 +1323,8 @@ const applyScrollBounce = (scrollParent: HTMLElement, referenceIdx: number, scro
 	}
 
 	// clear previous animation timeouts
-	if (scrollUnlockTimeout) { clearTimeout(scrollUnlockTimeout); scrollUnlockTimeout = null; }
-	if (scrollCleanupTimeout) { clearTimeout(scrollCleanupTimeout); scrollCleanupTimeout = null; }
+	if (scrollUnlockTimeout) { scrollUnlockTimeout(); scrollUnlockTimeout = null; }
+	if (scrollCleanupTimeout) { scrollCleanupTimeout(); scrollCleanupTimeout = null; }
 
 	// clean up previous animation classes
 	for (const el of animatingEls) {
@@ -1386,7 +1386,7 @@ const applyScrollBounce = (scrollParent: HTMLElement, referenceIdx: number, scro
 
 	// unlock animation state after base duration, process pending if queued
 	const BASE_DURATION = 400;
-	scrollUnlockTimeout = setTimeout(() => {
+	scrollUnlockTimeout = safeTimeout(unloads, () => {
 		scrollAnimIsAnimating = false;
 		if (scrollAnimPending) {
 			const pending = scrollAnimPending;
@@ -1396,7 +1396,7 @@ const applyScrollBounce = (scrollParent: HTMLElement, referenceIdx: number, scro
 	}, BASE_DURATION);
 
 	// clean up animation classes after all staggered animations complete
-	scrollCleanupTimeout = setTimeout(() => {
+	scrollCleanupTimeout = safeTimeout(unloads, () => {
 		for (const el of animatingEls) {
 			el.classList.remove("rl-scroll-animate");
 			el.style.removeProperty("--rl-scroll-delta");

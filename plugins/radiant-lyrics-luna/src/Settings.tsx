@@ -201,7 +201,7 @@ export const Settings = () => {
 				title="Lyrics Style"
 				desc="0 = Line (default), 1 = Word, 2 = Syllable (mirrored in lyrics dropdown)"
 				min={0}
-				max={1}
+				max={2}
 				step={1}
 				value={lyricsStyle}
 				onNumber={(value: number) => {
