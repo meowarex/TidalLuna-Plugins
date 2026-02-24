@@ -119,13 +119,93 @@
 
 /* Active line slide */
 .rl-wbw-line {
+	text-align: left;
 	padding-left: 0;
+	padding-right: 0;
+	filter: none;
+	transform: translateZ(0);
+	transform-origin: left;
 	transition:
-		padding-left 0.7s ease-in-out;
+		filter 0.4s ease,
+		padding-left 0.7s ease-in-out,
+		padding-right 0.7s ease-in-out;
+	overflow: visible;
 }
 
-.rl-wbw-line.rl-wbw-line-active {
+.rl-wbw-line.rl-wbw-spacer {
+	filter: none;
+}
+
+/* Blur Inactive (opt-in via .rl-blur-active on container) */
+.rl-blur-active .rl-wbw-line {
+	filter: blur(0.07em);
+}
+
+.rl-blur-active .rl-wbw-line.rl-pos-1 {
+	filter: blur(0.035em);
+}
+
+.rl-blur-active .rl-wbw-line.rl-pos-2 {
+	filter: blur(0.05em);
+}
+
+.rl-blur-active .rl-wbw-line.rl-pos-3 {
+	filter: blur(0.06em);
+}
+
+/* Active line overrides (MUST come after blur rules to win on equal specificity) */
+.rl-wbw-line.rl-wbw-line-active,
+.rl-blur-active .rl-wbw-line.rl-wbw-line-active {
 	padding-left: 20px;
+	filter: none;
+}
+
+/* Keep last-active line unblurred during instrumental gaps */
+.rl-blur-active .rl-wbw-line.rl-gap-hold {
+	filter: none;
+}
+
+/* Bubbled Lyrics scale (opt-in via .rl-bubbled on container) */
+.rl-bubbled .rl-wbw-line {
+	scale: 0.93 0.93 0.95;
+	transition:
+		scale 0.7s ease,
+		filter 0.4s ease,
+		padding-left 0.7s ease-in-out,
+		padding-right 0.7s ease-in-out;
+	will-change: scale, translate, filter;
+}
+
+.rl-bubbled .rl-wbw-line.rl-wbw-spacer {
+	scale: none;
+}
+
+.rl-bubbled .rl-wbw-line.rl-wbw-line-active {
+	scale: 1;
+	transition:
+		scale 0.5s ease,
+		filter 0.4s ease,
+		padding-left 0.7s ease-in-out,
+		padding-right 0.7s ease-in-out;
+}
+
+/* Staggered scroll bounce animation (part of Bubbled Lyrics) */
+@keyframes rl-scroll-bounce {
+	from {
+		translate: 0 var(--rl-scroll-delta);
+	}
+	to {
+		translate: 0 0;
+	}
+}
+
+.rl-wbw-line:not(.rl-scroll-animate) {
+	animation: none;
+}
+
+.rl-scroll-animate {
+	animation: rl-scroll-bounce 400ms cubic-bezier(0.41, 0, 0.12, 0.99) both;
+	animation-delay: var(--rl-line-delay, 0ms);
 }
 
 /* Word span */
@@ -141,7 +221,9 @@
 
 /* Hover word (Grouped Syllables) */
 .rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word:hover,
-.rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word.rl-wbw-word-hover {
+.rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word.rl-wbw-word-hover,
+.rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-main .rl-wbw-word:hover,
+.rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-main .rl-wbw-word.rl-wbw-word-hover {
 	text-shadow:
 		0 0 var(--rl-glow-inner, 2px) lightgray,
 		/* biome-ignore lint: Hover glow should override defaults */
@@ -254,6 +336,51 @@
 	color: rgba(128, 128, 128, 0.4);
 	text-shadow: 0 0 0px transparent;
 	margin-bottom: 2rem;
+}
+
+/* MARKER: Context Aware Lyrics CSS */
+
+/* Background vocal sub-container */
+.rl-wbw-bg-container {
+	max-height: 0;
+	overflow: visible;
+	opacity: 0;
+	font-size: 0.55em;
+	padding-top: 0.15em;
+	transition: max-height 0.3s ease, opacity 0.5s ease;
+	color: rgba(128, 128, 128, 0.4);
+}
+
+.rl-wbw-line.rl-wbw-line-active .rl-wbw-bg-container {
+	max-height: 3em;
+	opacity: 1;
+	transition: max-height 0.5s ease, opacity 0.5s ease;
+}
+
+/* Singer duet positioning */
+.rl-wbw-line.rl-singer-right {
+	text-align: end;
+	transform-origin: right;
+}
+
+.rl-dual-side .rl-wbw-line.rl-singer-left {
+	padding-right: 20%;
+}
+
+.rl-dual-side .rl-wbw-line.rl-singer-right {
+	padding-left: 20%;
+}
+
+.rl-dual-side .rl-wbw-line.rl-singer-right .rl-wbw-bg-container {
+	text-align: end;
+}
+
+.rl-dual-side .rl-wbw-line.rl-singer-right.rl-wbw-line-active {
+	padding-right: 20px;
+}
+
+.rl-dual-side .rl-wbw-line.rl-singer-left.rl-wbw-line-active {
+	padding-left: 20px;
 }
 
 /* Reset lyrics styling when disabled */

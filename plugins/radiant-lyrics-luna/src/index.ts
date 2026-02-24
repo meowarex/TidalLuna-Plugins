@@ -1250,6 +1250,8 @@ interface WordLyricsResponse {
 		title: string;
 		language: string;
 		totalDuration: string;
+		agents?: Record<string, { type: string; name: string; alias: string }>;
+		songParts?: Array<{ name: string; time: number; duration: number }>;
 	};
 	_cached?: boolean;
 }
@@ -1257,6 +1259,7 @@ interface WordLyricsResponse {
 // syllable state
 let trackChangeToken = 0;
 let lyricsData: WordLine[] | null = null;
+let lyricsResponse: WordLyricsResponse | null = null;
 let tickLoopUnload: LunaUnload | null = null;
 let isActive = false;
 let savedTidalClasses: string[] | null = null;
@@ -1274,19 +1277,134 @@ interface LineEntry {
 	startMs: number; // first word start
 	endMs: number; // last word end
 	words: WordEntry[];
+	bgWords: WordEntry[];
+	isBg: boolean; // entirely background/adlib line
 }
 
 let lines: LineEntry[] = [];
 let rerenderObserver: MutationObserver | null = null;
 let rerenderDebounce: number | null = null;
-let activeWordEl: HTMLSpanElement | null = null;
-let activeLineIdx = -1;
+const activeWordEls = new Map<number, HTMLSpanElement | null>();
+const activeBgWordEls = new Map<number, HTMLSpanElement | null>();
+let activeLineIdxs = new Set<number>();
+let primaryLineIdx = -1;
 
 // Scroll sync (unhook on user scroll)
 let scrollSynced = true;
 let userScrollListener: (() => void) | null = null;
 let syncButtonListener: (() => void) | null = null;
 let syncButtonEl: HTMLElement | null = null;
+
+// scroll bounce animation state
+let scrollAnimIsAnimating = false;
+let scrollAnimPending: { parent: HTMLElement; refIdx: number; target: number } | null = null;
+let scrollUnlockTimeout: ReturnType<typeof setTimeout> | null = null;
+let scrollCleanupTimeout: ReturnType<typeof setTimeout> | null = null;
+let animatingEls: HTMLElement[] = [];
+
+const clearScrollAnim = (): void => {
+	if (scrollUnlockTimeout) { clearTimeout(scrollUnlockTimeout); scrollUnlockTimeout = null; }
+	if (scrollCleanupTimeout) { clearTimeout(scrollCleanupTimeout); scrollCleanupTimeout = null; }
+	for (const el of animatingEls) {
+		el.classList.remove("rl-scroll-animate");
+		el.style.removeProperty("--rl-scroll-delta");
+		el.style.removeProperty("--rl-line-delay");
+	}
+	animatingEls = [];
+	scrollAnimIsAnimating = false;
+	scrollAnimPending = null;
+};
+
+const applyScrollBounce = (scrollParent: HTMLElement, referenceIdx: number, scrollTarget: number): void => {
+	// queue if an animation is already running
+	if (scrollAnimIsAnimating) {
+		scrollAnimPending = { parent: scrollParent, refIdx: referenceIdx, target: scrollTarget };
+		return;
+	}
+
+	// clear previous animation timeouts
+	if (scrollUnlockTimeout) { clearTimeout(scrollUnlockTimeout); scrollUnlockTimeout = null; }
+	if (scrollCleanupTimeout) { clearTimeout(scrollCleanupTimeout); scrollCleanupTimeout = null; }
+
+	// clean up previous animation classes
+	for (const el of animatingEls) {
+		el.classList.remove("rl-scroll-animate");
+		el.style.removeProperty("--rl-scroll-delta");
+		el.style.removeProperty("--rl-line-delay");
+	}
+	animatingEls = [];
+
+	// cancel any in-flight CSS animations
+	const container = scrollParent.querySelector(".rl-wbw-container");
+	if (container) {
+		for (const anim of container.getAnimations({ subtree: true })) {
+			if (anim instanceof CSSAnimation && anim.animationName === "rl-scroll-bounce") {
+				anim.cancel();
+			}
+		}
+	}
+
+	// clamp target to the actual scrollable range (avoid overshoot at bottom of lyrics)
+	const maxScroll = scrollParent.scrollHeight - scrollParent.clientHeight;
+	const clampedTarget = Math.max(0, Math.min(scrollTarget, maxScroll));
+	const delta = clampedTarget - scrollParent.scrollTop;
+	if (Math.abs(delta) < 2) {
+		scrollTo(scrollParent, { top: clampedTarget, behavior: "instant" });
+		return;
+	}
+
+	const lookBehind = 5;
+	const lookAhead = 20;
+	const delayIncrement = 30;
+	const start = Math.max(0, referenceIdx - lookBehind);
+	const end = Math.min(lines.length, referenceIdx + lookAhead);
+
+	let maxDuration = 0;
+	let delayCounter = 0;
+
+	// apply animation classes FIRST (offset elements to starting position)
+	for (let i = start; i < end; i++) {
+		const el = lines[i].el;
+		const delay = i >= referenceIdx ? delayCounter * delayIncrement : 0;
+
+		if (i >= referenceIdx && !el.classList.contains("rl-wbw-spacer")) {
+			delayCounter++;
+		}
+
+		el.style.setProperty("--rl-scroll-delta", `${delta}px`);
+		el.style.setProperty("--rl-line-delay", `${delay}ms`);
+		el.classList.add("rl-scroll-animate");
+		animatingEls.push(el);
+
+		const duration = 400 + delay;
+		if (duration > maxDuration) maxDuration = duration;
+	}
+
+	// scroll AFTER classes are applied (invisible because elements are offset by delta)
+	scrollAnimIsAnimating = true;
+	scrollTo(scrollParent, { top: clampedTarget, behavior: "instant" });
+
+	// unlock animation state after base duration, process pending if queued
+	const BASE_DURATION = 400;
+	scrollUnlockTimeout = setTimeout(() => {
+		scrollAnimIsAnimating = false;
+		if (scrollAnimPending) {
+			const pending = scrollAnimPending;
+			scrollAnimPending = null;
+			applyScrollBounce(pending.parent, pending.refIdx, pending.target);
+		}
+	}, BASE_DURATION);
+
+	// clean up animation classes after all staggered animations complete
+	scrollCleanupTimeout = setTimeout(() => {
+		for (const el of animatingEls) {
+			el.classList.remove("rl-scroll-animate");
+			el.style.removeProperty("--rl-scroll-delta");
+			el.style.removeProperty("--rl-line-delay");
+		}
+		animatingEls = [];
+	}, maxDuration + 50);
+};
 
 // scroll lock (for scroll gate)
 let scrollParentRef: HTMLElement | null = null;
@@ -1477,6 +1595,60 @@ const restoreTidalLyrics = (): void => {
 	savedTidalClasses = null;
 };
 
+// compute left/right singer sides for duet positioning
+// Uses a pre-computed fixed mapping: first person = left, second person = right,
+// 3rd+ persons / group / other = left. Same singer always gets the same side.
+// (thx Opus 4.6 for this <3)
+const computeSingerSides = (
+	data: WordLine[],
+	agents: Record<string, { type: string; name: string; alias: string }>,
+): { sides: string[]; isDualSide: boolean } => {
+	const sides = new Array<string>(data.length).fill("");
+	const personOrder: string[] = [];
+	const singerSideMap = new Map<string, string>();
+
+	for (const line of data) {
+		const singerId = line.element?.singer;
+		if (!singerId || singerSideMap.has(singerId)) continue;
+
+		const agentData = agents[singerId];
+		const type = agentData
+			? agentData.type
+			: singerId === "v1000" ? "group" : singerId === "v2000" ? "other" : "person";
+
+		if (type === "group" || type === "other") {
+			singerSideMap.set(singerId, "rl-singer-left");
+		} else {
+			personOrder.push(singerId);
+			singerSideMap.set(singerId,
+				personOrder.length === 2 ? "rl-singer-right" : "rl-singer-left",
+			);
+		}
+	}
+
+	let rightCount = 0;
+	let totalCount = 0;
+	for (let i = 0; i < data.length; i++) {
+		const singerId = data[i].element?.singer;
+		if (!singerId) continue;
+		const side = singerSideMap.get(singerId) || "rl-singer-left";
+		sides[i] = side;
+		totalCount++;
+		if (side === "rl-singer-right") rightCount++;
+	}
+
+	if (totalCount > 0 && Math.round((rightCount / totalCount) * 100) >= 85) {
+		const flip = (s: string) =>
+			s === "rl-singer-left" ? "rl-singer-right"
+				: s === "rl-singer-right" ? "rl-singer-left" : s;
+		for (let i = 0; i < sides.length; i++) sides[i] = flip(sides[i]);
+	}
+
+	const hasLeft = sides.includes("rl-singer-left");
+	const hasRight = sides.includes("rl-singer-right");
+	return { sides, isDualSide: hasLeft && hasRight };
+};
+
 // build word/syllable container over tidal spans
 const buildWordSpans = (): {
 	lines: LineEntry[];
@@ -1512,6 +1684,8 @@ const buildWordSpans = (): {
 	// create lyrics container for word/syllable lines
 	const wbwContainer = document.createElement("div");
 	wbwContainer.className = "rl-wbw-container";
+	if (settings.blurInactive) wbwContainer.classList.add("rl-blur-active");
+	if (settings.bubbledLyrics) wbwContainer.classList.add("rl-bubbled");
 	// MARKER: Syllable animations (WIP coming soon)
 	if (settings.syllableStyle === 1) wbwContainer.classList.add("rl-syl-pop");
 	else if (settings.syllableStyle === 2) wbwContainer.classList.add("rl-syl-jump");
@@ -1527,10 +1701,24 @@ const buildWordSpans = (): {
 		overflow: "visible",
 	});
 
+	const contextAware = settings.contextAwareLyrics;
+	const agents = lyricsResponse?.metadata?.agents;
+	let singerSides: { sides: string[]; isDualSide: boolean } | null = null;
+
+	if (contextAware && agents && Object.keys(agents).length > 0) {
+		singerSides = computeSingerSides(lyricsData, agents);
+		if (singerSides.isDualSide) {
+			wbwContainer.classList.add("rl-dual-side");
+		}
+	}
+
 	const FONT_STACK =
 		'"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif';
 
+	let lineIndex = 0;
 	for (const apiLine of lyricsData) {
+		const currentLineIndex = lineIndex++;
+
 		// skip empty/stanza-end lines
 		if (!apiLine.syllabus || apiLine.syllabus.length === 0) {
 			const spacer = document.createElement("div");
@@ -1548,13 +1736,11 @@ const buildWordSpans = (): {
 		lineDiv.className = "rl-wbw-line";
 		forceStyle(lineDiv, {
 			display: "block",
-			"text-align": "left",
 			"white-space": "normal",
 			"word-spacing": "normal",
 			"letter-spacing": "normal",
 			"margin-bottom": "2rem",
 			"padding-top": "0",
-			"padding-right": "0",
 			"padding-bottom": "0",
 			"font-size": "40px",
 			"font-family": FONT_STACK,
@@ -1568,9 +1754,34 @@ const buildWordSpans = (): {
 			"align-items": "initial",
 		});
 
+		if (contextAware && singerSides) {
+			const sideClass = singerSides.sides[currentLineIndex];
+			if (sideClass) lineDiv.classList.add(sideClass);
+		}
+
 		const lineWords: WordEntry[] = [];
+		const lineBgWords: WordEntry[] = [];
 		const syllabus = apiLine.syllabus;
 		const isSylMode = settings.lyricsStyle === 2;
+
+		const hasBgSyllables = contextAware && syllabus.some(s => s.isBackground);
+		const allAreBg = hasBgSyllables && syllabus.every(s => s.isBackground);
+		const splitBg = hasBgSyllables && !allAreBg;
+
+		let mainContainer: HTMLElement = lineDiv;
+		let bgContainer: HTMLElement | null = null;
+
+		if (splitBg) {
+			mainContainer = document.createElement("p");
+			mainContainer.className = "rl-wbw-main";
+			forceStyle(mainContainer, { margin: "0", padding: "0" });
+			lineDiv.appendChild(mainContainer);
+
+			bgContainer = document.createElement("p");
+			bgContainer.className = "rl-wbw-bg-container";
+			forceStyle(bgContainer, { margin: "0" });
+			lineDiv.appendChild(bgContainer);
+		}
 
 		const WORD_SPAN_STYLE: Record<string, string> = {
 			display: "inline-block",
@@ -1585,7 +1796,11 @@ const buildWordSpans = (): {
 		const makeSpan = (text: string, seekMs: number, bg: boolean): HTMLSpanElement => {
 			const span = document.createElement("span");
 			span.className = "rl-wbw-word";
-			span.textContent = text;
+			if (splitBg && bg) {
+				span.textContent = text.replace(/[()]/g, "");
+			} else {
+				span.textContent = text;
+			}
 			forceStyle(span, WORD_SPAN_STYLE);
 			if (bg) span.classList.add("rl-wbw-bg");
 			span.addEventListener("click", () => {
@@ -1609,8 +1824,11 @@ const buildWordSpans = (): {
 		}
 
 		for (const group of wordGroups) {
+			const groupIsBg = splitBg && syllabus[group[0]].isBackground;
+			const targetContainer = groupIsBg ? bgContainer! : mainContainer;
+			const targetWords = groupIsBg ? lineBgWords : lineWords;
+
 			if (isSylMode) {
-				// Syllable mode: separate span per syllable, seek/hover grouped by word
 				const wordStartMs = syllabus[group[0]].time;
 				const groupSpans: HTMLSpanElement[] = [];
 				for (const si of group) {
@@ -1623,12 +1841,11 @@ const buildWordSpans = (): {
 						for (const s of groupSpans) s.classList.remove("rl-wbw-word-hover");
 					});
 					groupSpans.push(span);
-					lineDiv.appendChild(span);
+					targetContainer.appendChild(span);
 					const entry: WordEntry = { el: span, start: syl.time, end: syl.time + syl.duration, duration: syl.duration };
-					lineWords.push(entry);
+					targetWords.push(entry);
 				}
 			} else {
-				// Word mode: merge syllables into one span
 				const mergedText = group.map(si => syllabus[si].text.trimEnd()).join("");
 				const first = syllabus[group[0]];
 				const last = syllabus[group[group.length - 1]];
@@ -1636,24 +1853,33 @@ const buildWordSpans = (): {
 				const end = last.time + last.duration;
 				const bg = first.isBackground;
 				const span = makeSpan(mergedText, start, bg);
-				lineDiv.appendChild(span);
+				targetContainer.appendChild(span);
 				const entry: WordEntry = { el: span, start, end, duration: end - start };
-				lineWords.push(entry);
+				targetWords.push(entry);
 			}
-			// Space between words (not between syllables of the same word)
-			lineDiv.appendChild(document.createTextNode(" "));
+			targetContainer.appendChild(document.createTextNode(" "));
 		}
 
 		wbwContainer.appendChild(lineDiv);
 
-		// build entry from syllables
-		if (lineWords.length > 0) {
+		const allWords = lineWords.length > 0 ? lineWords : lineBgWords;
+		if (allWords.length > 0) {
+			const firstStart = Math.min(
+				lineWords.length > 0 ? lineWords[0].start : Infinity,
+				lineBgWords.length > 0 ? lineBgWords[0].start : Infinity,
+			);
+			const lastEnd = Math.max(
+				lineWords.length > 0 ? lineWords[lineWords.length - 1].end : 0,
+				lineBgWords.length > 0 ? lineBgWords[lineBgWords.length - 1].end : 0,
+			);
 			lines.push({
 				el: lineDiv,
 				tidalSpan: null,
-				startMs: lineWords[0].start,
-				endMs: lineWords[lineWords.length - 1].end,
-				words: lineWords,
+				startMs: firstStart,
+				endMs: lastEnd,
+				words: allWords,
+				bgWords: lineBgWords,
+				isBg: allAreBg,
 			});
 		}
 	}
@@ -1752,6 +1978,7 @@ const clearTickLoop = (): void => {
 const teardown = (): void => {
 	trackChangeToken++;
 	clearTickLoop();
+	clearScrollAnim();
 	unwatchRerender();
 	unhookUserScroll();
 	unhookSyncButton();
@@ -1759,9 +1986,12 @@ const teardown = (): void => {
 	scrollSynced = true;
 	isActive = false;
 	lyricsData = null;
+	lyricsResponse = null;
 	lines = [];
-	activeWordEl = null;
-	activeLineIdx = -1;
+	activeWordEls.clear();
+	activeBgWordEls.clear();
+	activeLineIdxs.clear();
+	primaryLineIdx = -1;
 	restoreTidalLyrics();
 };
 
@@ -1847,20 +2077,24 @@ const scrollTo = (parent: HTMLElement, options: ScrollToOptions): void => {
 
 // Scroll to active line (resync)
 const scrollToActiveLine = (): void => {
-	if (activeLineIdx < 0 || activeLineIdx >= lines.length) return;
-	const line = lines[activeLineIdx];
+	if (primaryLineIdx < 0 || primaryLineIdx >= lines.length) return;
+	const line = lines[primaryLineIdx];
 	const scroller = findScroller(line.el);
 	lockScroll(scroller);
 	const lineRect = line.el.getBoundingClientRect();
 	const parentRect = scroller.getBoundingClientRect();
 	const targetOffset = parentRect.height * 0.2;
 	const scrollTarget = scroller.scrollTop + (lineRect.top - parentRect.top) - targetOffset;
-	scrollTo(scroller, { top: Math.max(0, scrollTarget), behavior: "smooth" });
+	clearScrollAnim();
+	scrollTo(scroller, { top: Math.max(0, scrollTarget), behavior: "instant" });
 };
 
 // Resync lyric scroll (scrubbing and lyric jumps)
 const resync = (): void => {
 	scrollSynced = true;
+	if (settings.blurInactive) {
+		document.querySelector(".rl-wbw-container")?.classList.add("rl-blur-active");
+	}
 	scrollToActiveLine();
 	const tidalSyncBtn = document.querySelector('div[class*="_syncButton"] button') as HTMLElement;
 	if (tidalSyncBtn) tidalSyncBtn.click();
@@ -1874,6 +2108,9 @@ const hookUserScroll = (parent: HTMLElement): void => {
 	const onUserScroll = () => {
 		if (!scrollSynced) return;
 		scrollSynced = false;
+		if (settings.blurInactive) {
+			document.querySelector(".rl-wbw-container")?.classList.remove("rl-blur-active");
+		}
 		sylLog("[RL-Syllable] User scrolled — auto-scroll unhooked");
 	};
 	parent.addEventListener("wheel", onUserScroll, { passive: true });
@@ -1945,22 +2182,30 @@ const startTickLoop = (): void => {
 			sylLog(`[RL-Syllable] Playback | ${nowMs.toFixed(0)} ms`);
 		}
 
-		// find active line (-1 if before all lyrics or in instrumental)
-		let newLineIdx = -1;
+		// find all active lines (supports overlapping duet/adlib lines)
+		const newActiveSet = new Set<number>();
 		for (let i = 0; i < lines.length; i++) {
-			const nextStart = lines[i + 1]?.startMs ?? Number.MAX_SAFE_INTEGER;
-			const effectiveEnd = Math.min(nextStart, lines[i].endMs + 2500);
+			const lineEnd = lines[i].endMs;
+			// skip over background/adlib lines when computing nextStart so main lines
+			// stay active while their attached adlibs play (vewy important thx Opus 4.6)
+			let nextMainIdx = i + 1;
+			while (nextMainIdx < lines.length && lines[nextMainIdx].isBg) nextMainIdx++;
+			const nextStart = nextMainIdx < lines.length ? lines[nextMainIdx].startMs : Infinity;
+			const effectiveEnd = Math.max(lineEnd, Math.min(lineEnd + 2500, nextStart));
 			if (nowMs >= lines[i].startMs && nowMs < effectiveEnd) {
-				newLineIdx = i;
-				break;
+				newActiveSet.add(i);
 			}
 		}
+		const newPrimary = newActiveSet.size > 0 ? Math.min(...newActiveSet) : -1;
 
 		// single pass to set correct state for all words (scrub or seek)
 		if (didScrub) {
 			for (let li = 0; li < lines.length; li++) {
-				for (const w of lines[li].words) {
-					if (li < newLineIdx) {
+				const allEntries = lines[li].bgWords.length > 0
+					? [...lines[li].words, ...lines[li].bgWords]
+					: lines[li].words;
+				for (const w of allEntries) {
+					if (li < newPrimary) {
 						w.el.classList.remove(CLS_ACTIVE);
 						if (isSyl) w.el.style.animation = "";
 						if (!w.el.classList.contains(CLS_FINISHED)) w.el.classList.add(CLS_FINISHED);
@@ -1970,35 +2215,72 @@ const startTickLoop = (): void => {
 					}
 				}
 			}
-			activeWordEl = null;
-			if (activeLineIdx >= 0 && activeLineIdx < lines.length) {
-				lines[activeLineIdx].el.classList.remove("rl-wbw-line-active");
-				lines[activeLineIdx].el.removeAttribute("data-current");
+			activeWordEls.clear();
+			activeBgWordEls.clear();
+			for (const idx of activeLineIdxs) {
+				if (idx < lines.length) {
+					lines[idx].el.classList.remove("rl-wbw-line-active");
+					lines[idx].el.removeAttribute("data-current");
+				}
 			}
-			activeLineIdx = -1;
+			activeLineIdxs.clear();
+			primaryLineIdx = -1;
+			const held = document.querySelector(".rl-gap-hold");
+			if (held) held.classList.remove("rl-gap-hold");
 			sylLog(`[RL-Syllable] Scrub detected (${timeDelta > 0 ? "+" : ""}${timeDelta.toFixed(0)} ms) → resync`);
 		}
 
-		// Deactivate line when entering instrumental
-		if (newLineIdx === -1 && activeLineIdx >= 0 && activeLineIdx < lines.length) {
-			lines[activeLineIdx].el.classList.remove("rl-wbw-line-active");
-			lines[activeLineIdx].el.removeAttribute("data-current");
-			activeLineIdx = -1;
-			activeWordEl = null;
+		// deactivate lines no longer active
+		for (const idx of activeLineIdxs) {
+			if (!newActiveSet.has(idx) && idx < lines.length) {
+				lines[idx].el.classList.remove("rl-wbw-line-active");
+				lines[idx].el.removeAttribute("data-current");
+				const lastWord = activeWordEls.get(idx);
+				if (lastWord) {
+					lastWord.classList.remove(CLS_ACTIVE);
+					if (isSyl) lastWord.style.animation = "";
+					lastWord.classList.add(CLS_FINISHED);
+				}
+				const lastBgWord = activeBgWordEls.get(idx);
+				if (lastBgWord) {
+					lastBgWord.classList.remove(CLS_ACTIVE);
+					if (isSyl) lastBgWord.style.animation = "";
+					lastBgWord.classList.add(CLS_FINISHED);
+				}
+				activeWordEls.delete(idx);
+				activeBgWordEls.delete(idx);
+			}
 		}
 
-		// Scroll to new line and set active/inactive
-		if (newLineIdx !== activeLineIdx && newLineIdx >= 0) {
-			if (activeLineIdx >= 0 && activeLineIdx < lines.length) {
-				const oldLine = lines[activeLineIdx];
-				oldLine.el.classList.remove("rl-wbw-line-active");
-				oldLine.el.removeAttribute("data-current");
+		// activate newly active lines
+		for (const idx of newActiveSet) {
+			if (!activeLineIdxs.has(idx)) {
+				lines[idx].el.classList.add("rl-wbw-line-active");
+				lines[idx].el.classList.remove("rl-pos-1", "rl-pos-2", "rl-pos-3");
+				lines[idx].el.setAttribute("data-current", "true");
+				sylLog(
+					`[RL-Syllable] Line ${idx} Active "${lines[idx].el.textContent?.slice(0, 40)}" | ${lines[idx].startMs} ms - ${lines[idx].endMs} ms   [${nowMs.toFixed(0)} ms]`,
+				);
 			}
-			activeLineIdx = newLineIdx;
-			const newLine = lines[activeLineIdx];
-			newLine.el.classList.add("rl-wbw-line-active");
-			newLine.el.setAttribute("data-current", "true");
+		}
 
+		// instrumental gaps, keep the last-active line unblurred
+		if (settings.blurInactive) {
+			if (newActiveSet.size === 0 && primaryLineIdx >= 0 && primaryLineIdx < lines.length) {
+				lines[primaryLineIdx].el.classList.add("rl-gap-hold");
+			} else if (newActiveSet.size > 0) {
+				const held = document.querySelector(".rl-gap-hold");
+				if (held) held.classList.remove("rl-gap-hold");
+			}
+		}
+
+		activeLineIdxs = newActiveSet;
+
+		// scroll to primary (topmost) active line
+		if (newPrimary !== primaryLineIdx && newPrimary >= 0) {
+			const prevPrimary = primaryLineIdx;
+			primaryLineIdx = newPrimary;
+			const newLine = lines[primaryLineIdx];
 			const scrollParent = findScroller(newLine.el);
 			lockScroll(scrollParent);
 			hookUserScroll(scrollParent);
@@ -2008,12 +2290,32 @@ const startTickLoop = (): void => {
 				const parentRect = scrollParent.getBoundingClientRect();
 				const targetOffset = parentRect.height * 0.2;
 				const scrollTarget = scrollParent.scrollTop + (lineRect.top - parentRect.top) - targetOffset;
-				scrollTo(scrollParent, { top: Math.max(0, scrollTarget), behavior: "smooth" });
+				// only bounce on normal sequential line changes (not scrubs, jumps, or overlapping activations)
+				const isSequential = !didScrub && prevPrimary >= 0 && newActiveSet.size <= 1;
+				if (settings.bubbledLyrics && isSequential) {
+					applyScrollBounce(scrollParent, primaryLineIdx, scrollTarget);
+				} else if (isSequential) {
+					clearScrollAnim();
+					scrollTo(scrollParent, { top: Math.max(0, scrollTarget), behavior: "smooth" });
+				} else {
+					clearScrollAnim();
+					scrollTo(scrollParent, { top: Math.max(0, scrollTarget), behavior: "instant" });
+				}
 			}
 
-			sylLog(
-				`[RL-Syllable] Line ${activeLineIdx} Active "${newLine.el.textContent?.slice(0, 40)}" | ${newLine.startMs} ms - ${newLine.endMs} ms   [${nowMs.toFixed(0)} ms]`,
-			);
+			// distance-based blur position classes (skip active lines)
+			if (settings.blurInactive) {
+				for (let i = 0; i < lines.length; i++) {
+					lines[i].el.classList.remove("rl-pos-1", "rl-pos-2", "rl-pos-3");
+				}
+				for (let dist = 1; dist <= 3; dist++) {
+					const before = newPrimary - dist;
+					const after = newPrimary + dist;
+					const cls = `rl-pos-${dist}`;
+					if (before >= 0 && !newActiveSet.has(before)) lines[before].el.classList.add(cls);
+					if (after < lines.length && !newActiveSet.has(after)) lines[after].el.classList.add(cls);
+				}
+			}
 		}
 
 		// hook lyric scroll sync button
@@ -2021,60 +2323,114 @@ const startTickLoop = (): void => {
 			hookSyncButton();
 		}
 
-		// find and activate current word
-		if (activeLineIdx < 0) return;
-		const currentLine = lines[activeLineIdx];
+		// highlight words in all active lines
+		if (activeLineIdxs.size === 0) return;
 
-		let activeWordIdx = -1;
-		for (let i = currentLine.words.length - 1; i >= 0; i--) {
-			if (nowMs >= currentLine.words[i].start) {
-				activeWordIdx = i;
-				break;
-			}
-		}
+		for (const lineIdx of activeLineIdxs) {
+			const currentLine = lines[lineIdx];
+			const prevActiveWord = activeWordEls.get(lineIdx) ?? null;
 
-		if (activeWordIdx < 0) return;
-		const word = currentLine.words[activeWordIdx];
-
-		// mark all words before as finished
-		for (let i = 0; i < activeWordIdx; i++) {
-			const prev = currentLine.words[i].el;
-			if (prev.classList.contains(CLS_ACTIVE) || !prev.classList.contains(CLS_FINISHED)) {
-				prev.classList.remove(CLS_ACTIVE);
-				if (isSyl) prev.style.animation = "";
-				prev.classList.add(CLS_FINISHED);
-			}
-		}
-
-		const isStillSinging = nowMs <= word.end;
-		if (isStillSinging) {
-			if (activeWordEl !== word.el) {
-				if (activeWordEl) {
-					activeWordEl.classList.remove(CLS_ACTIVE);
-					if (isSyl) activeWordEl.style.animation = "";
-					activeWordEl.classList.add(CLS_FINISHED);
+			let activeWordIdx = -1;
+			for (let i = currentLine.words.length - 1; i >= 0; i--) {
+				if (nowMs >= currentLine.words[i].start) {
+					activeWordIdx = i;
+					break;
 				}
-				word.el.classList.add(CLS_ACTIVE);
-				word.el.classList.remove(CLS_FINISHED);
-				if (isSyl) { // MARKER: Syllable animations (WIP coming soon)
-					const wipe = `rl-wipe ${word.duration}ms linear forwards`;
-					const sylAnim = settings.syllableStyle === 1 ? ", rl-pop 0.6s ease-out"
-						: settings.syllableStyle === 2 ? ", rl-jump 0.35s ease-out" : "";
-					word.el.style.animation = wipe + sylAnim;
+			}
+
+			if (activeWordIdx < 0) continue;
+			const word = currentLine.words[activeWordIdx];
+
+			for (let i = 0; i < activeWordIdx; i++) {
+				const prev = currentLine.words[i].el;
+				if (prev.classList.contains(CLS_ACTIVE) || !prev.classList.contains(CLS_FINISHED)) {
+					prev.classList.remove(CLS_ACTIVE);
+					if (isSyl) prev.style.animation = "";
+					prev.classList.add(CLS_FINISHED);
 				}
-				activeWordEl = word.el;
-				sylLog(
-					`[RL-Syllable] Word/Syllable "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
-				);
 			}
-		} else {
-			word.el.classList.remove(CLS_ACTIVE);
-			if (isSyl) word.el.style.animation = "";
-			if (!word.el.classList.contains(CLS_FINISHED)) {
-				word.el.classList.add(CLS_FINISHED);
+
+			const isStillSinging = nowMs <= word.end;
+			if (isStillSinging) {
+				if (prevActiveWord !== word.el) {
+					if (prevActiveWord) {
+						prevActiveWord.classList.remove(CLS_ACTIVE);
+						if (isSyl) prevActiveWord.style.animation = "";
+						prevActiveWord.classList.add(CLS_FINISHED);
+					}
+					word.el.classList.add(CLS_ACTIVE);
+					word.el.classList.remove(CLS_FINISHED);
+					if (isSyl) {
+						const wipe = `rl-wipe ${word.duration}ms linear forwards`;
+						const sylAnim = settings.syllableStyle === 1 ? ", rl-pop 0.6s ease-out"
+							: settings.syllableStyle === 2 ? ", rl-jump 0.35s ease-out" : "";
+						word.el.style.animation = wipe + sylAnim;
+					}
+					activeWordEls.set(lineIdx, word.el);
+					sylLog(
+						`[RL-Syllable] Word/Syllable "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
+					);
+				}
+			} else {
+				word.el.classList.remove(CLS_ACTIVE);
+				if (isSyl) word.el.style.animation = "";
+				if (!word.el.classList.contains(CLS_FINISHED)) {
+					word.el.classList.add(CLS_FINISHED);
+				}
+				if (prevActiveWord === word.el) {
+					activeWordEls.set(lineIdx, null);
+				}
 			}
-			if (activeWordEl === word.el) {
-				activeWordEl = null;
+
+			// highlight bg words independently (adlibs no interfere with main words *angy*)
+			const bgWords = currentLine.bgWords;
+			if (bgWords.length === 0) continue;
+			const prevBgWord = activeBgWordEls.get(lineIdx) ?? null;
+
+			let activeBgIdx = -1;
+			for (let i = bgWords.length - 1; i >= 0; i--) {
+				if (nowMs >= bgWords[i].start) {
+					activeBgIdx = i;
+					break;
+				}
+			}
+
+			if (activeBgIdx < 0) continue;
+			const bgWord = bgWords[activeBgIdx];
+
+			for (let i = 0; i < activeBgIdx; i++) {
+				const prev = bgWords[i].el;
+				if (prev.classList.contains(CLS_ACTIVE) || !prev.classList.contains(CLS_FINISHED)) {
+					prev.classList.remove(CLS_ACTIVE);
+					if (isSyl) prev.style.animation = "";
+					prev.classList.add(CLS_FINISHED);
+				}
+			}
+
+			const bgStillSinging = nowMs <= bgWord.end;
+			if (bgStillSinging) {
+				if (prevBgWord !== bgWord.el) {
+					if (prevBgWord) {
+						prevBgWord.classList.remove(CLS_ACTIVE);
+						if (isSyl) prevBgWord.style.animation = "";
+						prevBgWord.classList.add(CLS_FINISHED);
+					}
+					bgWord.el.classList.add(CLS_ACTIVE);
+					bgWord.el.classList.remove(CLS_FINISHED);
+					if (isSyl) {
+						bgWord.el.style.animation = `rl-wipe ${bgWord.duration}ms linear forwards`;
+					}
+					activeBgWordEls.set(lineIdx, bgWord.el);
+				}
+			} else {
+				bgWord.el.classList.remove(CLS_ACTIVE);
+				if (isSyl) bgWord.el.style.animation = "";
+				if (!bgWord.el.classList.contains(CLS_FINISHED)) {
+					bgWord.el.classList.add(CLS_FINISHED);
+				}
+				if (prevBgWord === bgWord.el) {
+					activeBgWordEls.set(lineIdx, null);
+				}
 			}
 		}
 	}, 50);
@@ -2119,6 +2475,7 @@ const onTrackChange = async (): Promise<void> => {
 
 	// Store data
 	lyricsData = response.data;
+	lyricsResponse = response;
 	isActive = true;
 
 	// Remove Tidal classes
@@ -2140,12 +2497,15 @@ const reapplyWordLyrics = (): void => {
 	if (settings.lyricsStyle === 0 || !lyricsData) return;
 
 	clearTickLoop();
+	clearScrollAnim();
 	unwatchRerender();
 	unhookUserScroll();
 	unhookSyncButton();
 	unlockScroll();
-	activeWordEl = null;
-	activeLineIdx = -1;
+	activeWordEls.clear();
+	activeBgWordEls.clear();
+	activeLineIdxs.clear();
+	primaryLineIdx = -1;
 
 	isActive = true;
 	hideTidalLyrics();

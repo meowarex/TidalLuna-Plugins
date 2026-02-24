@@ -42,8 +42,11 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	settingsAffectNowPlaying: true,
 	stickyLyrics: false,
 	stickyLyricsIcon: "sparkle" as string,
-	lyricsStyle: 0,
+	lyricsStyle: 2,
 	syllableStyle: 0, // MARKER: Syllable animations SETTINGS (WIP coming soon)
+	contextAwareLyrics: true,
+	blurInactive: true,
+	bubbledLyrics: true,
 	syllableLogging: false,
 });
 
@@ -124,12 +127,18 @@ export const Settings = () => {
 	}, []);
 	const [lyricsStyle, setLyricsStyle] = React.useState(settings.lyricsStyle);
 	React.useEffect(() => {
-		window.updateLyricsStyleSetting = (value: number) =>
-			setLyricsStyle(value);
+		window.updateLyricsStyleSetting = (value: number) => setLyricsStyle(value);
 		return () => {
 			window.updateLyricsStyleSetting = undefined;
 		};
 	}, []);
+	const [contextAwareLyrics, setContextAwareLyrics] = React.useState(
+		settings.contextAwareLyrics,
+	);
+	const [blurInactive, setBlurInactive] = React.useState(settings.blurInactive);
+	const [bubbledLyrics, setBubbledLyrics] = React.useState(
+		settings.bubbledLyrics,
+	);
 	const [qualityProgressColor, setQualityProgressColor] = React.useState(
 		settings.qualityProgressColor,
 	);
@@ -188,21 +197,61 @@ export const Settings = () => {
 					}}
 				/>
 			)}
-		<LunaNumberSetting
-			title="Lyrics Style"
-			desc="0 = Line (default), 1 = Word, 2 = Syllable (mirrored in lyrics dropdown)"
-			min={0}
-			max={1}
-			step={1}
-			value={lyricsStyle}
-			onNumber={(value: number) => {
-				settings.lyricsStyle = value;
-				setLyricsStyle(value);
-				if (window.updateLyricsStyle) {
-					window.updateLyricsStyle();
-				}
-			}}
-		/>
+			<LunaNumberSetting
+				title="Lyrics Style"
+				desc="0 = Line (default), 1 = Word, 2 = Syllable (mirrored in lyrics dropdown)"
+				min={0}
+				max={1}
+				step={1}
+				value={lyricsStyle}
+				onNumber={(value: number) => {
+					settings.lyricsStyle = value;
+					setLyricsStyle(value);
+					if (window.updateLyricsStyle) {
+						window.updateLyricsStyle();
+					}
+				}}
+			/>
+			<AnySwitch
+				title="Blur Inactive"
+				desc="Blurs inactive lyric lines, scaling with distance from the active line"
+				checked={blurInactive}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.blurInactive = checked;
+					setBlurInactive(checked);
+					if (window.updateLyricsStyle) {
+						window.updateLyricsStyle();
+					}
+				}}
+			/>
+			{lyricsStyle >= 1 && (
+				<>
+					<AnySwitch
+						title="Context Aware Lyrics"
+						desc="Enables background vocal display & duet singer positioning"
+						checked={contextAwareLyrics}
+						onChange={(_: unknown, checked: boolean) => {
+							settings.contextAwareLyrics = checked;
+							setContextAwareLyrics(checked);
+							if (window.updateLyricsStyle) {
+								window.updateLyricsStyle();
+							}
+						}}
+					/>
+					<AnySwitch
+						title="Bubbled Lyrics"
+						desc="Smooth bounce animation on line/word transitions"
+						checked={bubbledLyrics}
+						onChange={(_: unknown, checked: boolean) => {
+							settings.bubbledLyrics = checked;
+							setBubbledLyrics(checked);
+							if (window.updateLyricsStyle) {
+								window.updateLyricsStyle();
+							}
+						}}
+					/>
+				</>
+			)}
 			<AnySwitch
 				title="Sticky Lyrics"
 				desc="auto-switches to Play Queue when lyrics aren't available (mirrored in lyrics dropdown)"
