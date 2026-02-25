@@ -133,7 +133,7 @@ if (settings.qualityProgressColor) {
 // Apply base styles always (I kinda dont really remember what this does but it's important i guess)
 baseStyleTag.css = baseStyles;
 
-// Update CSS variables for lyrics text glow based on settings
+// Update CSS variables for lyrics glow + font scale
 const updateRadiantLyricsTextGlow = function (): void {
 	const root = document.documentElement;
 	if (settings.lyricsGlowEnabled) {
@@ -145,6 +145,7 @@ const updateRadiantLyricsTextGlow = function (): void {
 		root.style.setProperty("--rl-glow-inner", "0px");
 		root.classList.add("lyrics-glow-disabled");
 	}
+	root.style.setProperty("--rl-font-scale", `${settings.lyricsFontSize / 100}`);
 };
 
 // Apply glow state immediately at startup
@@ -1741,7 +1742,7 @@ const buildWordSpans = (): {
 			"margin-bottom": "2rem",
 			"padding-top": "0",
 			"padding-bottom": "0",
-			"font-size": "40px",
+			"font-size": "calc(40px * var(--rl-font-scale, 1))",
 			"font-family": FONT_STACK,
 			"font-weight": "700",
 			color: "rgba(128, 128, 128, 0.4)",
