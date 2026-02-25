@@ -303,3 +303,50 @@
 [class*="_smallHeader"]::before {
 	background-color: transparent !important;
 }
+
+/* fixes Tidals broken mini cover art padding | Cheers Aya <3*/
+._imageBorder_110890a {
+	filter: opacity(0);
+}
+._container_14bcbd4._playingFrom_79b167e {
+	transform: scale(1.01) translatex(.1em);
+}
+._leftColumn_aaf28de {
+	min-height: 110%;
+	transform: translatey(-.23em);
+}
+._imageryContainer_f99fc07.image {
+	transform: scale(1.03) translatey(.2em) translatex(.1em);
+	background-color: #00000000;
+	padding: 0em !important;
+}
+._image_145331a._cellImage_0ef8dd3 {
+	border-radius: .7em !important;
+}
+
+[data-test="footer-player"] {
+	._container_14bcbd4._playingFrom_79b167e > ._text_15008b2._medium20_1lyag_192._marketText_1lyag_1 {
+		transform: translatey(-.2em);
+	}
+	[class="image _imageryContainer_f99fc07"] {
+		transform: translatey(.3em) !important;
+	}
+	._image_145331a._cellImage_0ef8dd3 {
+		border-radius: .25em !important;
+	}
+	._toggleButton_809eee8 {
+		transform: translateY(-.22em);
+	}
+	[class="image _imageryContainer_f99fc07"]:hover {
+		[class="_cellImage_0ef8dd3 _image_145331a"] {
+			filter: brightness(.3);
+		}
+	}
+	._notFullscreenOverlay_1442d60 {
+		background: none !important;
+		transition: 0ms;
+	}
+	._notFullscreenOverlay_1442d60 ._nowPlayingButton_c1a86fa {
+		background-color: rgba(245, 245, 220, 0);
+	}
+}
