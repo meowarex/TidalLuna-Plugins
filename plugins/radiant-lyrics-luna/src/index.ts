@@ -1,6 +1,6 @@
 // MARKER: Core Setup
 import { type LunaUnload, Tracer } from "@luna/core";
-import { StyleTag, PlayState, MediaItem, observePromise, observe, safeInterval, safeTimeout } from "@luna/lib";
+import { StyleTag, PlayState, MediaItem, observe, safeInterval, safeTimeout } from "@luna/lib";
 import { settings, Settings } from "./Settings";
 // Interpret integer backgroundScale (e.g., 10=1.0x, 20=2.0x)
 const getScaledMultiplier = (): number => {
@@ -28,10 +28,8 @@ const playerBarStyleTag = new StyleTag("RadiantLyrics-player-bar", unloads);
 const lyricsGlowStyleTag = new StyleTag("RadiantLyrics-lyrics-glow", unloads);
 const floatingPlayerBarStyleTag = new StyleTag("RadiantLyrics-floating-player-bar", unloads);
 
-// Apply lyrics glow styles if enabled
-if (settings.lyricsGlowEnabled) {
-	lyricsGlowStyleTag.css = lyricsGlow;
-}
+// Always load lyrics CSS (glow is toggled via .lyrics-glow-disabled class)
+lyricsGlowStyleTag.css = lyricsGlow;
 
 // MARKER: Floating Player Bar
 
@@ -135,12 +133,23 @@ if (settings.qualityProgressColor) {
 // Apply base styles always (I kinda dont really remember what this does but it's important i guess)
 baseStyleTag.css = baseStyles;
 
-// Update CSS variables for lyrics text glow based on settings
+// Update CSS variables for lyrics glow + font scale
 const updateRadiantLyricsTextGlow = function (): void {
 	const root = document.documentElement;
-	root.style.setProperty("--rl-glow-outer", `${settings.textGlow}px`);
-	root.style.setProperty("--rl-glow-inner", "2px");
+	if (settings.lyricsGlowEnabled) {
+		root.style.setProperty("--rl-glow-outer", `${settings.textGlow}px`);
+		root.style.setProperty("--rl-glow-inner", "2px");
+		root.classList.remove("lyrics-glow-disabled");
+	} else {
+		root.style.setProperty("--rl-glow-outer", "0px");
+		root.style.setProperty("--rl-glow-inner", "0px");
+		root.classList.add("lyrics-glow-disabled");
+	}
+	root.style.setProperty("--rl-font-scale", `${settings.lyricsFontSize / 100}`);
 };
+
+// Apply glow state immediately at startup
+updateRadiantLyricsTextGlow();
 
 // Function to update styles when settings change
 const updateRadiantLyricsStyles = function (): void {
@@ -158,32 +167,8 @@ const updateRadiantLyricsStyles = function (): void {
 	// Handle Floating Player Bar
 	applyFloatingPlayerBar();
 
-	// Update lyrics glow based on setting (Always apply if enabled, even when UI is hidden)
-	const lyricsContainer = document.querySelector('[class^="_lyricsContainer"]');
-	if (lyricsContainer) {
-		if (settings.lyricsGlowEnabled) {
-			(lyricsContainer as HTMLElement).classList.remove("lyrics-glow-disabled");
-			lyricsGlowStyleTag.css = lyricsGlow;
-			updateRadiantLyricsTextGlow();
-		} else {
-			(lyricsContainer as HTMLElement).classList.add("lyrics-glow-disabled");
-			lyricsGlowStyleTag.remove();
-		}
-	} else {
-		observePromise<HTMLElement>(unloads, '[class^="_lyricsContainer"]')
-			.then((el) => {
-				if (!el) return;
-				if (settings.lyricsGlowEnabled) {
-					el.classList.remove("lyrics-glow-disabled");
-					lyricsGlowStyleTag.css = lyricsGlow;
-					updateRadiantLyricsTextGlow();
-				} else {
-					el.classList.add("lyrics-glow-disabled");
-					lyricsGlowStyleTag.remove();
-				}
-			})
-			.catch(() => {});
-	}
+	// Toggle glow via CSS vars + class on :root (always available, no timing issues)
+	updateRadiantLyricsTextGlow();
 
 	// Track title glow toggle based on settings
 	const trackTitleEl = document.querySelector(
@@ -1757,7 +1742,7 @@ const buildWordSpans = (): {
 			"margin-bottom": "2rem",
 			"padding-top": "0",
 			"padding-bottom": "0",
-			"font-size": "40px",
+			"font-size": "calc(40px * var(--rl-font-scale, 1))",
 			"font-family": FONT_STACK,
 			"font-weight": "700",
 			color: "rgba(128, 128, 128, 0.4)",

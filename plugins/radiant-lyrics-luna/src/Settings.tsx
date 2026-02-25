@@ -48,6 +48,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	blurInactive: true,
 	bubbledLyrics: true,
 	syllableLogging: false,
+	lyricsFontSize: 100,
 });
 
 export const Settings = () => {
@@ -132,6 +133,9 @@ export const Settings = () => {
 			window.updateLyricsStyleSetting = undefined;
 		};
 	}, []);
+	const [lyricsFontSize, setLyricsFontSize] = React.useState(
+		settings.lyricsFontSize,
+	);
 	const [contextAwareLyrics, setContextAwareLyrics] = React.useState(
 		settings.contextAwareLyrics,
 	);
@@ -156,7 +160,7 @@ export const Settings = () => {
 		<LunaSettings>
 			<AnySwitch
 				title="Lyrics Glow Effect"
-				desc="Enable glowing effect for lyrics & Font Styling Changes"
+				desc="Enable glowing effect on lyrics"
 				checked={lyricsGlowEnabled}
 				onChange={(_: unknown, checked: boolean) => {
 					settings.lyricsGlowEnabled = checked;
@@ -209,6 +213,21 @@ export const Settings = () => {
 					setLyricsStyle(value);
 					if (window.updateLyricsStyle) {
 						window.updateLyricsStyle();
+					}
+				}}
+			/>
+			<LunaNumberSetting
+				title="Lyrics Font Size"
+				desc="Scale the lyrics font size (50-200%, default: 100)"
+				min={50}
+				max={200}
+				step={5}
+				value={lyricsFontSize}
+				onNumber={(value: number) => {
+					settings.lyricsFontSize = value;
+					setLyricsFontSize(value);
+					if (window.updateRadiantLyricsTextGlow) {
+						window.updateRadiantLyricsTextGlow();
 					}
 				}}
 			/>
