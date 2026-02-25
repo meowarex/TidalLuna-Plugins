@@ -383,30 +383,24 @@
 	padding-left: 20px;
 }
 
-/* Reset lyrics styling when disabled */
+/* Reset glow when disabled */
 .lyrics-glow-disabled [class*="_lyricsText"] > div > span[data-current="true"],
-.lyrics-glow-disabled [class*="_lyricsText"] > div > span,
-.lyrics-glow-disabled [class*="_lyricsText"] > div > span:hover,
-.lyrics-glow-disabled [data-test="now-playing-track-title"],
-.lyrics-glow-disabled [class^="_lyricsContainer"] > div > div > span {
-	/* biome-ignore lint: Hard reset when disabled */
+.lyrics-glow-disabled [class*="_lyricsText"] > div > span:hover {
+	/* biome-ignore lint: Kill glow on active/hover lines */
 	text-shadow: none !important;
-	/* biome-ignore lint: Hard reset when disabled */
-	padding-left: 0 !important;
-	/* biome-ignore lint: Hard reset when disabled */
-	transition: none !important;
-	/* biome-ignore lint: Hard reset when disabled */
-	font-size: inherit !important;
-	/* biome-ignore lint: Hard reset when disabled */
-	color: inherit !important;
-	/* biome-ignore lint: Hard reset when disabled */
-	font-family: inherit !important;
-	/* biome-ignore lint: Hard reset when disabled */
-	font-weight: inherit !important;
-	/* biome-ignore lint: Hard reset when disabled */
-	margin-bottom: inherit !important;
-	/* biome-ignore lint: Hard reset when disabled */
-	opacity: inherit !important;
 }
 
-/* thats right biome.. shut upp */
+/* kill glow on active word */
+.lyrics-glow-disabled .rl-wbw-word.rl-wbw-active {
+	/* biome-ignore lint: Kill glow on active word */
+	text-shadow: none !important;
+}
+
+/* kill glow on hovered word */
+.lyrics-glow-disabled .rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word:hover,
+.lyrics-glow-disabled .rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word.rl-wbw-word-hover,
+.lyrics-glow-disabled .rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-main .rl-wbw-word:hover,
+.lyrics-glow-disabled .rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-main .rl-wbw-word.rl-wbw-word-hover {
+	/* biome-ignore lint: Kill glow on hovered word */
+	text-shadow: none !important;
+}

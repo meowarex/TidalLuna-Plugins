@@ -156,7 +156,7 @@ export const Settings = () => {
 		<LunaSettings>
 			<AnySwitch
 				title="Lyrics Glow Effect"
-				desc="Enable glowing effect for lyrics & Font Styling Changes"
+				desc="Enable glowing effect on lyrics"
 				checked={lyricsGlowEnabled}
 				onChange={(_: unknown, checked: boolean) => {
 					settings.lyricsGlowEnabled = checked;
