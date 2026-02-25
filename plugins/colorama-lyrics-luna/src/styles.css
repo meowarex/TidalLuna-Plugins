@@ -104,6 +104,98 @@
 	/* Do not increase glow strength on hover for gradients */
 }
 
+/* MARKER: Radiant WBW Lyrics Support */
+
+/* Single color: active wbw words & syllable finished */
+.colorama-single .rl-wbw-word.rl-wbw-active,
+.colorama-single .rl-wbw-word.rl-syl-finished {
+	color: var(--cl-lyrics-color) !important;
+	background: none !important;
+	-webkit-background-clip: initial !important;
+	background-clip: initial !important;
+	-webkit-text-fill-color: initial !important;
+}
+
+/* Single color: glow on active wbw words */
+.colorama-single .rl-wbw-word.rl-wbw-active {
+	text-shadow:
+		0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #ffffff),
+		0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #ffffff) !important;
+}
+
+/* Gradient: active wbw words */
+.colorama-gradient .rl-wbw-word.rl-wbw-active {
+	background: linear-gradient(
+		var(--cl-grad-angle),
+		var(--cl-grad-start),
+		var(--cl-grad-end)
+	) !important;
+	-webkit-background-clip: text !important;
+	background-clip: text !important;
+	color: transparent !important;
+	-webkit-text-fill-color: transparent !important;
+}
+
+/* Gradient: syllable finished (solid color — gradient conflicts with sweep animation) */
+.colorama-gradient .rl-wbw-word.rl-syl-finished {
+	color: var(--cl-glow1, #ffffff) !important;
+}
+
+/* Gradient: active wbw word glow */
+.colorama-gradient .rl-wbw-word.rl-wbw-active {
+	text-shadow:
+		0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #ffffff),
+		0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #ffffff) !important;
+}
+
+/* Hover: wbw words pick up Colorama colors */
+.colorama-single .rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-word:hover,
+.colorama-single .rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-word.rl-wbw-word-hover {
+	color: var(--cl-lyrics-color) !important;
+	text-shadow:
+		0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #ffffff),
+		0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #ffffff) !important;
+}
+
+.colorama-gradient .rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-word:hover,
+.colorama-gradient .rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-word.rl-wbw-word-hover {
+	background: linear-gradient(
+		var(--cl-grad-angle),
+		var(--cl-grad-start),
+		var(--cl-grad-end)
+	) !important;
+	-webkit-background-clip: text !important;
+	background-clip: text !important;
+	color: transparent !important;
+	-webkit-text-fill-color: transparent !important;
+}
+
+/* Only-active: wbw words on inactive lines stay default */
+body.colorama-only-active.colorama-single
+	.rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-word,
+body.colorama-only-active.colorama-gradient
+	.rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-word {
+	color: rgba(128, 128, 128, 0.4) !important;
+	background: none !important;
+	-webkit-background-clip: initial !important;
+	background-clip: initial !important;
+	-webkit-text-fill-color: initial !important;
+	text-shadow: initial !important;
+}
+
+/* Only-active: hover on inactive wbw lines keeps default */
+body.colorama-only-active.colorama-single
+	.rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-word:hover,
+body.colorama-only-active.colorama-gradient
+	.rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-word:hover {
+	color: lightgray !important;
+	background: none !important;
+	-webkit-background-clip: initial !important;
+	background-clip: initial !important;
+	-webkit-text-fill-color: initial !important;
+	text-shadow: initial !important;
+}
+
 /* Only color active line mode */
 body.colorama-only-active.colorama-single [class*="_lyricsText"]
 	> div

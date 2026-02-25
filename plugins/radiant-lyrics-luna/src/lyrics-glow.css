@@ -33,8 +33,8 @@
 	padding-left: 20px;
 	transition-duration: 0.7s;
 	font-size: 55px;
-	/* biome-ignore lint: Needs priority for active lyric color */
-	color: white !important;
+	/* biome-ignore lint: Active lyric uses Colorama color */
+	color: var(--cl-glow1, #fff) !important;
 	font-family:
 		"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
 		Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
@@ -239,8 +239,8 @@
 		0 0 var(--rl-glow-inner, 2px) var(--cl-glow1, #fff),
 		/* biome-ignore lint: Glow priority for active word */
 		0 0 var(--rl-glow-outer, 20px) var(--cl-glow2, #fff) !important;
-	/* biome-ignore lint: Active word must be white */
-	color: white !important;
+	/* biome-ignore lint: Active word uses Colorama color */
+	color: var(--cl-glow1, #fff) !important;
 }
 
 /* MARKER: Syllable sweep animation CSS */
@@ -279,12 +279,12 @@
 	filter: none !important;
 }
 
-/* Syllable finished: word stays white, no glow */
+/* Syllable finished: word stays Colorama color, no glow */
 .rl-wbw-word.rl-syl-finished {
 	/* biome-ignore lint: Kill base transitions so class swaps are instant */
 	transition: none !important;
-	/* biome-ignore lint: Finished syllable word stays white */
-	color: white !important;
+	/* biome-ignore lint: Finished syllable uses Colorama color */
+	color: var(--cl-glow1, #fff) !important;
 	/* biome-ignore lint: No glow for syllable mode */
 	text-shadow: none !important;
 	/* biome-ignore lint: No glow for syllable mode */
