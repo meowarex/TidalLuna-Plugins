@@ -1483,10 +1483,12 @@ const fetchWordLyrics = async (
 	const fallbackUrl = `https://rl-api.kineticsand.net/${params}`;
 
 	// "ok" = got a response (data may still be null if type != Word)
+	// "404" = lyrics not found, stop all attempts immediately
 	// "500" = serverless timeout, skip remaining primaries and go to fallback
 	// "err" = network/other error, try next host
 	type FetchOutcome =
 		| { status: "ok"; data: WordLyricsResponse | null }
+		| { status: "404" }
 		| { status: "500" }
 		| { status: "err" };
 
@@ -1496,6 +1498,7 @@ const fetchWordLyrics = async (
 			const res = await fetch(url);
 			if (!res.ok) {
 				trace.log(`RL API: fetch failed: ${res.status} from ${url}`);
+				if (res.status === 404) return { status: "404" };
 				return res.status === 500 ? { status: "500" } : { status: "err" };
 			}
 			const data: WordLyricsResponse = await res.json();
@@ -1516,12 +1519,16 @@ const fetchWordLyrics = async (
 		return data;
 	};
 
-	// Try primary hosts; bail to fallback immediately on 500
+	// Try primary hosts; bail to fallback immediately on 500, stop entirely on 404
 	for (const url of primaryUrls) {
 		const outcome = await tryFetch(url);
 		if (outcome.status === "ok") return finish(outcome.data);
+		if (outcome.status === "404") {
+			trace.log("RL API: 404 — no word/syllable lyrics exist for this track");
+			return finish(null);
+		}
 		if (outcome.status === "500") {
-			trace.log("RL API: 500 from primary host — skipping to fallback");
+			trace.log("RL API: 500 (Execution Timeout) — fallback");
 			break;
 		}
 		// "err" → try next primary
@@ -1530,6 +1537,14 @@ const fetchWordLyrics = async (
 	// Fallback: kineticsand (no serverless timeout)
 	const fallback = await tryFetch(fallbackUrl);
 	if (fallback.status === "ok") return finish(fallback.data);
+	if (fallback.status === "404") {
+		trace.log("RL API: 404 from fallback — no word/syllable lyrics exist for this track");
+		return finish(null);
+	}
+	if (fallback.status === "500") {
+		trace.log("RL API: 500 from fallback — API IS ACTUALLY BORKED!");
+		return finish(null);
+	}
 
 	trace.log("RL API: All Endpoints Failed");
 	cachedLyricsKey = cacheKey;
