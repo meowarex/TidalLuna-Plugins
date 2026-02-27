@@ -14,6 +14,8 @@ declare global {
 		updateQualityProgressColor?: () => void;
 		updateLyricsStyle?: () => void;
 		updateLyricsStyleSetting?: (value: number) => void;
+		updateRomanizeLyrics?: () => void;
+		updateRomanizeLyricsSetting?: (checked: boolean) => void;
 	}
 }
 
@@ -49,6 +51,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	bubbledLyrics: true,
 	syllableLogging: false,
 	lyricsFontSize: 100,
+	romanizeLyrics: false,
 });
 
 export const Settings = () => {
@@ -146,6 +149,16 @@ export const Settings = () => {
 	const [qualityProgressColor, setQualityProgressColor] = React.useState(
 		settings.qualityProgressColor,
 	);
+	const [romanizeLyrics, setRomanizeLyrics] = React.useState(
+		settings.romanizeLyrics,
+	);
+	React.useEffect(() => {
+		window.updateRomanizeLyricsSetting = (checked: boolean) =>
+			setRomanizeLyrics(checked);
+		return () => {
+			window.updateRomanizeLyricsSetting = undefined;
+		};
+	}, []);
 
 	// Derive props and override onChange to accept a broader first param type
 	type BaseSwitchProps = React.ComponentProps<typeof LunaSwitchSetting>;
@@ -264,6 +277,18 @@ export const Settings = () => {
 					setBubbledLyrics(checked);
 					if (window.updateLyricsStyle) {
 						window.updateLyricsStyle();
+					}
+				}}
+			/>
+			<AnySwitch
+				title="Romanize Lyrics | Beta"
+				desc="Display romanized (latin) text for non-latin lyrics (e.g. Korean, Japanese, Chinese)"
+				checked={romanizeLyrics}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.romanizeLyrics = checked;
+					setRomanizeLyrics(checked);
+					if (window.updateRomanizeLyrics) {
+						window.updateRomanizeLyrics();
 					}
 				}}
 			/>

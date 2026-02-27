@@ -1215,6 +1215,7 @@ interface WordTiming {
 	time: number; // ms
 	duration: number; // ms
 	isBackground: boolean;
+	romanized?: string;
 }
 
 interface WordLine {
@@ -1225,6 +1226,7 @@ interface WordLine {
 	syllabus: WordTiming[];
 	element: { key: string; songPart: string; singer: string };
 	translation: string | null;
+	romanized?: string;
 }
 
 interface WordLyricsResponse {
@@ -1452,7 +1454,7 @@ const fetchWordLyrics = async (
 	artist: string,
 	isrc?: string,
 ): Promise<WordLyricsResponse | null> => {
-	const cacheKey = `${title}\0${artist}\0${isrc ?? ""}`;
+	const cacheKey = `${title}\0${artist}\0${isrc ?? ""}\0${settings.romanizeLyrics ? "r" : ""}`;
 	if (cachedLyricsKey === cacheKey) {
 		sylLog(`[RL-Syllable] Cache hit for "${title}" by "${artist}"`);
 		return cachedLyricsData;
@@ -1460,6 +1462,7 @@ const fetchWordLyrics = async (
 
 	let params = `lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
 	if (isrc) params += `&isrc=${encodeURIComponent(isrc)}`;
+	if (settings.romanizeLyrics) params += "&romanize=true";
 
 	const primaryUrls = [
 		`https://rl-api.atomix.one/${params}`,
@@ -1811,6 +1814,9 @@ const buildWordSpans = (): {
 			return span;
 		};
 
+		const useRomanized = settings.romanizeLyrics;
+		const sylDisplay = (s: WordTiming) => (useRomanized && s.romanized != null ? s.romanized : s.text);
+
 		// Group syllables into words: trailing whitespace in syl.text marks a word boundary
 		const wordGroups: number[][] = [];
 		let currentGroup: number[] = [];
@@ -1829,7 +1835,7 @@ const buildWordSpans = (): {
 			const bgSyls = splitBg ? syllabus.filter(s => s.isBackground) : [];
 
 			if (mainSyls.length > 0) {
-				const text = mainSyls.map(s => s.text).join("").trim();
+				const text = mainSyls.map(s => sylDisplay(s)).join("").trim();
 				const first = mainSyls[0];
 				const last = mainSyls[mainSyls.length - 1];
 				const span = makeSpan(text, first.time, false);
@@ -1837,7 +1843,7 @@ const buildWordSpans = (): {
 				lineWords.push({ el: span, start: first.time, end: last.time + last.duration, duration: (last.time + last.duration) - first.time });
 			}
 			if (bgSyls.length > 0 && bgContainer) {
-				const text = bgSyls.map(s => s.text).join("").trim().replace(/[()]/g, "");
+				const text = bgSyls.map(s => sylDisplay(s)).join("").trim().replace(/[()]/g, "");
 				const first = bgSyls[0];
 				const last = bgSyls[bgSyls.length - 1];
 				const span = makeSpan(text, first.time, true);
@@ -1855,7 +1861,7 @@ const buildWordSpans = (): {
 					const groupSpans: HTMLSpanElement[] = [];
 					for (const si of group) {
 						const syl = syllabus[si];
-						const span = makeSpan(syl.text.trimEnd(), wordStartMs, syl.isBackground);
+						const span = makeSpan(sylDisplay(syl).trimEnd(), wordStartMs, syl.isBackground);
 						span.addEventListener("mouseenter", () => {
 							for (const s of groupSpans) s.classList.add("rl-wbw-word-hover");
 						});
@@ -1868,7 +1874,7 @@ const buildWordSpans = (): {
 						targetWords.push(entry);
 					}
 				} else {
-					const mergedText = group.map(si => syllabus[si].text.trimEnd()).join("");
+					const mergedText = group.map(si => sylDisplay(syllabus[si]).trimEnd()).join("");
 					const first = syllabus[group[0]];
 					const last = syllabus[group[group.length - 1]];
 					const start = first.time;
@@ -2552,6 +2558,13 @@ const updateLyricsStyleFromSettings = (): void => {
 	toggle();
 };
 (window as any).updateLyricsStyle = updateLyricsStyleFromSettings;
+
+const updateRomanizeLyricsFromSettings = (): void => {
+	cachedLyricsKey = null;
+	cachedLyricsData = null;
+	toggle();
+};
+(window as any).updateRomanizeLyrics = updateRomanizeLyricsFromSettings;
 
 // Update lyrics on track change (wipe cache for new song)
 onGlobalTrackChange(() => {
