@@ -9,19 +9,22 @@
 @font-face {
 	font-family: "AbyssFont";
 	font-weight: 500;
-	src: url("https://excel.lexploits.top/extra/tidal/LyricsMedium.woff2") format("woff2");
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsMedium.woff2")
+		format("woff2");
 }
 
 @font-face {
 	font-family: "AbyssFont";
 	font-weight: 600;
-	src: url("https://excel.lexploits.top/extra/tidal/LyricsSemibold.woff2") format("woff2");
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsSemibold.woff2")
+		format("woff2");
 }
 
 @font-face {
 	font-family: "AbyssFont";
 	font-weight: 700;
-	src: url("https://excel.lexploits.top/extra/tidal/LyricsBold.woff2") format("woff2");
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsBold.woff2")
+		format("woff2");
 }
 
 /* Enhanced lyrics styling with glow effects */
@@ -223,7 +226,9 @@
 .rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word:hover,
 .rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word.rl-wbw-word-hover,
 .rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-main .rl-wbw-word:hover,
-.rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-main .rl-wbw-word.rl-wbw-word-hover {
+.rl-wbw-line:not(.rl-wbw-line-active)
+	.rl-wbw-main
+	.rl-wbw-word.rl-wbw-word-hover {
 	text-shadow:
 		0 0 var(--rl-glow-inner, 2px) lightgray,
 		/* biome-ignore lint: Hover glow should override defaults */
@@ -243,16 +248,33 @@
 	color: var(--cl-glow1, #fff) !important;
 }
 
+/* Line mode: suppress glow during slide-in only */
+.rl-wbw-line.rl-line-slide .rl-wbw-word.rl-wbw-active {
+	text-shadow: none !important;
+}
+
 /* MARKER: Syllable sweep animation CSS */
 
 @keyframes rl-wipe {
 	from {
-		background-size: 0.75em 100%, 0% 100%, 100% 100%;
-		background-position: -0.375em 0%, left, left;
+		background-size:
+			0.75em 100%,
+			0% 100%,
+			100% 100%;
+		background-position:
+			-0.375em 0%,
+			left,
+			left;
 	}
 	to {
-		background-size: 0.75em 100%, 100% 100%, 100% 100%;
-		background-position: calc(100% + 0.375em) 0%, left, left;
+		background-size:
+			0.75em 100%,
+			100% 100%,
+			100% 100%;
+		background-position:
+			calc(100% + 0.375em) 0%,
+			left,
+			left;
 	}
 }
 
@@ -268,11 +290,22 @@
 	background-clip: text !important;
 	background-repeat: no-repeat;
 	background-image:
-		linear-gradient(90deg, transparent 0%, var(--cl-glow1, #fff) 50%, transparent 100%),
+		linear-gradient(
+			90deg,
+			transparent 0%,
+			var(--cl-glow1, #fff) 50%,
+			transparent 100%
+		),
 		linear-gradient(90deg, var(--cl-glow1, #fff) 100%, transparent 100%),
 		linear-gradient(90deg, rgba(128, 128, 128, 0.4), rgba(128, 128, 128, 0.4));
-	background-size: 0.75em 100%, 0% 100%, 100% 100%;
-	background-position: -0.375em 0%, left, left;
+	background-size:
+		0.75em 100%,
+		0% 100%,
+		100% 100%;
+	background-position:
+		-0.375em 0%,
+		left,
+		left;
 	/* biome-ignore lint: No glow for syllable mode */
 	text-shadow: none !important;
 	/* biome-ignore lint: No glow for syllable mode */
@@ -295,18 +328,26 @@
 /* syllableStyle: 0 = none, 1 = Pop!, 2 = Jump */
 
 @keyframes rl-pop {
-	0%, 100% {
+	0%,
+	100% {
 		transform: scale(1);
 	}
-	25%, 35% {
+	25%,
+	35% {
 		transform: scale(1.03) translateY(-0.5%);
 	}
 }
 
 @keyframes rl-jump {
-	0%   { transform: translateY(8px); }
-	50%  { transform: translateY(-3px); }
-	100% { transform: translateY(0); }
+	0% {
+		transform: translateY(8px);
+	}
+	50% {
+		transform: translateY(-3px);
+	}
+	100% {
+		transform: translateY(0);
+	}
 }
 
 /* Pop! for word mode */
@@ -347,14 +388,18 @@
 	opacity: 0;
 	font-size: 0.55em;
 	padding-top: 0.15em;
-	transition: max-height 0.3s ease, opacity 0.5s ease;
+	transition:
+		max-height 0.3s ease,
+		opacity 0.5s ease;
 	color: rgba(128, 128, 128, 0.4);
 }
 
 .rl-wbw-line.rl-wbw-line-active .rl-wbw-bg-container {
 	max-height: 3em;
 	opacity: 1;
-	transition: max-height 0.5s ease, opacity 0.5s ease;
+	transition:
+		max-height 0.5s ease,
+		opacity 0.5s ease;
 }
 
 /* Singer duet positioning */
@@ -397,10 +442,19 @@
 }
 
 /* kill glow on hovered word */
-.lyrics-glow-disabled .rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word:hover,
-.lyrics-glow-disabled .rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word.rl-wbw-word-hover,
-.lyrics-glow-disabled .rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-main .rl-wbw-word:hover,
-.lyrics-glow-disabled .rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-main .rl-wbw-word.rl-wbw-word-hover {
+.lyrics-glow-disabled .rl-wbw-line:not(.rl-wbw-line-active)
+	> .rl-wbw-word:hover,
+.lyrics-glow-disabled
+	.rl-wbw-line:not(.rl-wbw-line-active)
+	> .rl-wbw-word.rl-wbw-word-hover,
+.lyrics-glow-disabled
+	.rl-wbw-line:not(.rl-wbw-line-active)
+	.rl-wbw-main
+	.rl-wbw-word:hover,
+.lyrics-glow-disabled
+	.rl-wbw-line:not(.rl-wbw-line-active)
+	.rl-wbw-main
+	.rl-wbw-word.rl-wbw-word-hover {
 	/* biome-ignore lint: Kill glow on hovered word */
 	text-shadow: none !important;
 }
