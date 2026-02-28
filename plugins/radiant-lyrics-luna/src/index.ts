@@ -1319,10 +1319,12 @@ const handleStickyLyricsTrackChange = (): void => {
 	);
 };
 
-
 // MARKER: Injected API Lyrics (for non tidal lyric tracks)
 
 let injectedTablistClickCleanup: (() => void) | null = null;
+let isTrackChangeRunning = false;
+let trackChangeRunSeq = 0;
+const hiddenPanelsByInjected = new Set<HTMLElement>();
 
 const getTabsRoot = (): HTMLElement | null => {
 	const roots = Array.from(
@@ -1338,12 +1340,16 @@ const hideInjectedLyricsTab = (): void => {
 	if (!injectedTabEl || !injectedPanelEl) return;
 	const root = getTabsRoot();
 	if (root) {
+		for (const panel of hiddenPanelsByInjected) {
+			panel.style.removeProperty("display");
+		}
+		hiddenPanelsByInjected.clear();
+
 		const nativePanels = Array.from(
 			root.querySelectorAll('div[role="tabpanel"]'),
 		) as HTMLElement[];
 		for (const panel of nativePanels) {
 			if (panel === injectedPanelEl) continue;
-			panel.removeAttribute("aria-hidden");
 			panel.style.removeProperty("display");
 		}
 	}
@@ -1402,14 +1408,21 @@ const showInjectedLyricsTab = (): void => {
 	const nativePanels = Array.from(
 		root.querySelectorAll('div[role="tabpanel"]'),
 	) as HTMLElement[];
+	for (const panel of hiddenPanelsByInjected) {
+		panel.style.removeProperty("display");
+	}
+	hiddenPanelsByInjected.clear();
+
 	for (const tab of tabs) {
 		if (tab === injectedTabEl) continue;
 		if (activeTabClass) tab.classList.remove(activeTabClass);
 	}
 	for (const panel of nativePanels) {
 		if (panel === injectedPanelEl) continue;
-		panel.setAttribute("aria-hidden", "true");
-		panel.style.display = "none";
+		if (panel.classList.contains("react-tabs__tab-panel--selected")) {
+			panel.style.display = "none";
+			hiddenPanelsByInjected.add(panel);
+		}
 	}
 
 	injectedTabEl.setAttribute("aria-selected", "true");
@@ -1626,6 +1639,12 @@ function setupStickyLyricsObserver(): void {
 
 	// Apply word lyrics when lyrics container appears or reappears
 	observe<HTMLElement>(unloads, '[data-test="lyrics-lines"]', () => {
+		if (isTrackChangeRunning) return;
+		const lyricsLines = document.querySelector(
+			'[data-test="lyrics-lines"]',
+		) as HTMLElement;
+		if (lyricsLines?.querySelector(".rl-wbw-container")) return;
+
 		if (lyricsMode === "line-tidal") {
 			void reapplyTidalLines();
 		} else if (lyricsData) {
@@ -2805,6 +2824,23 @@ const stopTidalFollowLoop = (): void => {
 	}
 };
 
+// smthn GPT 5.3 Codex did
+const setTidalFallbackLineWordState = (
+	lineEl: HTMLElement,
+	active: boolean,
+): void => {
+	const words = lineEl.querySelectorAll(".rl-wbw-word");
+	for (const word of words) {
+		if (active) {
+			word.classList.add("rl-wbw-active");
+			word.classList.remove("rl-wbw-finished");
+		} else {
+			word.classList.remove("rl-wbw-active");
+			word.classList.add("rl-wbw-finished");
+		}
+	}
+};
+
 const updateTidalFollowActiveLine = (): void => {
 	if (!isActive || lyricsMode !== "line-tidal" || lines.length === 0) return;
 
@@ -2824,6 +2860,7 @@ const updateTidalFollowActiveLine = (): void => {
 		if (!newActiveSet.has(idx) && idx < lines.length) {
 			lines[idx].el.classList.remove("rl-wbw-line-active");
 			lines[idx].el.removeAttribute("data-current");
+			setTidalFallbackLineWordState(lines[idx].el, false);
 		}
 	}
 
@@ -2832,6 +2869,7 @@ const updateTidalFollowActiveLine = (): void => {
 		lines[activeIndex].el.classList.remove("rl-pos-1", "rl-pos-2", "rl-pos-3");
 		lines[activeIndex].el.setAttribute("data-current", "true");
 	}
+	setTidalFallbackLineWordState(lines[activeIndex].el, true);
 
 	const prevPrimary = primaryLineIdx;
 	primaryLineIdx = activeIndex;
@@ -3192,7 +3230,7 @@ const startTickLoop = (): void => {
 				span.removeAttribute("data-current");
 			}
 
-			if (nowMs - lastLogTime >= 1000) {
+			if (!isLineStyle && nowMs - lastLogTime >= 1000) {
 				lastLogTime = nowMs;
 				sylLog(`[RL-Syllable] Playback | ${nowMs.toFixed(0)} ms`);
 			}
@@ -3430,9 +3468,11 @@ const startTickLoop = (): void => {
 							word.el.style.animation = wipe + sylAnim;
 						}
 						activeWordEls.set(lineIdx, word.el);
-						sylLog(
-							`[RL-Syllable] Word/Syllable "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
-						);
+						if (!isLineStyle) {
+							sylLog(
+								`[RL-Syllable] Word/Syllable "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
+							);
+						}
 					}
 				} else {
 					word.el.classList.remove(CLS_ACTIVE);
@@ -3510,97 +3550,106 @@ const startTickLoop = (): void => {
 const onTrackChange = async (): Promise<void> => {
 	teardown();
 
-	const token = ++trackChangeToken;
-
-	const trackInfo = await getTrackInfo();
-	if (token !== trackChangeToken) return;
-	if (!trackInfo) {
-		trace.log("could not get track info from playback state");
-		return;
-	}
-
-	sylTrace(
-		`RL API: looking up "${trackInfo.title}" by "${trackInfo.artist}"${trackInfo.isrc ? ` (ISRC: ${trackInfo.isrc})` : ""}`,
-	);
-
-	const response = await fetchLyrics(
-		trackInfo.title,
-		trackInfo.artist,
-		trackInfo.isrc,
-	);
-	if (token !== trackChangeToken) return;
-	if (!response) {
-		trace.log("RL API: no API lyrics available, falling back to TIDAL lines");
-		const tidalTexts = getTidalLines();
-		const romanized = settings.romanizeLyrics
-			? await romanizeLines(tidalTexts)
-			: null;
+	const runId = ++trackChangeRunSeq;
+	isTrackChangeRunning = true;
+	const token = ++trackChangeToken;s
+	try {
+		const trackInfo = await getTrackInfo();
 		if (token !== trackChangeToken) return;
-		cachedTidalRomanizedLines = romanized;
-		cachedTidalRomanizeKey = settings.romanizeLyrics
-			? `${tidalTexts.join("\n")}\0r`
-			: null;
-		isActive = true;
-		lyricsMode = "line-tidal";
-		hideTidalLyrics();
-		const tidalResult = buildTidalLines(romanized);
-		lines = tidalResult.lines;
-		if (lines.length === 0) {
-			trace.log("No TIDAL lines available yet");
+		if (!trackInfo) {
+			trace.log("could not get track info from playback state");
+			return;
+		}
+
+		sylTrace(
+			`RL API: looking up "${trackInfo.title}" by "${trackInfo.artist}"${trackInfo.isrc ? ` (ISRC: ${trackInfo.isrc})` : ""}`,
+		);
+
+		const response = await fetchLyrics(
+			trackInfo.title,
+			trackInfo.artist,
+			trackInfo.isrc,
+		);
+		if (token !== trackChangeToken) return;
+		if (!response) {
+			trace.log("RL API: no API lyrics available, falling back to TIDAL lines");
+			const tidalTexts = getTidalLines();
+			const romanized = settings.romanizeLyrics
+				? await romanizeLines(tidalTexts)
+				: null;
+			if (token !== trackChangeToken) return;
+			cachedTidalRomanizedLines = romanized;
+			cachedTidalRomanizeKey = settings.romanizeLyrics
+				? `${tidalTexts.join("\n")}\0r`
+				: null;
+			isActive = true;
+			lyricsMode = "line-tidal";
+			hideTidalLyrics();
+			const tidalResult = buildTidalLines(romanized);
+			lines = tidalResult.lines;
+			if (lines.length === 0) {
+				trace.log("No TIDAL lines available yet");
+				teardown();
+				return;
+			}
+			watchForRerender();
+			startTidalFollowLoop();
+			return;
+		}
+
+		sylTrace(
+			`RL API: loaded ${response.data.length} lines (source: ${response.metadata.source})`,
+		);
+		sylLog(
+			`[RL-Syllable] Loaded "${trackInfo.title}" by "${trackInfo.artist}" — ${response.data.length} lines`,
+		);
+
+		lyricsMode = response.type === "Word" ? "word" : "line-api";
+		if (!ensureLyricsTab()) {
+			trace.log("Could not create/find lyrics tab container");
 			teardown();
 			return;
 		}
+		if (injectedTabEl && settings.stickyLyrics) {
+			showInjectedLyricsTab();
+			safeTimeout(
+				unloads,
+				() => {
+					if (!settings.stickyLyrics || token !== trackChangeToken) return;
+					showInjectedLyricsTab();
+				},
+				180,
+			);
+		}
+		lyricsData =
+			response.type === "Word"
+				? response.data
+				: normalizeLineData(response.data);
+		lyricsResponse = response;
+		isActive = true;
+		if (!lyricsData || lyricsData.length === 0) {
+			trace.log("Lyrics payload had no usable lines");
+			teardown();
+			return;
+		}
+
+		// Remove Tidal classes
+		hideTidalLyrics();
+
+		// Build word spans and line entries
+		const result = buildWordSpans();
+		lines = result.lines;
+
+		// Watch React re-renders
 		watchForRerender();
-		startTidalFollowLoop();
-		return;
+
+		// Start the highlight loop
+		startTickLoop();
+	} finally {
+		if (runId === trackChangeRunSeq) {
+			isTrackChangeRunning = false;
+		}
 	}
-
-	sylTrace(
-		`RL API: loaded ${response.data.length} lines (source: ${response.metadata.source})`,
-	);
-	sylLog(
-		`[RL-Syllable] Loaded "${trackInfo.title}" by "${trackInfo.artist}" — ${response.data.length} lines`,
-	);
-
-	lyricsMode = response.type === "Word" ? "word" : "line-api";
-	if (!ensureLyricsTab()) {
-		trace.log("Could not create/find lyrics tab container");
-		teardown();
-		return;
-	}
-	if (injectedTabEl && settings.stickyLyrics) {
-		showInjectedLyricsTab();
-		safeTimeout(
-			unloads,
-			() => {
-				if (!settings.stickyLyrics || token !== trackChangeToken) return;
-				showInjectedLyricsTab();
-			},
-			180,
-		);
-	}
-	lyricsData =
-		response.type === "Word" ? response.data : normalizeLineData(response.data);
-	lyricsResponse = response;
-	isActive = true;
-	if (!lyricsData || lyricsData.length === 0) {
-		trace.log("Lyrics payload had no usable lines");
-		teardown();
-		return;
-	}
-
-	// Remove Tidal classes
-	hideTidalLyrics();
-
-	// Build word spans and line entries
-	const result = buildWordSpans();
-	lines = result.lines;
-
-	// Watch React re-renders
-	watchForRerender();
-
-	// Start the highlight loop
-	startTickLoop();
 };
 
 // Reapply word lyrics (for tab switch back)
