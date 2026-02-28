@@ -101,8 +101,12 @@
 }
 
 /* Glow-aware left padding so the glow doesn't clip | Thanks Aya <3*/
-[data-test="lyrics"] {
-	padding-left: var(--rl-glow-outer, 20px) !important;
+.rl-wbw-active {
+	padding-left: var(--rl-glow-outer) !important;
+}
+
+[data-rl-injected][role="tabpanel"] {
+	transform: translateX(calc(var(--rl-glow-outer) * -1)) !important;
 }
 
 /* Lyrics container styling */
