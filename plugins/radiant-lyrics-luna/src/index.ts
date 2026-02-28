@@ -1273,6 +1273,9 @@ const tryActivateStickyLyricsTab = (): boolean => {
 
 	if (!lyricsTab) return false;
 
+	// Already active — nothing to do
+	if (lyricsTab.getAttribute("aria-selected") === "true") return true;
+
 	if (lyricsTab.getAttribute("data-rl-injected") === "true") {
 		showInjectedLyricsTab();
 	} else {
@@ -1800,6 +1803,9 @@ const clearLineSlideTimers = (): void => {
 	}
 	lineSlideTimers.clear();
 };
+
+// Defer blur until the first lyric activates each track
+let blurActivated = false;
 
 // Scroll sync (unhook on user scroll)
 let scrollSynced = true;
@@ -2395,7 +2401,8 @@ const buildWordSpans = (): {
 	// create lyrics container for word/syllable lines
 	const wbwContainer = document.createElement("div");
 	wbwContainer.className = "rl-wbw-container";
-	if (settings.blurInactive) wbwContainer.classList.add("rl-blur-active");
+	if (settings.blurInactive && blurActivated)
+		wbwContainer.classList.add("rl-blur-active");
 	if (settings.bubbledLyrics) wbwContainer.classList.add("rl-bubbled");
 	const effectiveStyle = getLyricsStyle();
 	const allowWordSylStyles = isWordMode();
@@ -2727,7 +2734,8 @@ const buildTidalLines = (
 
 	const wbwContainer = document.createElement("div");
 	wbwContainer.className = "rl-wbw-container";
-	if (settings.blurInactive) wbwContainer.classList.add("rl-blur-active");
+	if (settings.blurInactive && blurActivated)
+		wbwContainer.classList.add("rl-blur-active");
 	if (settings.bubbledLyrics) wbwContainer.classList.add("rl-bubbled");
 	forceStyle(wbwContainer, {
 		display: "block",
@@ -2875,6 +2883,13 @@ const updateTidalFollowActiveLine = (): void => {
 	primaryLineIdx = activeIndex;
 	activeLineIdxs = newActiveSet;
 
+	if (settings.blurInactive && !blurActivated) {
+		blurActivated = true;
+		document
+			.querySelector(".rl-wbw-container")
+			?.classList.add("rl-blur-active");
+	}
+
 	if (settings.blurInactive) {
 		for (let i = 0; i < lines.length; i++) {
 			lines[i].el.classList.remove(
@@ -3015,6 +3030,7 @@ const teardown = (): void => {
 	unhookSyncButton();
 	unlockScroll();
 	scrollSynced = true;
+	blurActivated = false;
 	isActive = false;
 	lyricsMode = "none";
 	lyricsData = null;
@@ -3132,7 +3148,7 @@ const scrollToActiveLine = (): void => {
 // Resync lyric scroll (scrubbing and lyric jumps)
 const resync = (): void => {
 	scrollSynced = true;
-	if (settings.blurInactive) {
+	if (settings.blurInactive && blurActivated) {
 		document
 			.querySelector(".rl-wbw-container")
 			?.classList.add("rl-blur-active");
@@ -3338,6 +3354,14 @@ const startTickLoop = (): void => {
 						`[RL-Syllable] Line ${idx} Active "${lines[idx].el.textContent?.slice(0, 40)}" | ${lines[idx].startMs} ms - ${lines[idx].endMs} ms   [${nowMs.toFixed(0)} ms]`,
 					);
 				}
+			}
+
+			// activate blur on first lyric of the track
+			if (settings.blurInactive && !blurActivated && newActiveSet.size > 0) {
+				blurActivated = true;
+				document
+					.querySelector(".rl-wbw-container")
+					?.classList.add("rl-blur-active");
 			}
 
 			// instrumental gaps, keep the last-active line unblurred
@@ -3612,14 +3636,6 @@ const onTrackChange = async (): Promise<void> => {
 		}
 		if (injectedTabEl && settings.stickyLyrics) {
 			showInjectedLyricsTab();
-			safeTimeout(
-				unloads,
-				() => {
-					if (!settings.stickyLyrics || token !== trackChangeToken) return;
-					showInjectedLyricsTab();
-				},
-				180,
-			);
 		}
 		lyricsData =
 			response.type === "Word"
