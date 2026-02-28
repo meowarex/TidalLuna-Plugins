@@ -1631,9 +1631,9 @@ function setupStickyLyricsObserver(): void {
 		const tab = document.querySelector('[data-test="tabs-lyrics"]');
 		if (tab && !tab.querySelector(".sticky-lyrics-trigger")) {
 			createStickyLyricsDropdown();
-		}
-		if (settings.stickyLyrics) {
-			tryActivateStickyLyricsTab();
+			if (settings.stickyLyrics) {
+				tryActivateStickyLyricsTab();
+			}
 		}
 	});
 
