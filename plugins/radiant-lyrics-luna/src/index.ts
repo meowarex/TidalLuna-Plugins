@@ -3552,7 +3552,7 @@ const onTrackChange = async (): Promise<void> => {
 
 	const runId = ++trackChangeRunSeq;
 	isTrackChangeRunning = true;
-	const token = ++trackChangeToken;s
+	const token = ++trackChangeToken;
 	try {
 		const trackInfo = await getTrackInfo();
 		if (token !== trackChangeToken) return;
