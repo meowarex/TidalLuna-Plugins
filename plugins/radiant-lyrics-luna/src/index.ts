@@ -1092,7 +1092,7 @@ const sylTrace = (...args: unknown[]) => {
 		const container = document.querySelector(".rl-wbw-container");
 		if (container) {
 			container.classList.remove("rl-syl-pop", "rl-syl-jump");
-			if (isWordTimingMode()) {
+			if (isWordMode()) {
 				if (clamped === 1) container.classList.add("rl-syl-pop");
 				else if (clamped === 2) container.classList.add("rl-syl-jump");
 			}
@@ -1260,6 +1260,43 @@ const createStickyLyricsDropdown = (): void => {
 	});
 };
 
+// Sticky Lyrics nav for injected lyrics tab
+const tryActivateStickyLyricsTab = (): boolean => {
+	if (!settings.stickyLyrics) return false;
+
+	const lyricsTab = document.querySelector(
+		'[data-test="tabs-lyrics"]',
+	) as HTMLElement;
+	const playQueueTab = document.querySelector(
+		'[data-test="tabs-play-queue"]',
+	) as HTMLElement;
+
+	if (!lyricsTab) return false;
+
+	if (lyricsTab.getAttribute("data-rl-injected") === "true") {
+		showInjectedLyricsTab();
+	} else {
+		lyricsTab.click();
+	}
+
+	// Verify we actually stayed on lyrics after a short delay
+	safeTimeout(
+		unloads,
+		() => {
+			if (!settings.stickyLyrics) return;
+			const onLyrics = document.querySelector(
+				'[data-test="tabs-lyrics"][aria-selected="true"]',
+			);
+			if (!onLyrics && playQueueTab) {
+				playQueueTab.click();
+			}
+		},
+		800,
+	);
+
+	return true;
+};
+
 // Handle switching tabs on track change
 const handleStickyLyricsTrackChange = (): void => {
 	if (!settings.stickyLyrics) return;
@@ -1271,38 +1308,301 @@ const handleStickyLyricsTrackChange = (): void => {
 		() => {
 			if (!settings.stickyLyrics) return;
 
-			const lyricsTab = document.querySelector(
-				'[data-test="tabs-lyrics"]',
-			) as HTMLElement;
-			const playQueueTab = document.querySelector(
-				'[data-test="tabs-play-queue"]',
-			) as HTMLElement;
-
-			if (!lyricsTab) {
+			if (!tryActivateStickyLyricsTab()) {
+				const playQueueTab = document.querySelector(
+					'[data-test="tabs-play-queue"]',
+				) as HTMLElement;
 				if (playQueueTab) playQueueTab.click();
-				return;
 			}
-
-			lyricsTab.click();
-
-			// Verify we actually stayed on lyrics after a short delay
-			// TODO: Make not shitty (one day maybe)
-			safeTimeout(
-				unloads,
-				() => {
-					if (!settings.stickyLyrics) return;
-					const onLyrics = document.querySelector(
-						'[data-test="tabs-lyrics"][aria-selected="true"]',
-					);
-					if (!onLyrics && playQueueTab) {
-						playQueueTab.click();
-					}
-				},
-				800,
-			);
 		},
 		1200,
 	);
+};
+
+
+// MARKER: Injected API Lyrics (for non tidal lyric tracks)
+
+let injectedTablistClickCleanup: (() => void) | null = null;
+
+const getTabsRoot = (): HTMLElement | null => {
+	const roots = Array.from(
+		document.querySelectorAll('.react-tabs[data-rttabs="true"]'),
+	) as HTMLElement[];
+	for (const root of roots) {
+		if (root.querySelector('[data-test="tabs-play-queue"]')) return root;
+	}
+	return null;
+};
+
+const hideInjectedLyricsTab = (): void => {
+	if (!injectedTabEl || !injectedPanelEl) return;
+	const root = getTabsRoot();
+	if (root) {
+		const nativePanels = Array.from(
+			root.querySelectorAll('div[role="tabpanel"]'),
+		) as HTMLElement[];
+		for (const panel of nativePanels) {
+			if (panel === injectedPanelEl) continue;
+			panel.removeAttribute("aria-hidden");
+			panel.style.removeProperty("display");
+		}
+	}
+
+	injectedTabEl.setAttribute("aria-selected", "false");
+	injectedTabEl.setAttribute("tabindex", "-1");
+	injectedTabEl.setAttribute("aria-expanded", "false");
+	injectedTabEl.classList.remove("react-tabs__tab--selected");
+	if (activeTabClass) {
+		injectedTabEl.classList.remove(activeTabClass);
+	}
+
+	injectedPanelEl.classList.remove("react-tabs__tab-panel--selected");
+	if (activePanelClass) {
+		injectedPanelEl.classList.remove(activePanelClass);
+	}
+	injectedPanelEl.setAttribute("aria-hidden", "true");
+	injectedPanelEl.style.display = "none";
+};
+
+const showInjectedLyricsTab = (): void => {
+	if (!injectedTabEl || !injectedPanelEl) return;
+	const root = getTabsRoot();
+	if (!root) return;
+
+	const tabs = Array.from(
+		root.querySelectorAll('ul[role="tablist"] > li[role="tab"]'),
+	) as HTMLElement[];
+	const panels = Array.from(
+		root.querySelectorAll('div[role="tabpanel"]'),
+	) as HTMLElement[];
+
+	if (!activeTabClass) {
+		for (const tab of tabs) {
+			const cls = Array.from(tab.classList).find((c) =>
+				c.includes("_activeTab_"),
+			);
+			if (cls) {
+				activeTabClass = cls;
+				break;
+			}
+		}
+	}
+	if (!activePanelClass) {
+		for (const panel of panels) {
+			const cls = Array.from(panel.classList).find((c) =>
+				c.includes("_isActive_"),
+			);
+			if (cls) {
+				activePanelClass = cls;
+				break;
+			}
+		}
+	}
+
+	const nativePanels = Array.from(
+		root.querySelectorAll('div[role="tabpanel"]'),
+	) as HTMLElement[];
+	for (const tab of tabs) {
+		if (tab === injectedTabEl) continue;
+		if (activeTabClass) tab.classList.remove(activeTabClass);
+	}
+	for (const panel of nativePanels) {
+		if (panel === injectedPanelEl) continue;
+		panel.setAttribute("aria-hidden", "true");
+		panel.style.display = "none";
+	}
+
+	injectedTabEl.setAttribute("aria-selected", "true");
+	injectedTabEl.setAttribute("tabindex", "0");
+	injectedTabEl.setAttribute("aria-expanded", "true");
+	injectedTabEl.classList.add("react-tabs__tab--selected");
+	if (activeTabClass) injectedTabEl.classList.add(activeTabClass);
+
+	injectedPanelEl.classList.add("react-tabs__tab-panel--selected");
+	if (activePanelClass) {
+		injectedPanelEl.classList.add(activePanelClass);
+	}
+	injectedPanelEl.removeAttribute("aria-hidden");
+	injectedPanelEl.style.removeProperty("display");
+};
+
+const clearInjectedLyricsTab = (): void => {
+	hideInjectedLyricsTab();
+	if (creditsTabEl) {
+		if (creditsPrevOrder) {
+			creditsTabEl.style.setProperty("order", creditsPrevOrder);
+		} else {
+			creditsTabEl.style.removeProperty("order");
+		}
+	}
+
+	if (injectedTablistClickCleanup) {
+		injectedTablistClickCleanup();
+		injectedTablistClickCleanup = null;
+	}
+
+	if (injectedTabEl) injectedTabEl.remove();
+	if (injectedPanelEl) injectedPanelEl.remove();
+
+	injectedTabEl = null;
+	injectedPanelEl = null;
+	activeTabClass = "";
+	activePanelClass = "";
+	creditsTabEl = null;
+	creditsPrevOrder = "";
+};
+
+const buildInjectedLyricsShell = (panel: HTMLElement): void => {
+	if (panel.querySelector('[data-test="lyrics-lines"]')) return;
+
+	const trackLyrics = document.createElement("div");
+	trackLyrics.setAttribute("data-test", "track-lyrics");
+
+	const lyricsContainer = document.createElement("div");
+	lyricsContainer.className = "_lyricsContainer_fa37c08 _smoothScroll_05ef096";
+	lyricsContainer.setAttribute("data-test", "lyrics");
+
+	const lyricsLines = document.createElement("div");
+	lyricsLines.className =
+		"_lyricsText_bf0080e _lyrics_0537465 _hasCues_76b4841";
+	lyricsLines.setAttribute("data-test", "lyrics-lines");
+
+	const placeholder = document.createElement("span");
+	placeholder.textContent = "...";
+	const linesInner = document.createElement("div");
+
+	lyricsLines.appendChild(placeholder);
+	lyricsLines.appendChild(linesInner);
+	lyricsContainer.appendChild(lyricsLines);
+	trackLyrics.appendChild(lyricsContainer);
+
+	panel.replaceChildren(trackLyrics);
+};
+
+const ensureLyricsTab = (): boolean => {
+	const existingLyricsTab = document.querySelector(
+		'[data-test="tabs-lyrics"]',
+	) as HTMLElement;
+	if (existingLyricsTab && existingLyricsTab !== injectedTabEl) {
+		clearInjectedLyricsTab();
+		return true;
+	}
+	if (injectedTabEl && injectedPanelEl) {
+		buildInjectedLyricsShell(injectedPanelEl);
+		return true;
+	}
+
+	const root = getTabsRoot();
+	if (!root) return false;
+	const tabList = root.querySelector('ul[role="tablist"]') as HTMLElement;
+	if (!tabList) return false;
+
+	const sampleTab = tabList.querySelector('li[role="tab"]') as HTMLElement;
+	const tabItemClass =
+		Array.from(sampleTab?.classList ?? []).find((c) =>
+			c.includes("_tabItem_"),
+		) ?? "";
+
+	const samplePanel = root.querySelector('div[role="tabpanel"]') as HTMLElement;
+	const panelBaseClass =
+		Array.from(samplePanel?.classList ?? []).find((c) =>
+			c.includes("_tabPanelStyles_"),
+		) ?? "";
+
+	const panelId = `panel:rl:${Date.now().toString(36)}`;
+	const tabId = `tab:rl:${Date.now().toString(36)}`;
+
+	const tabEl = document.createElement("li");
+	tabEl.setAttribute("data-test", "tabs-lyrics");
+	tabEl.setAttribute("data-rttab", "true");
+	tabEl.setAttribute("data-rl-injected", "true");
+	tabEl.setAttribute("role", "tab");
+	tabEl.setAttribute("id", tabId);
+	tabEl.setAttribute("aria-selected", "false");
+	tabEl.setAttribute("aria-disabled", "false");
+	tabEl.setAttribute("aria-controls", panelId);
+	tabEl.setAttribute("tabindex", "-1");
+	if (tabItemClass) tabEl.classList.add(tabItemClass);
+
+	const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	icon.setAttribute("class", "_icon_77f3f89");
+	icon.setAttribute("viewBox", "0 0 20 20");
+	const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+	use.setAttribute("href", "#general__lyrics");
+	icon.appendChild(use);
+
+	const label = document.createElement("span");
+	label.className = "wave-text-description-demi";
+	label.setAttribute("data-wave-color", "textDefault");
+	label.textContent = "Lyrics";
+
+	tabEl.appendChild(icon);
+	tabEl.appendChild(label);
+
+	const panelEl = document.createElement("div");
+	panelEl.setAttribute("data-rl-injected", "true");
+	panelEl.setAttribute("role", "tabpanel");
+	panelEl.setAttribute("id", panelId);
+	panelEl.setAttribute("aria-labelledby", tabId);
+	if (panelBaseClass) panelEl.classList.add(panelBaseClass);
+
+	buildInjectedLyricsShell(panelEl);
+
+	const creditsTab = tabList.querySelector(
+		'[data-test="tabs-credits"]',
+	) as HTMLElement | null;
+	if (creditsTab) {
+		creditsTabEl = creditsTab;
+		creditsPrevOrder = creditsTab.style.getPropertyValue("order") || "";
+		creditsTab.style.setProperty("order", "1000");
+		tabEl.style.setProperty("order", "999");
+	}
+
+	tabList.appendChild(tabEl);
+
+	root.appendChild(panelEl);
+
+	tabEl.addEventListener("click", (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		(
+			e as unknown as { stopImmediatePropagation?: () => void }
+		).stopImmediatePropagation?.();
+		showInjectedLyricsTab();
+	});
+
+	const handleTabListClick = (e: Event): void => {
+		const target = e.target as Node;
+		const clickedTab = (target as HTMLElement)?.closest?.(
+			'li[role="tab"]',
+		) as HTMLElement;
+		if (!clickedTab || clickedTab === tabEl) return;
+
+		const allTabs = Array.from(
+			tabList.querySelectorAll('li[role="tab"]'),
+		) as HTMLElement[];
+		for (const tab of allTabs) {
+			if (tab === tabEl) continue;
+			if (activeTabClass) tab.classList.remove(activeTabClass);
+			tab.classList.remove("react-tabs__tab--selected");
+		}
+		if (activeTabClass) clickedTab.classList.add(activeTabClass);
+		clickedTab.classList.add("react-tabs__tab--selected");
+		clickedTab.setAttribute("aria-selected", "true");
+		clickedTab.setAttribute("tabindex", "0");
+
+		window.setTimeout(() => {
+			hideInjectedLyricsTab();
+		}, 0);
+	};
+	tabList.addEventListener("click", handleTabListClick);
+	injectedTablistClickCleanup = () => {
+		tabList.removeEventListener("click", handleTabListClick);
+	};
+
+	injectedTabEl = tabEl;
+	injectedPanelEl = panelEl;
+	return true;
 };
 
 // Observer: create dropdown when lyrics tab appears & detect track changes
@@ -1319,12 +1619,15 @@ function setupStickyLyricsObserver(): void {
 		if (tab && !tab.querySelector(".sticky-lyrics-trigger")) {
 			createStickyLyricsDropdown();
 		}
+		if (settings.stickyLyrics) {
+			tryActivateStickyLyricsTab();
+		}
 	});
 
 	// Apply word lyrics when lyrics container appears or reappears
 	observe<HTMLElement>(unloads, '[data-test="lyrics-lines"]', () => {
 		if (lyricsMode === "line-tidal") {
-			void reapplyTidalLineLyrics();
+			void reapplyTidalLines();
 		} else if (lyricsData) {
 			reapplyWordLyrics();
 		} else {
@@ -1428,10 +1731,15 @@ let tickLoopUnload: LunaUnload | null = null;
 let isActive = false;
 let savedTidalClasses: string[] | null = null;
 let tidalFollowObserver: MutationObserver | null = null;
+let injectedTabEl: HTMLElement | null = null;
+let injectedPanelEl: HTMLElement | null = null;
+let activeTabClass = "";
+let activePanelClass = "";
+let creditsTabEl: HTMLElement | null = null;
+let creditsPrevOrder = "";
 
-const isWordTimingMode = (): boolean => lyricsMode === "word";
-const getEffectiveLyricsStyle = (): number =>
-	isWordTimingMode() ? settings.lyricsStyle : 0;
+const isWordMode = (): boolean => lyricsMode === "word";
+const getLyricsStyle = (): number => (isWordMode() ? settings.lyricsStyle : 0);
 
 interface WordEntry {
 	el: HTMLSpanElement;
@@ -1457,6 +1765,22 @@ const activeWordEls = new Map<number, HTMLSpanElement | null>();
 const activeBgWordEls = new Map<number, HTMLSpanElement | null>();
 let activeLineIdxs = new Set<number>();
 let primaryLineIdx = -1;
+const lineSlideTimers = new Map<number, number>();
+
+const clearLineSlideTimer = (idx: number): void => {
+	const timer = lineSlideTimers.get(idx);
+	if (timer !== undefined) {
+		window.clearTimeout(timer);
+		lineSlideTimers.delete(idx);
+	}
+};
+
+const clearLineSlideTimers = (): void => {
+	for (const timer of lineSlideTimers.values()) {
+		window.clearTimeout(timer);
+	}
+	lineSlideTimers.clear();
+};
 
 // Scroll sync (unhook on user scroll)
 let scrollSynced = true;
@@ -1768,7 +2092,7 @@ const fetchLyrics = async (
 	return null;
 };
 
-const normalizeLineLyricsData = (data: ApiLine[]): WordLine[] => {
+const normalizeLineData = (data: ApiLine[]): WordLine[] => {
 	return data
 		.filter((line) => typeof line.text === "string")
 		.map((line, idx) => {
@@ -1811,7 +2135,7 @@ const normalizeLineLyricsData = (data: ApiLine[]): WordLine[] => {
 };
 
 // Scrapes Tidal Line Texts (For Romanization)
-const getTidalLineTexts = (): string[] => {
+const getTidalLines = (): string[] => {
 	const lyricsContainer = document.querySelector(
 		'[data-test="lyrics-lines"]',
 	) as HTMLElement;
@@ -1827,9 +2151,7 @@ const getTidalLineTexts = (): string[] => {
 		.filter((text) => text.trim().length > 0);
 };
 
-const romanizeLinePayload = async (
-	lineTexts: string[],
-): Promise<string[] | null> => {
+const romanizeLines = async (lineTexts: string[]): Promise<string[] | null> => {
 	if (!settings.romanizeLyrics || lineTexts.length === 0) return null;
 
 	const cacheKey = `${lineTexts.join("\n")}\0r`;
@@ -2056,8 +2378,8 @@ const buildWordSpans = (): {
 	wbwContainer.className = "rl-wbw-container";
 	if (settings.blurInactive) wbwContainer.classList.add("rl-blur-active");
 	if (settings.bubbledLyrics) wbwContainer.classList.add("rl-bubbled");
-	const effectiveStyle = getEffectiveLyricsStyle();
-	const allowWordSylStyles = isWordTimingMode();
+	const effectiveStyle = getLyricsStyle();
+	const allowWordSylStyles = isWordMode();
 	// MARKER: Syllable animations (WIP coming soon)
 	if (allowWordSylStyles && settings.syllableStyle === 1)
 		wbwContainer.classList.add("rl-syl-pop");
@@ -2361,7 +2683,7 @@ const buildWordSpans = (): {
 };
 
 // Scrapes & Builds Tidal Line Spans (no lines found in API)
-const buildTidalLineSpans = (
+const buildTidalLines = (
 	romanizedLines: string[] | null = null,
 ): { lines: LineEntry[] } => {
 	const lines: LineEntry[] = [];
@@ -2608,7 +2930,7 @@ const watchForRerender = (): void => {
 				sylTrace("Lyrics overlay: re-applying after Tidal re-render");
 				hideTidalLyrics();
 				if (lyricsMode === "line-tidal") {
-					const result = buildTidalLineSpans(cachedTidalRomanizedLines);
+					const result = buildTidalLines(cachedTidalRomanizedLines);
 					lines = result.lines;
 					startTidalFollowLoop();
 				} else if (lyricsData) {
@@ -2648,6 +2970,7 @@ const teardown = (): void => {
 	trackChangeToken++;
 	clearTickLoop();
 	stopTidalFollowLoop();
+	clearInjectedLyricsTab();
 	clearScrollAnim();
 	unwatchRerender();
 	unhookUserScroll();
@@ -2663,6 +2986,8 @@ const teardown = (): void => {
 	activeBgWordEls.clear();
 	activeLineIdxs.clear();
 	primaryLineIdx = -1;
+	clearLineSlideTimers();
+	clearLineSlideTimers();
 	restoreTidalLyrics();
 };
 
@@ -2847,7 +3172,7 @@ const startTickLoop = (): void => {
 			if (!isActive || lines.length === 0) return;
 
 			const nowMs = getPlaybackMs();
-			const effectiveStyle = getEffectiveLyricsStyle();
+			const effectiveStyle = getLyricsStyle();
 			const isSyl = effectiveStyle === 2;
 			const isLineStyle = effectiveStyle === 0;
 			const CLS_ACTIVE = isSyl ? "rl-syl-active" : "rl-wbw-active";
@@ -2896,6 +3221,7 @@ const startTickLoop = (): void => {
 			// single pass to set correct state for all words (scrub or seek)
 			if (didScrub) {
 				for (let li = 0; li < lines.length; li++) {
+					lines[li].el.classList.remove("rl-line-slide");
 					const allEntries =
 						lines[li].bgWords.length > 0
 							? [...lines[li].words, ...lines[li].bgWords]
@@ -2922,6 +3248,7 @@ const startTickLoop = (): void => {
 				}
 				activeLineIdxs.clear();
 				primaryLineIdx = -1;
+				clearLineSlideTimers();
 				const held = document.querySelector(".rl-gap-hold");
 				if (held) held.classList.remove("rl-gap-hold");
 				sylLog(
@@ -2933,6 +3260,8 @@ const startTickLoop = (): void => {
 			for (const idx of activeLineIdxs) {
 				if (!newActiveSet.has(idx) && idx < lines.length) {
 					lines[idx].el.classList.remove("rl-wbw-line-active");
+					lines[idx].el.classList.remove("rl-line-slide");
+					clearLineSlideTimer(idx);
 					lines[idx].el.removeAttribute("data-current");
 					const lastWord = activeWordEls.get(idx);
 					if (lastWord) {
@@ -2957,6 +3286,16 @@ const startTickLoop = (): void => {
 					lines[idx].el.classList.add("rl-wbw-line-active");
 					lines[idx].el.classList.remove("rl-pos-1", "rl-pos-2", "rl-pos-3");
 					lines[idx].el.setAttribute("data-current", "true");
+					if (isLineStyle) {
+						lines[idx].el.classList.add("rl-line-slide");
+						clearLineSlideTimer(idx);
+						const t = window.setTimeout(() => {
+							if (idx < lines.length)
+								lines[idx].el.classList.remove("rl-line-slide");
+							lineSlideTimers.delete(idx);
+						}, 360);
+						lineSlideTimers.set(idx, t);
+					}
 					sylLog(
 						`[RL-Syllable] Line ${idx} Active "${lines[idx].el.textContent?.slice(0, 40)}" | ${lines[idx].startMs} ms - ${lines[idx].endMs} ms   [${nowMs.toFixed(0)} ms]`,
 					);
@@ -3192,9 +3531,9 @@ const onTrackChange = async (): Promise<void> => {
 	if (token !== trackChangeToken) return;
 	if (!response) {
 		trace.log("RL API: no API lyrics available, falling back to TIDAL lines");
-		const tidalTexts = getTidalLineTexts();
+		const tidalTexts = getTidalLines();
 		const romanized = settings.romanizeLyrics
-			? await romanizeLinePayload(tidalTexts)
+			? await romanizeLines(tidalTexts)
 			: null;
 		if (token !== trackChangeToken) return;
 		cachedTidalRomanizedLines = romanized;
@@ -3204,7 +3543,7 @@ const onTrackChange = async (): Promise<void> => {
 		isActive = true;
 		lyricsMode = "line-tidal";
 		hideTidalLyrics();
-		const tidalResult = buildTidalLineSpans(romanized);
+		const tidalResult = buildTidalLines(romanized);
 		lines = tidalResult.lines;
 		if (lines.length === 0) {
 			trace.log("No TIDAL lines available yet");
@@ -3224,10 +3563,24 @@ const onTrackChange = async (): Promise<void> => {
 	);
 
 	lyricsMode = response.type === "Word" ? "word" : "line-api";
+	if (!ensureLyricsTab()) {
+		trace.log("Could not create/find lyrics tab container");
+		teardown();
+		return;
+	}
+	if (injectedTabEl && settings.stickyLyrics) {
+		showInjectedLyricsTab();
+		safeTimeout(
+			unloads,
+			() => {
+				if (!settings.stickyLyrics || token !== trackChangeToken) return;
+				showInjectedLyricsTab();
+			},
+			180,
+		);
+	}
 	lyricsData =
-		response.type === "Word"
-			? response.data
-			: normalizeLineLyricsData(response.data);
+		response.type === "Word" ? response.data : normalizeLineData(response.data);
 	lyricsResponse = response;
 	isActive = true;
 	if (!lyricsData || lyricsData.length === 0) {
@@ -3264,6 +3617,7 @@ const reapplyWordLyrics = (): void => {
 	activeBgWordEls.clear();
 	activeLineIdxs.clear();
 	primaryLineIdx = -1;
+	clearLineSlideTimers();
 
 	isActive = true;
 	lyricsMode = lyricsMode === "line-api" ? "line-api" : "word";
@@ -3275,7 +3629,7 @@ const reapplyWordLyrics = (): void => {
 	sylLog("[RL-Syllable] Reapplied word/syllable lyrics (cached)");
 };
 
-const reapplyTidalLineLyrics = async (): Promise<void> => {
+const reapplyTidalLines = async (): Promise<void> => {
 	clearTickLoop();
 	stopTidalFollowLoop();
 	clearScrollAnim();
@@ -3290,12 +3644,12 @@ const reapplyTidalLineLyrics = async (): Promise<void> => {
 
 	isActive = true;
 	lyricsMode = "line-tidal";
-	const tidalTexts = getTidalLineTexts();
+	const tidalTexts = getTidalLines();
 	const romanized = settings.romanizeLyrics
-		? await romanizeLinePayload(tidalTexts)
+		? await romanizeLines(tidalTexts)
 		: null;
 	hideTidalLyrics();
-	const result = buildTidalLineSpans(romanized);
+	const result = buildTidalLines(romanized);
 	lines = result.lines;
 	if (lines.length === 0) return;
 	watchForRerender();
