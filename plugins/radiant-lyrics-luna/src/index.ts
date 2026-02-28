@@ -1854,12 +1854,16 @@ const romanizeLinePayload = async (
 	];
 
 	for (const url of urls) {
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 5000);
 		try {
 			const res = await fetch(url, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify(payload),
+				signal: controller.signal,
 			});
+			clearTimeout(timeout);
 			if (!res.ok) {
 				trace.log(`Romanize: request failed ${res.status} from ${url}`);
 				continue;
@@ -1879,7 +1883,12 @@ const romanizeLinePayload = async (
 			cachedTidalRomanizedLines = romanized;
 			return romanized;
 		} catch (err) {
-			trace.log(`Romanize: request error from ${url}: ${err}`);
+			clearTimeout(timeout);
+			if (err instanceof DOMException && err.name === "AbortError") {
+				trace.log(`Romanize: request timed out from ${url}`);
+			} else {
+				trace.log(`Romanize: request error from ${url}: ${err}`);
+			}
 		}
 	}
 
