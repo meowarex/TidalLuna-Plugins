@@ -100,6 +100,11 @@
 		padding 0.7s ease-in-out !important;
 }
 
+/* Glow-aware left padding so the glow doesn't clip | Thanks Aya <3*/
+[data-test="lyrics"] {
+	padding-left: var(--rl-glow-outer, 20px) !important;
+}
+
 /* Lyrics container styling */
 [class^="_lyricsContainer"] > div > div > span {
 	margin-bottom: 2rem;
@@ -248,10 +253,6 @@
 	color: var(--cl-glow1, #fff) !important;
 }
 
-/* Line mode: suppress glow during slide-in only */
-.rl-wbw-line.rl-line-slide .rl-wbw-word.rl-wbw-active {
-	text-shadow: none !important;
-}
 
 /* MARKER: Syllable sweep animation CSS */
 
