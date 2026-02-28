@@ -1324,7 +1324,7 @@ function setupStickyLyricsObserver(): void {
 	// Apply word lyrics when lyrics container appears or reappears
 	observe<HTMLElement>(unloads, '[data-test="lyrics-lines"]', () => {
 		if (lyricsMode === "line-tidal") {
-			reapplyTidalLineLyrics();
+			void reapplyTidalLineLyrics();
 		} else if (lyricsData) {
 			reapplyWordLyrics();
 		} else {
@@ -1671,6 +1671,8 @@ const getTrackInfo = async (): Promise<{
 // fetch syllables from the API (wiped on track change)
 let cachedLyricsKey: string | null = null;
 let cachedLyricsData: LyricsApiResponse | null = null;
+let cachedTidalRomanizeKey: string | null = null;
+let cachedTidalRomanizedLines: string[] | null = null;
 const fetchLyrics = async (
 	title: string,
 	artist: string,
@@ -1806,6 +1808,82 @@ const normalizeLineLyricsData = (data: ApiLine[]): WordLine[] => {
 				romanized: line.romanized,
 			};
 		});
+};
+
+// Scrapes Tidal Line Texts (For Romanization)
+const getTidalLineTexts = (): string[] => {
+	const lyricsContainer = document.querySelector(
+		'[data-test="lyrics-lines"]',
+	) as HTMLElement;
+	if (!lyricsContainer) return [];
+	const innerDiv = lyricsContainer.querySelector(":scope > div") as HTMLElement;
+	if (!innerDiv) return [];
+
+	const spans = Array.from(
+		innerDiv.querySelectorAll('span[data-test="lyrics-line"]'),
+	) as HTMLElement[];
+	return spans
+		.map((s) => s.textContent ?? "")
+		.filter((text) => text.trim().length > 0);
+};
+
+const romanizeLinePayload = async (
+	lineTexts: string[],
+): Promise<string[] | null> => {
+	if (!settings.romanizeLyrics || lineTexts.length === 0) return null;
+
+	const cacheKey = `${lineTexts.join("\n")}\0r`;
+	if (cachedTidalRomanizeKey === cacheKey && cachedTidalRomanizedLines) {
+		return cachedTidalRomanizedLines;
+	}
+
+	const payload = {
+		type: "Line" as const,
+		data: lineTexts.map((text, idx) => ({
+			text,
+			startTime: idx,
+			duration: 0,
+			endTime: idx,
+		})),
+	};
+
+	const urls = [
+		"https://rl-api.atomix.one/romanize",
+		"https://lyricsplus-api.atomix.one/romanize",
+		"https://rl-api.kineticsand.net/romanize",
+	];
+
+	for (const url of urls) {
+		try {
+			const res = await fetch(url, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify(payload),
+			});
+			if (!res.ok) {
+				trace.log(`Romanize: request failed ${res.status} from ${url}`);
+				continue;
+			}
+
+			const data = (await res.json()) as {
+				type?: string;
+				data?: Array<{ text?: string; romanized?: string }>;
+			};
+			if (!Array.isArray(data?.data)) continue;
+
+			const romanized = lineTexts.map((original, idx) => {
+				const item = data.data?.[idx];
+				return item?.romanized ?? item?.text ?? original;
+			});
+			cachedTidalRomanizeKey = cacheKey;
+			cachedTidalRomanizedLines = romanized;
+			return romanized;
+		} catch (err) {
+			trace.log(`Romanize: request error from ${url}: ${err}`);
+		}
+	}
+
+	return null;
 };
 
 // strip tidal css classes (prevent conflict)
@@ -2274,7 +2352,9 @@ const buildWordSpans = (): {
 };
 
 // Scrapes & Builds Tidal Line Spans (no lines found in API)
-const buildTidalLineSpans = (): { lines: LineEntry[] } => {
+const buildTidalLineSpans = (
+	romanizedLines: string[] | null = null,
+): { lines: LineEntry[] } => {
 	const lines: LineEntry[] = [];
 	const lyricsContainer = document.querySelector(
 		'[data-test="lyrics-lines"]',
@@ -2314,9 +2394,15 @@ const buildTidalLineSpans = (): { lines: LineEntry[] } => {
 	const tidalSpans = Array.from(
 		innerDiv.querySelectorAll('span[data-test="lyrics-line"]'),
 	) as HTMLElement[];
+	let textIdx = 0;
 	for (const tidalSpan of tidalSpans) {
-		const text = tidalSpan.textContent ?? "";
-		if (text.trim().length === 0) {
+		const rawText = tidalSpan.textContent ?? "";
+		const text =
+			settings.romanizeLyrics && romanizedLines?.[textIdx]
+				? romanizedLines[textIdx]
+				: rawText;
+		if (rawText.trim().length > 0) textIdx++;
+		if (rawText.trim().length === 0) {
 			const spacer = document.createElement("div");
 			spacer.className = "rl-wbw-line rl-wbw-spacer";
 			forceStyle(spacer, {
@@ -2513,7 +2599,7 @@ const watchForRerender = (): void => {
 				sylTrace("Lyrics overlay: re-applying after Tidal re-render");
 				hideTidalLyrics();
 				if (lyricsMode === "line-tidal") {
-					const result = buildTidalLineSpans();
+					const result = buildTidalLineSpans(cachedTidalRomanizedLines);
 					lines = result.lines;
 					startTidalFollowLoop();
 				} else if (lyricsData) {
@@ -3097,10 +3183,19 @@ const onTrackChange = async (): Promise<void> => {
 	if (token !== trackChangeToken) return;
 	if (!response) {
 		trace.log("RL API: no API lyrics available, falling back to TIDAL lines");
+		const tidalTexts = getTidalLineTexts();
+		const romanized = settings.romanizeLyrics
+			? await romanizeLinePayload(tidalTexts)
+			: null;
+		if (token !== trackChangeToken) return;
+		cachedTidalRomanizedLines = romanized;
+		cachedTidalRomanizeKey = settings.romanizeLyrics
+			? `${tidalTexts.join("\n")}\0r`
+			: null;
 		isActive = true;
 		lyricsMode = "line-tidal";
 		hideTidalLyrics();
-		const tidalResult = buildTidalLineSpans();
+		const tidalResult = buildTidalLineSpans(romanized);
 		lines = tidalResult.lines;
 		if (lines.length === 0) {
 			trace.log("No TIDAL lines available yet");
@@ -3171,7 +3266,7 @@ const reapplyWordLyrics = (): void => {
 	sylLog("[RL-Syllable] Reapplied word/syllable lyrics (cached)");
 };
 
-const reapplyTidalLineLyrics = (): void => {
+const reapplyTidalLineLyrics = async (): Promise<void> => {
 	clearTickLoop();
 	stopTidalFollowLoop();
 	clearScrollAnim();
@@ -3186,8 +3281,12 @@ const reapplyTidalLineLyrics = (): void => {
 
 	isActive = true;
 	lyricsMode = "line-tidal";
+	const tidalTexts = getTidalLineTexts();
+	const romanized = settings.romanizeLyrics
+		? await romanizeLinePayload(tidalTexts)
+		: null;
 	hideTidalLyrics();
-	const result = buildTidalLineSpans();
+	const result = buildTidalLineSpans(romanized);
 	lines = result.lines;
 	if (lines.length === 0) return;
 	watchForRerender();
@@ -3214,6 +3313,8 @@ const updateLyricsStyleFromSettings = (): void => {
 const updateRomanizeLyricsFromSettings = (): void => {
 	cachedLyricsKey = null;
 	cachedLyricsData = null;
+	cachedTidalRomanizeKey = null;
+	cachedTidalRomanizedLines = null;
 	toggle();
 };
 (window as any).updateRomanizeLyrics = updateRomanizeLyricsFromSettings;
@@ -3222,6 +3323,8 @@ const updateRomanizeLyricsFromSettings = (): void => {
 onGlobalTrackChange(() => {
 	cachedLyricsKey = null;
 	cachedLyricsData = null;
+	cachedTidalRomanizeKey = null;
+	cachedTidalRomanizedLines = null;
 	onTrackChange();
 });
 unloads.add(() => teardown());
