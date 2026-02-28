@@ -1,19 +1,27 @@
 // MARKER: Core Setup
 import { type LunaUnload, Tracer } from "@luna/core";
-import { StyleTag, PlayState, MediaItem, observe, safeInterval, safeTimeout } from "@luna/lib";
-import { settings, Settings } from "./Settings";
+import {
+	MediaItem,
+	observe,
+	PlayState,
+	StyleTag,
+	safeInterval,
+	safeTimeout,
+} from "@luna/lib";
+import { Settings, settings } from "./Settings";
+
 // Interpret integer backgroundScale (e.g., 10=1.0x, 20=2.0x)
 const getScaledMultiplier = (): number => {
-    const value = settings.backgroundScale;
-    return value / 10;
+	const value = settings.backgroundScale;
+	return value / 10;
 };
 
-// Import CSS files directly using Luna's file:// syntax - Took me a while to figure out <3
-import baseStyles from "file://styles.css?minify";
-import playerBarHidden from "file://player-bar-hidden.css?minify";
-import lyricsGlow from "file://lyrics-glow.css?minify";
 import coverEverywhereCss from "file://cover-everywhere.css?minify";
 import floatingPlayerBarCss from "file://floating-player-bar.css?minify";
+import lyricsGlow from "file://lyrics-glow.css?minify";
+import playerBarHidden from "file://player-bar-hidden.css?minify";
+// Import CSS files directly using Luna's file:// syntax - Took me a while to figure out <3
+import baseStyles from "file://styles.css?minify";
 
 // Core tracer and exports
 export const { trace } = Tracer("[Radiant Lyrics]");
@@ -26,7 +34,10 @@ export const unloads = new Set<LunaUnload>();
 const baseStyleTag = new StyleTag("RadiantLyrics-base", unloads);
 const playerBarStyleTag = new StyleTag("RadiantLyrics-player-bar", unloads);
 const lyricsGlowStyleTag = new StyleTag("RadiantLyrics-lyrics-glow", unloads);
-const floatingPlayerBarStyleTag = new StyleTag("RadiantLyrics-floating-player-bar", unloads);
+const floatingPlayerBarStyleTag = new StyleTag(
+	"RadiantLyrics-floating-player-bar",
+	unloads,
+);
 
 // Always load lyrics CSS (glow is toggled via .lyrics-glow-disabled class)
 lyricsGlowStyleTag.css = lyricsGlow;
@@ -38,7 +49,13 @@ lyricsGlowStyleTag.css = lyricsGlow;
 const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
 	let cleaned = (hex || "#000000").replace("#", "");
 	if (cleaned.length === 3) {
-		cleaned = cleaned[0] + cleaned[0] + cleaned[1] + cleaned[1] + cleaned[2] + cleaned[2];
+		cleaned =
+			cleaned[0] +
+			cleaned[0] +
+			cleaned[1] +
+			cleaned[1] +
+			cleaned[2] +
+			cleaned[2];
 	}
 	if (cleaned.length !== 6) {
 		return { r: 0, g: 0, b: 0 };
@@ -52,18 +69,32 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
 
 // Apply Settings to Floating Player Bar using inline styles because idk.. CSS is hard (Change my mind!)
 const applyPlayerBarTintToElement = (): void => {
-	const footerPlayer = document.querySelector('[data-test="footer-player"]') as HTMLElement;
+	const footerPlayer = document.querySelector(
+		'[data-test="footer-player"]',
+	) as HTMLElement;
 	if (!footerPlayer) return;
 	// Always apply tint regardless of floating state
 	const alpha = settings.playerBarTint / 10;
 	const { r, g, b } = hexToRgb(settings.playerBarTintColor);
-	footerPlayer.style.setProperty("background-color", `rgba(${r}, ${g}, ${b}, ${alpha})`, "important");
+	footerPlayer.style.setProperty(
+		"background-color",
+		`rgba(${r}, ${g}, ${b}, ${alpha})`,
+		"important",
+	);
 	if (settings.floatingPlayerBar) {
-		footerPlayer.style.setProperty("border-radius", `${settings.playerBarRadius}px`, "important");
+		footerPlayer.style.setProperty(
+			"border-radius",
+			`${settings.playerBarRadius}px`,
+			"important",
+		);
 		const spacing = settings.playerBarSpacing;
 		footerPlayer.style.setProperty("bottom", `${spacing}px`, "important");
 		footerPlayer.style.setProperty("left", `${spacing}px`, "important");
-		footerPlayer.style.setProperty("width", `calc(100% - ${spacing * 2}px)`, "important");
+		footerPlayer.style.setProperty(
+			"width",
+			`calc(100% - ${spacing * 2}px)`,
+			"important",
+		);
 	} else {
 		footerPlayer.style.removeProperty("border-radius");
 		footerPlayer.style.removeProperty("bottom");
@@ -95,8 +126,8 @@ observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
 // Maps data-test-media-state-indicator-streaming-quality values to colors
 const qualityColors: Record<string, string> = {
 	HI_RES_LOSSLESS: "#ffd432", //Max
-	LOSSLESS: "#3fe", 			//High
-	HIGH: "#FFFFFF", 			//Low
+	LOSSLESS: "#3fe", //High
+	HIGH: "#FFFFFF", //Low
 };
 
 const applyQualityProgressColor = (): void => {
@@ -118,7 +149,10 @@ const applyQualityProgressColor = (): void => {
 	) as HTMLElement | null;
 	if (!qualityButton) return;
 
-	const quality = qualityButton.getAttribute("data-test-media-state-indicator-streaming-quality") ?? "";
+	const quality =
+		qualityButton.getAttribute(
+			"data-test-media-state-indicator-streaming-quality",
+		) ?? "";
 	const color = qualityColors[quality];
 	if (!color) return;
 
@@ -208,11 +242,15 @@ const updateButtonStates = function (): void {
 		if (settings.hideUIEnabled && !isHidden) {
 			hideButton.style.display = "flex";
 			// Small delay to ensure display is set first, then fade in
-			safeTimeout(unloads, () => {
-				hideButton.style.opacity = "1";
-				hideButton.style.visibility = "visible";
-				hideButton.style.pointerEvents = "auto";
-			}, 50);
+			safeTimeout(
+				unloads,
+				() => {
+					hideButton.style.opacity = "1";
+					hideButton.style.visibility = "visible";
+					hideButton.style.pointerEvents = "auto";
+				},
+				50,
+			);
 		} else {
 			// Hide UI button immediately when clicked - (couldn't get the fade to work)
 			hideButton.style.display = "none";
@@ -234,22 +272,26 @@ const updateButtonStates = function (): void {
 			unhideButton.classList.remove("hide-immediately");
 			unhideButton.classList.remove("auto-faded");
 			// Small delay to ensure display is set first, then fade in - (Works for unhide button.. but not hide button.. because uhh idk)
-			safeTimeout(unloads, () => {
-				unhideButton.style.opacity = "1";
-				unhideButton.style.visibility = "visible";
-				unhideButton.style.pointerEvents = "auto";
+			safeTimeout(
+				unloads,
+				() => {
+					unhideButton.style.opacity = "1";
+					unhideButton.style.visibility = "visible";
+					unhideButton.style.pointerEvents = "auto";
 
-				// Set up auto-fade after 2 seconds
-				unhideButtonAutoFadeTimeout = safelySetAutoFadeTimeout(
-					unhideButtonAutoFadeTimeout,
-					() => {
-						if (isHidden && unhideButton && !unhideButton.matches(":hover")) {
-							unhideButton.classList.add("auto-faded");
-						}
-					},
-					2000,
-				);
-			}, 50);
+					// Set up auto-fade after 2 seconds
+					unhideButtonAutoFadeTimeout = safelySetAutoFadeTimeout(
+						unhideButtonAutoFadeTimeout,
+						() => {
+							if (isHidden && unhideButton && !unhideButton.matches(":hover")) {
+								unhideButton.classList.add("auto-faded");
+							}
+						},
+						2000,
+					);
+				},
+				50,
+			);
 		} else {
 			// Smooth fade out for Unhide UI button
 			unhideButton.style.opacity = "0";
@@ -257,11 +299,15 @@ const updateButtonStates = function (): void {
 			unhideButton.style.pointerEvents = "none";
 			unhideButton.classList.remove("auto-faded");
 			// Keep display: flex to maintain transitions, then hide after fade
-			safeTimeout(unloads, () => {
-				if (unhideButton.style.opacity === "0") {
-					unhideButton.style.display = "none";
-				}
-			}, 500);
+			safeTimeout(
+				unloads,
+				() => {
+					if (unhideButton.style.opacity === "0") {
+						unhideButton.style.display = "none";
+					}
+				},
+				500,
+			);
 		}
 	}
 };
@@ -280,114 +326,138 @@ const toggleRadiantLyrics = function (): void {
 		if (nowPlayingContainer)
 			nowPlayingContainer.classList.remove("radiant-lyrics-ui-hidden");
 		document.body.classList.remove("radiant-lyrics-ui-hidden");
-		safeTimeout(unloads, () => {
-			if (!isHidden) {
-				updateRadiantLyricsStyles();
-			}
-		}, 500);
+		safeTimeout(
+			unloads,
+			() => {
+				if (!isHidden) {
+					updateRadiantLyricsStyles();
+				}
+			},
+			500,
+		);
 		updateButtonStates();
 	} else {
 		isHidden = !isHidden;
 		updateButtonStates();
-		safeTimeout(unloads, () => {
-			updateRadiantLyricsStyles();
-			if (nowPlayingContainer)
-				nowPlayingContainer.classList.add("radiant-lyrics-ui-hidden");
-			document.body.classList.add("radiant-lyrics-ui-hidden");
-		}, 50);
+		safeTimeout(
+			unloads,
+			() => {
+				updateRadiantLyricsStyles();
+				if (nowPlayingContainer)
+					nowPlayingContainer.classList.add("radiant-lyrics-ui-hidden");
+				document.body.classList.add("radiant-lyrics-ui-hidden");
+			},
+			50,
+		);
 	}
 };
 
 // Create buttons
 const createHideUIButton = function (): void {
-	safeTimeout(unloads, () => {
-		if (!settings.hideUIEnabled) return;
-		const fullscreenButton = document.querySelector(
-			'[data-test="request-fullscreen"]',
-		);
-		if (!fullscreenButton || !fullscreenButton.parentElement) {
-			safeTimeout(unloads, () => createHideUIButton(), 1000);
-			return;
-		}
-		if (document.querySelector(".hide-ui-button")) return;
-		const buttonContainer = fullscreenButton.parentElement;
-		const hideUIButton = document.createElement("button");
-		hideUIButton.className = "hide-ui-button";
-		hideUIButton.setAttribute("aria-label", "Hide UI");
-		hideUIButton.setAttribute("title", "Hide UI");
-		hideUIButton.textContent = "Hide UI";
-		hideUIButton.style.backgroundColor = "#ffffff";
-		hideUIButton.style.color = "black";
-		hideUIButton.style.border = "none";
-		hideUIButton.style.borderRadius = "12px";
-		hideUIButton.style.height = "40px";
-		hideUIButton.style.padding = "0 12px";
-		hideUIButton.style.marginLeft = "8px";
-		hideUIButton.style.cursor = "pointer";
-		hideUIButton.style.display = "flex";
-		hideUIButton.style.alignItems = "center";
-		hideUIButton.style.justifyContent = "center";
-		hideUIButton.style.fontSize = "12px";
-		hideUIButton.style.fontWeight = "600";
-		hideUIButton.style.whiteSpace = "nowrap";
-		hideUIButton.style.transition =
-			"opacity 0.5s ease-in-out, visibility 0.5s ease-in-out, background-color 0.2s ease-in-out";
-		hideUIButton.style.opacity = "0";
-		hideUIButton.style.visibility = "hidden";
-		hideUIButton.style.pointerEvents = "none";
-		hideUIButton.addEventListener("mouseenter", () => {
-			hideUIButton.style.backgroundColor = "#e5e5e5";
-		});
-		hideUIButton.addEventListener("mouseleave", () => {
-			hideUIButton.style.backgroundColor = "#ffffff";
-		});
-		hideUIButton.onclick = toggleRadiantLyrics;
-		buttonContainer.insertBefore(hideUIButton, fullscreenButton.nextSibling);
-		safeTimeout(unloads, () => {
-			if (settings.hideUIEnabled && !isHidden) {
-				hideUIButton.style.opacity = "1";
-				hideUIButton.style.visibility = "visible";
-				hideUIButton.style.pointerEvents = "auto";
+	safeTimeout(
+		unloads,
+		() => {
+			if (!settings.hideUIEnabled) return;
+			const fullscreenButton = document.querySelector(
+				'[data-test="request-fullscreen"]',
+			);
+			if (!fullscreenButton || !fullscreenButton.parentElement) {
+				safeTimeout(unloads, () => createHideUIButton(), 1000);
+				return;
 			}
-		}, 100);
-	}, 1000);
+			if (document.querySelector(".hide-ui-button")) return;
+			const buttonContainer = fullscreenButton.parentElement;
+			const hideUIButton = document.createElement("button");
+			hideUIButton.className = "hide-ui-button";
+			hideUIButton.setAttribute("aria-label", "Hide UI");
+			hideUIButton.setAttribute("title", "Hide UI");
+			hideUIButton.textContent = "Hide UI";
+			hideUIButton.style.backgroundColor = "#ffffff";
+			hideUIButton.style.color = "black";
+			hideUIButton.style.border = "none";
+			hideUIButton.style.borderRadius = "12px";
+			hideUIButton.style.height = "40px";
+			hideUIButton.style.padding = "0 12px";
+			hideUIButton.style.marginLeft = "8px";
+			hideUIButton.style.cursor = "pointer";
+			hideUIButton.style.display = "flex";
+			hideUIButton.style.alignItems = "center";
+			hideUIButton.style.justifyContent = "center";
+			hideUIButton.style.fontSize = "12px";
+			hideUIButton.style.fontWeight = "600";
+			hideUIButton.style.whiteSpace = "nowrap";
+			hideUIButton.style.transition =
+				"opacity 0.5s ease-in-out, visibility 0.5s ease-in-out, background-color 0.2s ease-in-out";
+			hideUIButton.style.opacity = "0";
+			hideUIButton.style.visibility = "hidden";
+			hideUIButton.style.pointerEvents = "none";
+			hideUIButton.addEventListener("mouseenter", () => {
+				hideUIButton.style.backgroundColor = "#e5e5e5";
+			});
+			hideUIButton.addEventListener("mouseleave", () => {
+				hideUIButton.style.backgroundColor = "#ffffff";
+			});
+			hideUIButton.onclick = toggleRadiantLyrics;
+			buttonContainer.insertBefore(hideUIButton, fullscreenButton.nextSibling);
+			safeTimeout(
+				unloads,
+				() => {
+					if (settings.hideUIEnabled && !isHidden) {
+						hideUIButton.style.opacity = "1";
+						hideUIButton.style.visibility = "visible";
+						hideUIButton.style.pointerEvents = "auto";
+					}
+				},
+				100,
+			);
+		},
+		1000,
+	);
 };
 
 const createUnhideUIButton = function (): void {
-	safeTimeout(unloads, () => {
-		if (!settings.hideUIEnabled) return;
-		if (document.querySelector(".unhide-ui-button")) return;
-		const nowPlayingContainer = document.querySelector(
-			'[class*="_nowPlayingContainer"]',
-		) as HTMLElement;
-		if (!nowPlayingContainer) {
-			safeTimeout(unloads, () => createUnhideUIButton(), 1000);
-			return;
-		}
-		const unhideUIButton = document.createElement("button");
-		unhideUIButton.className = "unhide-ui-button";
-		unhideUIButton.setAttribute("aria-label", "Unhide UI");
-		unhideUIButton.setAttribute("title", "Unhide UI");
-		unhideUIButton.textContent = "Unhide";
-		unhideUIButton.style.cssText = `position: absolute; top: 10px; right: 10px; background-color: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; height: 40px; padding: 0 12px; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.5s ease-in-out; font-size: 12px; font-weight: 600; white-space: nowrap; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; visibility: hidden; pointer-events: none;`;
-		unhideUIButton.addEventListener("mouseenter", () => {
-			unhideUIButton.style.backgroundColor = "rgba(255,255,255,0.3)";
-			unhideUIButton.style.transform = "scale(1.05)";
-			unhideUIButton.classList.remove("auto-faded");
-		});
-		unhideUIButton.addEventListener("mouseleave", () => {
-			unhideUIButton.style.backgroundColor = "rgba(255,255,255,0.2)";
-			unhideUIButton.style.transform = "scale(1)";
-			safeTimeout(unloads, () => {
-				if (isHidden && !unhideUIButton.matches(":hover")) {
-					unhideUIButton.classList.add("auto-faded");
-				}
-			}, 2000);
-		});
-		unhideUIButton.onclick = toggleRadiantLyrics;
-		nowPlayingContainer.appendChild(unhideUIButton);
-		updateButtonStates();
-	}, 1500);
+	safeTimeout(
+		unloads,
+		() => {
+			if (!settings.hideUIEnabled) return;
+			if (document.querySelector(".unhide-ui-button")) return;
+			const nowPlayingContainer = document.querySelector(
+				'[class*="_nowPlayingContainer"]',
+			) as HTMLElement;
+			if (!nowPlayingContainer) {
+				safeTimeout(unloads, () => createUnhideUIButton(), 1000);
+				return;
+			}
+			const unhideUIButton = document.createElement("button");
+			unhideUIButton.className = "unhide-ui-button";
+			unhideUIButton.setAttribute("aria-label", "Unhide UI");
+			unhideUIButton.setAttribute("title", "Unhide UI");
+			unhideUIButton.textContent = "Unhide";
+			unhideUIButton.style.cssText = `position: absolute; top: 10px; right: 10px; background-color: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; height: 40px; padding: 0 12px; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.5s ease-in-out; font-size: 12px; font-weight: 600; white-space: nowrap; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; visibility: hidden; pointer-events: none;`;
+			unhideUIButton.addEventListener("mouseenter", () => {
+				unhideUIButton.style.backgroundColor = "rgba(255,255,255,0.3)";
+				unhideUIButton.style.transform = "scale(1.05)";
+				unhideUIButton.classList.remove("auto-faded");
+			});
+			unhideUIButton.addEventListener("mouseleave", () => {
+				unhideUIButton.style.backgroundColor = "rgba(255,255,255,0.2)";
+				unhideUIButton.style.transform = "scale(1)";
+				safeTimeout(
+					unloads,
+					() => {
+						if (isHidden && !unhideUIButton.matches(":hover")) {
+							unhideUIButton.classList.add("auto-faded");
+						}
+					},
+					2000,
+				);
+			});
+			unhideUIButton.onclick = toggleRadiantLyrics;
+			nowPlayingContainer.appendChild(unhideUIButton);
+			updateButtonStates();
+		},
+		1500,
+	);
 };
 
 // MARKER: Background Rendering
@@ -410,33 +480,37 @@ let spinAnimationAdded = false;
 
 // apply scaled pixel sizes to cover art
 const applyScaledPixelSize = (img: HTMLImageElement | null): void => {
-    if (!img) return;
-    const scale = getScaledMultiplier();
-    const apply = () => {
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-        if (w > 0 && h > 0) {
-            const wPx = Math.round(w * scale);
-            const hPx = Math.round(h * scale);
-            const wStr = `${wPx}px`;
-            const hStr = `${hPx}px`;
-            if (img.style.width !== wStr) img.style.width = wStr;
-            if (img.style.height !== hStr) img.style.height = hStr;
-        }
-    };
-    if (img.complete && img.naturalWidth > 0) {
-        apply();
-    } else {
-        img.addEventListener("load", apply, { once: true });
-    }
+	if (!img) return;
+	const scale = getScaledMultiplier();
+	const apply = () => {
+		const w = img.naturalWidth;
+		const h = img.naturalHeight;
+		if (w > 0 && h > 0) {
+			const wPx = Math.round(w * scale);
+			const hPx = Math.round(h * scale);
+			const wStr = `${wPx}px`;
+			const hStr = `${hPx}px`;
+			if (img.style.width !== wStr) img.style.width = wStr;
+			if (img.style.height !== hStr) img.style.height = hStr;
+		}
+	};
+	if (img.complete && img.naturalWidth > 0) {
+		apply();
+	} else {
+		img.addEventListener("load", apply, { once: true });
+	}
 };
 
 // Update Cover Art background for Now Playing and Global
 function updateCoverArtBackground(method: number = 0): void {
 	if (method === 1) {
-		safeTimeout(unloads, () => {
-			updateCoverArtBackground();
-		}, 2000);
+		safeTimeout(
+			unloads,
+			() => {
+				updateCoverArtBackground();
+			},
+			2000,
+		);
 		return;
 	}
 
@@ -568,8 +642,12 @@ function updateCoverArtBackground(method: number = 0): void {
 			applyScaledPixelSize(nowPlayingBackgroundImage);
 
 			if (nowPlayingBackgroundImage) {
-				const blur = settings.performanceMode ? Math.min(settings.backgroundBlur, 20) : settings.backgroundBlur;
-				const contrast = settings.performanceMode ? Math.min(settings.backgroundContrast, 150) : settings.backgroundContrast;
+				const blur = settings.performanceMode
+					? Math.min(settings.backgroundBlur, 20)
+					: settings.backgroundBlur;
+				const contrast = settings.performanceMode
+					? Math.min(settings.backgroundContrast, 150)
+					: settings.backgroundContrast;
 				const radius = `${settings.backgroundRadius}%`;
 				if (nowPlayingBackgroundImage.style.borderRadius !== radius)
 					nowPlayingBackgroundImage.style.borderRadius = radius;
@@ -715,8 +793,12 @@ const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
 
 	if (globalBackgroundImage) {
 		applyScaledPixelSize(globalBackgroundImage);
-		const blur = settings.performanceMode ? Math.min(settings.backgroundBlur, 20) : settings.backgroundBlur;
-		const contrast = settings.performanceMode ? Math.min(settings.backgroundContrast, 150) : settings.backgroundContrast;
+		const blur = settings.performanceMode
+			? Math.min(settings.backgroundBlur, 20)
+			: settings.backgroundBlur;
+		const contrast = settings.performanceMode
+			? Math.min(settings.backgroundContrast, 150)
+			: settings.backgroundContrast;
 		const radius = `${settings.backgroundRadius}%`;
 		globalBackgroundImage.style.filter = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
 		if (globalBackgroundImage.style.borderRadius !== radius)
@@ -796,7 +878,8 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 		// Apply pixel-based size using intrinsic dimensions and current scale
 		applyScaledPixelSize(imgElement);
 		const radius = `${settings.backgroundRadius}%`;
-		if (imgElement.style.borderRadius !== radius) imgElement.style.borderRadius = radius;
+		if (imgElement.style.borderRadius !== radius)
+			imgElement.style.borderRadius = radius;
 
 		if (settings.performanceMode) {
 			blur = Math.min(blur, 20);
@@ -820,7 +903,8 @@ const updateRadiantLyricsNowPlayingBackground = function (): void {
 (window as any).updateRadiantLyricsNowPlayingBackground =
 	updateRadiantLyricsNowPlayingBackground;
 (window as any).updateRadiantLyricsTextGlow = updateRadiantLyricsTextGlow;
-(window as any).updateRadiantLyricsPlayerBarTint = updateRadiantLyricsPlayerBarTint;
+(window as any).updateRadiantLyricsPlayerBarTint =
+	updateRadiantLyricsPlayerBarTint;
 (window as any).updateQualityProgressColor = applyQualityProgressColor;
 
 const cleanUpDynamicArt = function (): void {
@@ -893,7 +977,9 @@ unloads.add(() => {
 	cleanUpDynamicArt();
 
 	// Clean up floating player bar inline styles
-	const footerPlayer = document.querySelector('[data-test="footer-player"]') as HTMLElement;
+	const footerPlayer = document.querySelector(
+		'[data-test="footer-player"]',
+	) as HTMLElement;
 	if (footerPlayer) {
 		footerPlayer.style.removeProperty("background-color");
 		footerPlayer.style.removeProperty("border-radius");
@@ -920,9 +1006,11 @@ unloads.add(() => {
 	}
 
 	// Clean up sticky lyrics elements
-	document.querySelectorAll(".sticky-lyrics-trigger, .sticky-lyrics-dropdown").forEach((el) => {
-		el.remove();
-	});
+	document
+		.querySelectorAll(".sticky-lyrics-trigger, .sticky-lyrics-dropdown")
+		.forEach((el) => {
+			el.remove();
+		});
 
 	// Clean up spin animations
 	const spinAnimationStyle = document.querySelector("#spinAnimation");
@@ -934,18 +1022,22 @@ unloads.add(() => {
 	cleanUpGlobalSpinningBackground();
 });
 
-
 // MARKER: Sticky Lyrics Feature
 
 const STICKY_ICONS: Record<string, string> = {
-	chevron: '<svg viewBox="0 0 24 24" width="10" height="10" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.29289 8.29289C4.68342 7.90237 5.31658 7.90237 5.70711 8.29289L12 14.5858L18.2929 8.29289C18.6834 7.90237 19.3166 7.90237 19.7071 8.29289C20.0976 8.68342 20.0976 9.31658 19.7071 9.70711L12.7071 16.7071C12.3166 17.0976 11.6834 17.0976 11.2929 16.7071L4.29289 9.70711C3.90237 9.31658 3.90237 8.68342 4.29289 8.29289Z" fill="currentColor"/></svg>',
-	sparkle: '<svg viewBox="0 0 512 512" width="12" height="12"><path fill="currentColor" d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Zm66.85-254.84h0Z"/><path fill="currentColor" d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path fill="currentColor" d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>',
+	chevron:
+		'<svg viewBox="0 0 24 24" width="10" height="10" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.29289 8.29289C4.68342 7.90237 5.31658 7.90237 5.70711 8.29289L12 14.5858L18.2929 8.29289C18.6834 7.90237 19.3166 7.90237 19.7071 8.29289C20.0976 8.68342 20.0976 9.31658 19.7071 9.70711L12.7071 16.7071C12.3166 17.0976 11.6834 17.0976 11.2929 16.7071L4.29289 9.70711C3.90237 9.31658 3.90237 8.68342 4.29289 8.29289Z" fill="currentColor"/></svg>',
+	sparkle:
+		'<svg viewBox="0 0 512 512" width="12" height="12"><path fill="currentColor" d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Zm66.85-254.84h0Z"/><path fill="currentColor" d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path fill="currentColor" d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>',
 };
 
-const getStickyIcon = (): string => STICKY_ICONS[settings.stickyLyricsIcon] ?? STICKY_ICONS.chevron;
+const getStickyIcon = (): string =>
+	STICKY_ICONS[settings.stickyLyricsIcon] ?? STICKY_ICONS.chevron;
 
 const applyStickyIcon = (): void => {
-	const trigger = document.querySelector(".sticky-lyrics-trigger") as HTMLElement;
+	const trigger = document.querySelector(
+		".sticky-lyrics-trigger",
+	) as HTMLElement;
 	if (!trigger) return;
 	trigger.innerHTML = getStickyIcon();
 	trigger.style.paddingLeft = "5px";
@@ -954,11 +1046,15 @@ const applyStickyIcon = (): void => {
 // Console: StickyLyrics.icon = "sparkle" or "chevron"
 // I'm picky and prefer the Sparkle.. shhh
 (window as any).StickyLyrics = {
-	get icon() { return settings.stickyLyricsIcon; },
+	get icon() {
+		return settings.stickyLyricsIcon;
+	},
 	set icon(value: string) {
 		const key = value.toLowerCase();
 		if (!STICKY_ICONS[key]) {
-			console.log(`[Radiant Lyrics] Unknown icon "${value}". Available: ${Object.keys(STICKY_ICONS).join(", ")}`);
+			console.log(
+				`[Radiant Lyrics] Unknown icon "${value}". Available: ${Object.keys(STICKY_ICONS).join(", ")}`,
+			);
 			return;
 		}
 		settings.stickyLyricsIcon = key;
@@ -969,16 +1065,26 @@ const applyStickyIcon = (): void => {
 
 // Console: Syllables.log = true/false
 // Verbose logging for word/syllable lyrics (hidden setting)
-const sylLog = (...args: unknown[]) => { if (settings.syllableLogging) console.log(...args); };
-const sylTrace = (...args: unknown[]) => { if (settings.syllableLogging) trace.log(...args); };
+const sylLog = (...args: unknown[]) => {
+	if (settings.syllableLogging) console.log(...args);
+};
+const sylTrace = (...args: unknown[]) => {
+	if (settings.syllableLogging) trace.log(...args);
+};
 (window as any).Syllables = {
-	get log() { return settings.syllableLogging; },
+	get log() {
+		return settings.syllableLogging;
+	},
 	set log(value: boolean) {
 		settings.syllableLogging = value;
-		console.log(`[Radiant Lyrics] Syllable logging ${value ? "enabled" : "disabled"}`);
+		console.log(
+			`[Radiant Lyrics] Syllable logging ${value ? "enabled" : "disabled"}`,
+		);
 	},
 	// MARKER: Syllable animations (WIP coming soon)
-	get style() { return settings.syllableStyle; },
+	get style() {
+		return settings.syllableStyle;
+	},
 	set style(value: number) {
 		const names = ["none", "Pop!", "Jump"];
 		const clamped = Math.max(0, Math.min(2, Math.floor(value)));
@@ -986,16 +1092,22 @@ const sylTrace = (...args: unknown[]) => { if (settings.syllableLogging) trace.l
 		const container = document.querySelector(".rl-wbw-container");
 		if (container) {
 			container.classList.remove("rl-syl-pop", "rl-syl-jump");
-			if (clamped === 1) container.classList.add("rl-syl-pop");
-			else if (clamped === 2) container.classList.add("rl-syl-jump");
+			if (isWordTimingMode()) {
+				if (clamped === 1) container.classList.add("rl-syl-pop");
+				else if (clamped === 2) container.classList.add("rl-syl-jump");
+			}
 		}
-		console.log(`[Radiant Lyrics] Syllable style: ${names[clamped] ?? clamped}`);
+		console.log(
+			`[Radiant Lyrics] Syllable style: ${names[clamped] ?? clamped}`,
+		);
 	},
 };
 
 // Called from Settings (mirrors dropdown checkbox)
 const updateStickyLyricsFeature = (): void => {
-	const checkbox = document.querySelector('input[data-setting="stickyLyrics"]') as HTMLInputElement;
+	const checkbox = document.querySelector(
+		'input[data-setting="stickyLyrics"]',
+	) as HTMLInputElement;
 	if (checkbox) checkbox.checked = settings.stickyLyrics;
 };
 (window as any).updateStickyLyricsFeature = updateStickyLyricsFeature;
@@ -1019,13 +1131,22 @@ const createStickyLyricsDropdown = (): void => {
 
 	// Block non-click events on trigger from reaching the Lyrics tab (capture phase)
 	// (capture phase stops the tab from activating & runs the toggle before the event is consumed by the SVG child) - Thx React.. again..
-	for (const evtName of ["pointerdown", "pointerup", "mousedown", "mouseup"] as const) {
-		trigger.addEventListener(evtName, (e: Event) => {
-			e.stopPropagation();
-		}, true);
+	for (const evtName of [
+		"pointerdown",
+		"pointerup",
+		"mousedown",
+		"mouseup",
+	] as const) {
+		trigger.addEventListener(
+			evtName,
+			(e: Event) => {
+				e.stopPropagation();
+			},
+			true,
+		);
 	}
 
-	// Dropdown 
+	// Dropdown
 	// lives in document.body so its events never touch the Lyrics tab - Thx React..
 	const dropdown = document.createElement("div");
 	dropdown.className = "sticky-lyrics-dropdown";
@@ -1048,7 +1169,7 @@ const createStickyLyricsDropdown = (): void => {
 		</div>
 	`;
 
-	// Toggle dropdown on trigger click 
+	// Toggle dropdown on trigger click
 	const openDropdown = (): void => {
 		const buttonRect = lyricsTab.getBoundingClientRect();
 		dropdown.style.top = `${buttonRect.bottom}px`;
@@ -1062,23 +1183,27 @@ const createStickyLyricsDropdown = (): void => {
 		lyricsTab.classList.remove("sticky-lyrics-open");
 	};
 
-	trigger.addEventListener("click", (e: MouseEvent) => {
-		e.stopPropagation();
-		const isActive = lyricsTab.getAttribute("aria-selected") === "true";
-		if (!isActive) {
-			// Navigate to Lyrics & open dropdown
-			lyricsTab.click();
-			// Delay to let the tab activate
-			safeTimeout(unloads, () => openDropdown(), 150);
-			return;
-		}
-		// Toggle dropdown
-		if (dropdown.style.display === "none") {
-			openDropdown();
-		} else {
-			closeDropdown();
-		}
-	}, true);
+	trigger.addEventListener(
+		"click",
+		(e: MouseEvent) => {
+			e.stopPropagation();
+			const isActive = lyricsTab.getAttribute("aria-selected") === "true";
+			if (!isActive) {
+				// Navigate to Lyrics & open dropdown
+				lyricsTab.click();
+				// Delay to let the tab activate
+				safeTimeout(unloads, () => openDropdown(), 150);
+				return;
+			}
+			// Toggle dropdown
+			if (dropdown.style.display === "none") {
+				openDropdown();
+			} else {
+				closeDropdown();
+			}
+		},
+		true,
+	);
 
 	// Handle toggle switch
 	const stickyCheckbox = dropdown.querySelector(
@@ -1113,7 +1238,10 @@ const createStickyLyricsDropdown = (): void => {
 
 	// Close dropdown when clicking outside trigger & dropdown
 	const handleOutsideClick = (e: MouseEvent): void => {
-		if (!trigger.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
+		if (
+			!trigger.contains(e.target as Node) &&
+			!dropdown.contains(e.target as Node)
+		) {
 			closeDropdown();
 		}
 	};
@@ -1138,35 +1266,43 @@ const handleStickyLyricsTrackChange = (): void => {
 
 	// Process the track change and update tab state
 	// Tidal takes a while to process the track change sometimes :(
-	safeTimeout(unloads, () => {
-		if (!settings.stickyLyrics) return;
-
-		const lyricsTab = document.querySelector(
-			'[data-test="tabs-lyrics"]',
-		) as HTMLElement;
-		const playQueueTab = document.querySelector(
-			'[data-test="tabs-play-queue"]',
-		) as HTMLElement;
-
-		if (!lyricsTab) {
-			if (playQueueTab) playQueueTab.click();
-			return;
-		}
-
-		lyricsTab.click();
-
-		// Verify we actually stayed on lyrics after a short delay
-		// TODO: Make not shitty (one day maybe)
-		safeTimeout(unloads, () => {
+	safeTimeout(
+		unloads,
+		() => {
 			if (!settings.stickyLyrics) return;
-			const onLyrics = document.querySelector(
-				'[data-test="tabs-lyrics"][aria-selected="true"]',
-			);
-			if (!onLyrics && playQueueTab) {
-				playQueueTab.click();
+
+			const lyricsTab = document.querySelector(
+				'[data-test="tabs-lyrics"]',
+			) as HTMLElement;
+			const playQueueTab = document.querySelector(
+				'[data-test="tabs-play-queue"]',
+			) as HTMLElement;
+
+			if (!lyricsTab) {
+				if (playQueueTab) playQueueTab.click();
+				return;
 			}
-		}, 800);
-	}, 1200);
+
+			lyricsTab.click();
+
+			// Verify we actually stayed on lyrics after a short delay
+			// TODO: Make not shitty (one day maybe)
+			safeTimeout(
+				unloads,
+				() => {
+					if (!settings.stickyLyrics) return;
+					const onLyrics = document.querySelector(
+						'[data-test="tabs-lyrics"][aria-selected="true"]',
+					);
+					if (!onLyrics && playQueueTab) {
+						playQueueTab.click();
+					}
+				},
+				800,
+			);
+		},
+		1200,
+	);
 };
 
 // Observer: create dropdown when lyrics tab appears & detect track changes
@@ -1187,7 +1323,9 @@ function setupStickyLyricsObserver(): void {
 
 	// Apply word lyrics when lyrics container appears or reappears
 	observe<HTMLElement>(unloads, '[data-test="lyrics-lines"]', () => {
-		if (lyricsData) {
+		if (lyricsMode === "line-tidal") {
+			reapplyTidalLineLyrics();
+		} else if (lyricsData) {
 			reapplyWordLyrics();
 		} else {
 			onTrackChange();
@@ -1224,13 +1362,34 @@ interface WordLine {
 	duration: number; // s
 	endTime: number; // s
 	syllabus: WordTiming[];
-	element: { key: string; songPart: string; singer: string };
+	element: {
+		key: string;
+		songPart?: string;
+		songPartIndex?: number;
+		singer: string;
+	};
 	translation: string | null;
 	romanized?: string;
 }
 
+interface ApiLine {
+	text: string;
+	startTime: number;
+	duration: number;
+	endTime: number;
+	syllabus?: WordTiming[];
+	element?: {
+		key: string;
+		songPart?: string;
+		songPartIndex?: number;
+		singer?: string;
+	};
+	translation?: string | null;
+	romanized?: string;
+}
+
 interface WordLyricsResponse {
-	type: string;
+	type: "Word";
 	data: WordLine[];
 	metadata: {
 		source: string;
@@ -1243,13 +1402,36 @@ interface WordLyricsResponse {
 	_cached?: boolean;
 }
 
+interface LineLyricsResponse {
+	type: "Line";
+	data: ApiLine[];
+	metadata: {
+		source: string;
+		title: string;
+		language: string;
+		totalDuration: string;
+		agents?: Record<string, { type: string; name: string; alias: string }>;
+		songParts?: Array<{ name: string; time: number; duration: number }>;
+	};
+	_cached?: boolean;
+}
+
+type LyricsApiResponse = WordLyricsResponse | LineLyricsResponse;
+type LyricsOverlayMode = "none" | "word" | "line-api" | "line-tidal";
+
 // syllable state
 let trackChangeToken = 0;
 let lyricsData: WordLine[] | null = null;
-let lyricsResponse: WordLyricsResponse | null = null;
+let lyricsResponse: LyricsApiResponse | null = null;
+let lyricsMode: LyricsOverlayMode = "none";
 let tickLoopUnload: LunaUnload | null = null;
 let isActive = false;
 let savedTidalClasses: string[] | null = null;
+let tidalFollowObserver: MutationObserver | null = null;
+
+const isWordTimingMode = (): boolean => lyricsMode === "word";
+const getEffectiveLyricsStyle = (): number =>
+	isWordTimingMode() ? settings.lyricsStyle : 0;
 
 interface WordEntry {
 	el: HTMLSpanElement;
@@ -1284,14 +1466,24 @@ let syncButtonEl: HTMLElement | null = null;
 
 // scroll bounce animation state
 let scrollAnimIsAnimating = false;
-let scrollAnimPending: { parent: HTMLElement; refIdx: number; target: number } | null = null;
+let scrollAnimPending: {
+	parent: HTMLElement;
+	refIdx: number;
+	target: number;
+} | null = null;
 let scrollUnlockTimeout: LunaUnload | null = null;
 let scrollCleanupTimeout: LunaUnload | null = null;
 let animatingEls: HTMLElement[] = [];
 
 const clearScrollAnim = (): void => {
-	if (scrollUnlockTimeout) { scrollUnlockTimeout(); scrollUnlockTimeout = null; }
-	if (scrollCleanupTimeout) { scrollCleanupTimeout(); scrollCleanupTimeout = null; }
+	if (scrollUnlockTimeout) {
+		scrollUnlockTimeout();
+		scrollUnlockTimeout = null;
+	}
+	if (scrollCleanupTimeout) {
+		scrollCleanupTimeout();
+		scrollCleanupTimeout = null;
+	}
 	for (const el of animatingEls) {
 		el.classList.remove("rl-scroll-animate");
 		el.style.removeProperty("--rl-scroll-delta");
@@ -1302,16 +1494,30 @@ const clearScrollAnim = (): void => {
 	scrollAnimPending = null;
 };
 
-const applyScrollBounce = (scrollParent: HTMLElement, referenceIdx: number, scrollTarget: number): void => {
+const applyScrollBounce = (
+	scrollParent: HTMLElement,
+	referenceIdx: number,
+	scrollTarget: number,
+): void => {
 	// queue if an animation is already running
 	if (scrollAnimIsAnimating) {
-		scrollAnimPending = { parent: scrollParent, refIdx: referenceIdx, target: scrollTarget };
+		scrollAnimPending = {
+			parent: scrollParent,
+			refIdx: referenceIdx,
+			target: scrollTarget,
+		};
 		return;
 	}
 
 	// clear previous animation timeouts
-	if (scrollUnlockTimeout) { scrollUnlockTimeout(); scrollUnlockTimeout = null; }
-	if (scrollCleanupTimeout) { scrollCleanupTimeout(); scrollCleanupTimeout = null; }
+	if (scrollUnlockTimeout) {
+		scrollUnlockTimeout();
+		scrollUnlockTimeout = null;
+	}
+	if (scrollCleanupTimeout) {
+		scrollCleanupTimeout();
+		scrollCleanupTimeout = null;
+	}
 
 	// clean up previous animation classes
 	for (const el of animatingEls) {
@@ -1325,7 +1531,10 @@ const applyScrollBounce = (scrollParent: HTMLElement, referenceIdx: number, scro
 	const container = scrollParent.querySelector(".rl-wbw-container");
 	if (container) {
 		for (const anim of container.getAnimations({ subtree: true })) {
-			if (anim instanceof CSSAnimation && anim.animationName === "rl-scroll-bounce") {
+			if (
+				anim instanceof CSSAnimation &&
+				anim.animationName === "rl-scroll-bounce"
+			) {
 				anim.cancel();
 			}
 		}
@@ -1373,24 +1582,32 @@ const applyScrollBounce = (scrollParent: HTMLElement, referenceIdx: number, scro
 
 	// unlock animation state after base duration, process pending if queued
 	const BASE_DURATION = 400;
-	scrollUnlockTimeout = safeTimeout(unloads, () => {
-		scrollAnimIsAnimating = false;
-		if (scrollAnimPending) {
-			const pending = scrollAnimPending;
-			scrollAnimPending = null;
-			applyScrollBounce(pending.parent, pending.refIdx, pending.target);
-		}
-	}, BASE_DURATION);
+	scrollUnlockTimeout = safeTimeout(
+		unloads,
+		() => {
+			scrollAnimIsAnimating = false;
+			if (scrollAnimPending) {
+				const pending = scrollAnimPending;
+				scrollAnimPending = null;
+				applyScrollBounce(pending.parent, pending.refIdx, pending.target);
+			}
+		},
+		BASE_DURATION,
+	);
 
 	// clean up animation classes after all staggered animations complete
-	scrollCleanupTimeout = safeTimeout(unloads, () => {
-		for (const el of animatingEls) {
-			el.classList.remove("rl-scroll-animate");
-			el.style.removeProperty("--rl-scroll-delta");
-			el.style.removeProperty("--rl-line-delay");
-		}
-		animatingEls = [];
-	}, maxDuration + 50);
+	scrollCleanupTimeout = safeTimeout(
+		unloads,
+		() => {
+			for (const el of animatingEls) {
+				el.classList.remove("rl-scroll-animate");
+				el.style.removeProperty("--rl-scroll-delta");
+				el.style.removeProperty("--rl-line-delay");
+			}
+			animatingEls = [];
+		},
+		maxDuration + 50,
+	);
 };
 
 // scroll lock (for scroll gate)
@@ -1425,21 +1642,26 @@ const getPlaybackMs = (): number => {
 
 	if (playing && lastPlayerTimeAt > 0) {
 		const elapsed = now - lastPlayerTimeAt;
-		return (lastPlayerTime * 1000) + elapsed;
+		return lastPlayerTime * 1000 + elapsed;
 	}
 
 	return playerTime * 1000;
 };
 
 // get title + artist from media item (Used everywhere now <3)
-const getTrackInfo = async (): Promise<{ title: string; artist: string; isrc?: string } | null> => {
+const getTrackInfo = async (): Promise<{
+	title: string;
+	artist: string;
+	isrc?: string;
+} | null> => {
 	const mi = await MediaItem.fromPlaybackContext();
 	if (!mi?.tidalItem) return null;
 
 	const baseTitle = mi.tidalItem.title ?? "";
 	const version = mi.tidalItem.version; // REMIX Detection
 	const title = version ? `${baseTitle} (${version})` : baseTitle;
-	const artist = mi.tidalItem.artist?.name ?? mi.tidalItem.artists?.[0]?.name ?? ""; // REMIX Detection
+	const artist =
+		mi.tidalItem.artist?.name ?? mi.tidalItem.artists?.[0]?.name ?? ""; // REMIX Detection
 	const isrc = mi.tidalItem.isrc ?? undefined;
 
 	if (!baseTitle || !artist) return null;
@@ -1448,12 +1670,12 @@ const getTrackInfo = async (): Promise<{ title: string; artist: string; isrc?: s
 
 // fetch syllables from the API (wiped on track change)
 let cachedLyricsKey: string | null = null;
-let cachedLyricsData: WordLyricsResponse | null = null;
-const fetchWordLyrics = async (
+let cachedLyricsData: LyricsApiResponse | null = null;
+const fetchLyrics = async (
 	title: string,
 	artist: string,
 	isrc?: string,
-): Promise<WordLyricsResponse | null> => {
+): Promise<LyricsApiResponse | null> => {
 	const cacheKey = `${title}\0${artist}\0${isrc ?? ""}\0${settings.romanizeLyrics ? "r" : ""}`;
 	if (cachedLyricsKey === cacheKey) {
 		sylLog(`[RL-Syllable] Cache hit for "${title}" by "${artist}"`);
@@ -1470,28 +1692,32 @@ const fetchWordLyrics = async (
 	];
 	const fallbackUrl = `https://rl-api.kineticsand.net/${params}`;
 
-	// "ok" = got a response (data may still be null if type != Word)
+	// "ok" = got a response (data may still be null if type is unsupported)
 	// "404" = lyrics not found, stop all attempts immediately
 	// "500" = serverless timeout, skip remaining primaries and go to fallback
 	// "err" = network/other error, try next host
 	type FetchOutcome =
-		| { status: "ok"; data: WordLyricsResponse | null }
+		| { status: "ok"; data: LyricsApiResponse | null }
 		| { status: "404" }
 		| { status: "500" }
 		| { status: "err" };
 
 	const tryFetch = async (url: string): Promise<FetchOutcome> => {
 		try {
-			sylTrace(`RL API: Fetching word/syllable lyrics: ${url}`);
+			sylTrace(`RL API: Fetching lyrics: ${url}`);
 			const res = await fetch(url);
 			if (!res.ok) {
 				trace.log(`RL API: fetch failed: ${res.status} from ${url}`);
 				if (res.status === 404) return { status: "404" };
 				return res.status === 500 ? { status: "500" } : { status: "err" };
 			}
-			const data: WordLyricsResponse = await res.json();
-			if (data.type !== "Word" || !data.data) {
-				trace.log(`Word/Syllable lyrics not available (type: ${data.type})`);
+			const data = (await res.json()) as LyricsApiResponse;
+			if (!data?.data || !Array.isArray(data.data)) {
+				trace.log("Lyrics API returned invalid payload");
+				return { status: "ok", data: null };
+			}
+			if (data.type !== "Word" && data.type !== "Line") {
+				trace.log("Lyrics not available in supported format");
 				return { status: "ok", data: null };
 			}
 			return { status: "ok", data };
@@ -1501,7 +1727,7 @@ const fetchWordLyrics = async (
 		}
 	};
 
-	const finish = (data: WordLyricsResponse | null): WordLyricsResponse | null => {
+	const finish = (data: LyricsApiResponse | null): LyricsApiResponse | null => {
 		cachedLyricsKey = cacheKey;
 		cachedLyricsData = data;
 		return data;
@@ -1512,7 +1738,7 @@ const fetchWordLyrics = async (
 		const outcome = await tryFetch(url);
 		if (outcome.status === "ok") return finish(outcome.data);
 		if (outcome.status === "404") {
-			trace.log("RL API: 404 — no word/syllable lyrics exist for this track");
+			trace.log("RL API: 404 — no API lyrics exist for this track");
 			return finish(null);
 		}
 		if (outcome.status === "500") {
@@ -1526,7 +1752,7 @@ const fetchWordLyrics = async (
 	const fallback = await tryFetch(fallbackUrl);
 	if (fallback.status === "ok") return finish(fallback.data);
 	if (fallback.status === "404") {
-		trace.log("RL API: 404 from fallback — no word/syllable lyrics exist for this track");
+		trace.log("RL API: 404 from fallback — no API lyrics exist for this track");
 		return finish(null);
 	}
 	if (fallback.status === "500") {
@@ -1538,6 +1764,48 @@ const fetchWordLyrics = async (
 	cachedLyricsKey = cacheKey;
 	cachedLyricsData = null;
 	return null;
+};
+
+const normalizeLineLyricsData = (data: ApiLine[]): WordLine[] => {
+	return data
+		.filter((line) => typeof line.text === "string")
+		.map((line, idx) => {
+			const startMs = Number.isFinite(line.startTime)
+				? Math.max(0, Math.round(line.startTime * 1000))
+				: 0;
+			const durationMs = Number.isFinite(line.duration)
+				? Math.max(0, Math.round(line.duration * 1000))
+				: 0;
+			const endMs = Number.isFinite(line.endTime)
+				? Math.max(startMs, Math.round(line.endTime * 1000))
+				: startMs + durationMs;
+			const safeSinger = line.element?.singer ?? "v1000";
+			const safeKey = line.element?.key ?? `line-${idx}`;
+			const text = line.romanized ?? line.text;
+
+			return {
+				text,
+				startTime: startMs / 1000,
+				duration: durationMs / 1000,
+				endTime: endMs / 1000,
+				syllabus: [
+					{
+						text: `${text} `,
+						time: startMs,
+						duration: Math.max(1, endMs - startMs),
+						isBackground: false,
+					},
+				],
+				element: {
+					key: safeKey,
+					singer: safeSinger,
+					songPart: line.element?.songPart,
+					songPartIndex: line.element?.songPartIndex,
+				},
+				translation: line.translation ?? null,
+				romanized: line.romanized,
+			};
+		});
 };
 
 // strip tidal css classes (prevent conflict)
@@ -1583,15 +1851,19 @@ const restoreTidalLyrics = (): void => {
 		lyricsContainer.classList.remove("rl-wbw-active");
 		lyricsContainer.style.removeProperty("overflow");
 
-		const innerDiv = lyricsContainer.querySelector(":scope > div") as HTMLElement;
+		const innerDiv = lyricsContainer.querySelector(
+			":scope > div",
+		) as HTMLElement;
 		if (innerDiv) {
 			innerDiv.style.removeProperty("overflow");
 			innerDiv.style.removeProperty("position");
 		}
 
-		lyricsContainer.querySelectorAll(".rl-wbw-line[data-current]").forEach((el) => {
-			el.removeAttribute("data-current");
-		});
+		lyricsContainer
+			.querySelectorAll(".rl-wbw-line[data-current]")
+			.forEach((el) => {
+				el.removeAttribute("data-current");
+			});
 
 		lyricsContainer.querySelector(".rl-wbw-container")?.remove();
 	}
@@ -1617,13 +1889,18 @@ const computeSingerSides = (
 		const agentData = agents[singerId];
 		const type = agentData
 			? agentData.type
-			: singerId === "v1000" ? "group" : singerId === "v2000" ? "other" : "person";
+			: singerId === "v1000"
+				? "group"
+				: singerId === "v2000"
+					? "other"
+					: "person";
 
 		if (type === "group" || type === "other") {
 			singerSideMap.set(singerId, "rl-singer-left");
 		} else {
 			personOrder.push(singerId);
-			singerSideMap.set(singerId,
+			singerSideMap.set(
+				singerId,
 				personOrder.length === 2 ? "rl-singer-right" : "rl-singer-left",
 			);
 		}
@@ -1642,8 +1919,11 @@ const computeSingerSides = (
 
 	if (totalCount > 0 && Math.round((rightCount / totalCount) * 100) >= 85) {
 		const flip = (s: string) =>
-			s === "rl-singer-left" ? "rl-singer-right"
-				: s === "rl-singer-right" ? "rl-singer-left" : s;
+			s === "rl-singer-left"
+				? "rl-singer-right"
+				: s === "rl-singer-right"
+					? "rl-singer-left"
+					: s;
 		for (let i = 0; i < sides.length; i++) sides[i] = flip(sides[i]);
 	}
 
@@ -1689,9 +1969,13 @@ const buildWordSpans = (): {
 	wbwContainer.className = "rl-wbw-container";
 	if (settings.blurInactive) wbwContainer.classList.add("rl-blur-active");
 	if (settings.bubbledLyrics) wbwContainer.classList.add("rl-bubbled");
+	const effectiveStyle = getEffectiveLyricsStyle();
+	const allowWordSylStyles = isWordTimingMode();
 	// MARKER: Syllable animations (WIP coming soon)
-	if (settings.syllableStyle === 1) wbwContainer.classList.add("rl-syl-pop");
-	else if (settings.syllableStyle === 2) wbwContainer.classList.add("rl-syl-jump");
+	if (allowWordSylStyles && settings.syllableStyle === 1)
+		wbwContainer.classList.add("rl-syl-pop");
+	else if (allowWordSylStyles && settings.syllableStyle === 2)
+		wbwContainer.classList.add("rl-syl-jump");
 	forceStyle(wbwContainer, {
 		display: "block",
 		width: "100%",
@@ -1765,10 +2049,10 @@ const buildWordSpans = (): {
 		const lineWords: WordEntry[] = [];
 		const lineBgWords: WordEntry[] = [];
 		const syllabus = apiLine.syllabus;
-		const isSylMode = settings.lyricsStyle === 2;
+		const isSylMode = effectiveStyle === 2;
 
-		const hasBgSyllables = contextAware && syllabus.some(s => s.isBackground);
-		const allAreBg = hasBgSyllables && syllabus.every(s => s.isBackground);
+		const hasBgSyllables = contextAware && syllabus.some((s) => s.isBackground);
+		const allAreBg = hasBgSyllables && syllabus.every((s) => s.isBackground);
 		const splitBg = hasBgSyllables && !allAreBg;
 
 		let mainContainer: HTMLElement = lineDiv;
@@ -1796,7 +2080,11 @@ const buildWordSpans = (): {
 			"letter-spacing": "normal",
 		};
 
-		const makeSpan = (text: string, seekMs: number, bg: boolean): HTMLSpanElement => {
+		const makeSpan = (
+			text: string,
+			seekMs: number,
+			bg: boolean,
+		): HTMLSpanElement => {
 			const span = document.createElement("span");
 			span.className = "rl-wbw-word";
 			if (splitBg && bg) {
@@ -1815,40 +2103,60 @@ const buildWordSpans = (): {
 		};
 
 		const useRomanized = settings.romanizeLyrics;
-		const sylDisplay = (s: WordTiming) => (useRomanized && s.romanized != null ? s.romanized : s.text);
+		const sylDisplay = (s: WordTiming) =>
+			useRomanized && s.romanized != null ? s.romanized : s.text;
 
 		// Group syllables into words: trailing whitespace in syl.text marks a word boundary
 		const wordGroups: number[][] = [];
 		let currentGroup: number[] = [];
 		for (let si = 0; si < syllabus.length; si++) {
 			currentGroup.push(si);
-			const isWordEnd = syllabus[si].text !== syllabus[si].text.trimEnd() || si === syllabus.length - 1;
+			const isWordEnd =
+				syllabus[si].text !== syllabus[si].text.trimEnd() ||
+				si === syllabus.length - 1;
 			if (isWordEnd) {
 				wordGroups.push(currentGroup);
 				currentGroup = [];
 			}
 		}
 
-		if (settings.lyricsStyle === 0) {
+		if (effectiveStyle === 0) {
 			// Line mode: one span per container (main / bg) — no word splitting
-			const mainSyls = syllabus.filter(s => !splitBg || !s.isBackground);
-			const bgSyls = splitBg ? syllabus.filter(s => s.isBackground) : [];
+			const mainSyls = syllabus.filter((s) => !splitBg || !s.isBackground);
+			const bgSyls = splitBg ? syllabus.filter((s) => s.isBackground) : [];
 
 			if (mainSyls.length > 0) {
-				const text = mainSyls.map(s => sylDisplay(s)).join("").trim();
+				const text = mainSyls
+					.map((s) => sylDisplay(s))
+					.join("")
+					.trim();
 				const first = mainSyls[0];
 				const last = mainSyls[mainSyls.length - 1];
 				const span = makeSpan(text, first.time, false);
 				mainContainer.appendChild(span);
-				lineWords.push({ el: span, start: first.time, end: last.time + last.duration, duration: (last.time + last.duration) - first.time });
+				lineWords.push({
+					el: span,
+					start: first.time,
+					end: last.time + last.duration,
+					duration: last.time + last.duration - first.time,
+				});
 			}
 			if (bgSyls.length > 0 && bgContainer) {
-				const text = bgSyls.map(s => sylDisplay(s)).join("").trim().replace(/[()]/g, "");
+				const text = bgSyls
+					.map((s) => sylDisplay(s))
+					.join("")
+					.trim()
+					.replace(/[()]/g, "");
 				const first = bgSyls[0];
 				const last = bgSyls[bgSyls.length - 1];
 				const span = makeSpan(text, first.time, true);
 				bgContainer.appendChild(span);
-				lineBgWords.push({ el: span, start: first.time, end: last.time + last.duration, duration: (last.time + last.duration) - first.time });
+				lineBgWords.push({
+					el: span,
+					start: first.time,
+					end: last.time + last.duration,
+					duration: last.time + last.duration - first.time,
+				});
 			}
 		} else {
 			for (const group of wordGroups) {
@@ -1861,20 +2169,32 @@ const buildWordSpans = (): {
 					const groupSpans: HTMLSpanElement[] = [];
 					for (const si of group) {
 						const syl = syllabus[si];
-						const span = makeSpan(sylDisplay(syl).trimEnd(), wordStartMs, syl.isBackground);
+						const span = makeSpan(
+							sylDisplay(syl).trimEnd(),
+							wordStartMs,
+							syl.isBackground,
+						);
 						span.addEventListener("mouseenter", () => {
 							for (const s of groupSpans) s.classList.add("rl-wbw-word-hover");
 						});
 						span.addEventListener("mouseleave", () => {
-							for (const s of groupSpans) s.classList.remove("rl-wbw-word-hover");
+							for (const s of groupSpans)
+								s.classList.remove("rl-wbw-word-hover");
 						});
 						groupSpans.push(span);
 						targetContainer.appendChild(span);
-						const entry: WordEntry = { el: span, start: syl.time, end: syl.time + syl.duration, duration: syl.duration };
+						const entry: WordEntry = {
+							el: span,
+							start: syl.time,
+							end: syl.time + syl.duration,
+							duration: syl.duration,
+						};
 						targetWords.push(entry);
 					}
 				} else {
-					const mergedText = group.map(si => sylDisplay(syllabus[si]).trimEnd()).join("");
+					const mergedText = group
+						.map((si) => sylDisplay(syllabus[si]).trimEnd())
+						.join("");
 					const first = syllabus[group[0]];
 					const last = syllabus[group[group.length - 1]];
 					const start = first.time;
@@ -1882,7 +2202,12 @@ const buildWordSpans = (): {
 					const bg = first.isBackground;
 					const span = makeSpan(mergedText, start, bg);
 					targetContainer.appendChild(span);
-					const entry: WordEntry = { el: span, start, end, duration: end - start };
+					const entry: WordEntry = {
+						el: span,
+						start,
+						end,
+						duration: end - start,
+					};
 					targetWords.push(entry);
 				}
 				targetContainer.appendChild(document.createTextNode(" "));
@@ -1948,6 +2273,222 @@ const buildWordSpans = (): {
 	return { lines };
 };
 
+// Scrapes & Builds Tidal Line Spans (no lines found in API)
+const buildTidalLineSpans = (): { lines: LineEntry[] } => {
+	const lines: LineEntry[] = [];
+	const lyricsContainer = document.querySelector(
+		'[data-test="lyrics-lines"]',
+	) as HTMLElement;
+	if (!lyricsContainer) return { lines };
+
+	const innerDiv = lyricsContainer.querySelector(":scope > div") as HTMLElement;
+	if (!innerDiv) return { lines };
+
+	innerDiv.querySelector(".rl-wbw-container")?.remove();
+	lyricsContainer.classList.add("rl-wbw-active");
+	lyricsContainer.style.setProperty("overflow", "visible", "important");
+	innerDiv.style.setProperty("overflow", "visible", "important");
+
+	const forceStyle = (el: HTMLElement, props: Record<string, string>) => {
+		for (const [k, v] of Object.entries(props)) {
+			el.style.setProperty(k, v, "important");
+		}
+	};
+
+	const wbwContainer = document.createElement("div");
+	wbwContainer.className = "rl-wbw-container";
+	if (settings.blurInactive) wbwContainer.classList.add("rl-blur-active");
+	if (settings.bubbledLyrics) wbwContainer.classList.add("rl-bubbled");
+	forceStyle(wbwContainer, {
+		display: "block",
+		width: "100%",
+		"box-sizing": "border-box",
+		margin: "0",
+		padding: "0",
+		float: "none",
+		flex: "none",
+		"column-count": "auto",
+		overflow: "visible",
+	});
+
+	const tidalSpans = Array.from(
+		innerDiv.querySelectorAll('span[data-test="lyrics-line"]'),
+	) as HTMLElement[];
+	for (const tidalSpan of tidalSpans) {
+		const text = tidalSpan.textContent ?? "";
+		if (text.trim().length === 0) {
+			const spacer = document.createElement("div");
+			spacer.className = "rl-wbw-line rl-wbw-spacer";
+			forceStyle(spacer, {
+				display: "block",
+				height: "1rem",
+				margin: "0 0 1rem 0",
+			});
+			wbwContainer.appendChild(spacer);
+			continue;
+		}
+
+		const lineDiv = document.createElement("div");
+		lineDiv.className = "rl-wbw-line";
+		forceStyle(lineDiv, {
+			display: "block",
+			"white-space": "normal",
+			"word-spacing": "normal",
+			"letter-spacing": "normal",
+			"margin-bottom": "2rem",
+			"padding-top": "0",
+			"padding-bottom": "0",
+			"font-size": "calc(40px * var(--rl-font-scale, 1))",
+			"font-family":
+				'"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif',
+			"font-weight": "700",
+			color: "rgba(128, 128, 128, 0.4)",
+			overflow: "visible",
+			flex: "none",
+			"column-count": "auto",
+			gap: "0",
+			"justify-content": "initial",
+			"align-items": "initial",
+		});
+
+		const lineSpan = document.createElement("span");
+		lineSpan.className = "rl-wbw-word";
+		lineSpan.textContent = text;
+		forceStyle(lineSpan, {
+			display: "inline-block",
+			float: "none",
+			flex: "none",
+			margin: "0",
+			padding: "0",
+			"word-spacing": "normal",
+			"letter-spacing": "normal",
+		});
+
+		lineDiv.appendChild(lineSpan);
+		wbwContainer.appendChild(lineDiv);
+		lines.push({
+			el: lineDiv,
+			tidalSpan,
+			startMs: 0,
+			endMs: 0,
+			words: [],
+			bgWords: [],
+			isBg: false,
+		});
+	}
+
+	innerDiv.appendChild(wbwContainer);
+	return { lines };
+};
+
+const stopTidalFollowLoop = (): void => {
+	if (tidalFollowObserver) {
+		tidalFollowObserver.disconnect();
+		tidalFollowObserver = null;
+	}
+};
+
+const updateTidalFollowActiveLine = (): void => {
+	if (!isActive || lyricsMode !== "line-tidal" || lines.length === 0) return;
+
+	let activeIndex = -1;
+	for (let i = 0; i < lines.length; i++) {
+		const tidalSpan = lines[i].tidalSpan;
+		if (!tidalSpan) continue;
+		if (tidalSpan.getAttribute("data-current") === "true") {
+			activeIndex = i;
+			break;
+		}
+	}
+	if (activeIndex < 0) return;
+
+	const newActiveSet = new Set<number>([activeIndex]);
+	for (const idx of activeLineIdxs) {
+		if (!newActiveSet.has(idx) && idx < lines.length) {
+			lines[idx].el.classList.remove("rl-wbw-line-active");
+			lines[idx].el.removeAttribute("data-current");
+		}
+	}
+
+	if (!activeLineIdxs.has(activeIndex)) {
+		lines[activeIndex].el.classList.add("rl-wbw-line-active");
+		lines[activeIndex].el.classList.remove("rl-pos-1", "rl-pos-2", "rl-pos-3");
+		lines[activeIndex].el.setAttribute("data-current", "true");
+	}
+
+	const prevPrimary = primaryLineIdx;
+	primaryLineIdx = activeIndex;
+	activeLineIdxs = newActiveSet;
+
+	if (settings.blurInactive) {
+		for (let i = 0; i < lines.length; i++) {
+			lines[i].el.classList.remove(
+				"rl-pos-1",
+				"rl-pos-2",
+				"rl-pos-3",
+				"rl-gap-hold",
+			);
+		}
+		for (let dist = 1; dist <= 3; dist++) {
+			const before = activeIndex - dist;
+			const after = activeIndex + dist;
+			const cls = `rl-pos-${dist}`;
+			if (before >= 0) lines[before].el.classList.add(cls);
+			if (after < lines.length) lines[after].el.classList.add(cls);
+		}
+	}
+
+	if (activeIndex !== prevPrimary) {
+		const newLine = lines[activeIndex];
+		const scrollParent = findScroller(newLine.el);
+		lockScroll(scrollParent);
+		hookUserScroll(scrollParent);
+		if (scrollSynced) {
+			const lineRect = newLine.el.getBoundingClientRect();
+			const parentRect = scrollParent.getBoundingClientRect();
+			const targetOffset = parentRect.height * 0.2;
+			const scrollTarget =
+				scrollParent.scrollTop + (lineRect.top - parentRect.top) - targetOffset;
+			const sequential = prevPrimary >= 0;
+			if (settings.bubbledLyrics && sequential) {
+				applyScrollBounce(scrollParent, activeIndex, scrollTarget);
+			} else if (sequential) {
+				clearScrollAnim();
+				scrollTo(scrollParent, {
+					top: Math.max(0, scrollTarget),
+					behavior: "smooth",
+				});
+			} else {
+				clearScrollAnim();
+				scrollTo(scrollParent, {
+					top: Math.max(0, scrollTarget),
+					behavior: "instant",
+				});
+			}
+		}
+	}
+};
+
+const startTidalFollowLoop = (): void => {
+	stopTidalFollowLoop();
+	const lyricsContainer = document.querySelector(
+		'[data-test="lyrics-lines"]',
+	) as HTMLElement;
+	if (!lyricsContainer) return;
+
+	tidalFollowObserver = new MutationObserver(() => {
+		updateTidalFollowActiveLine();
+	});
+	tidalFollowObserver.observe(lyricsContainer, {
+		subtree: true,
+		childList: true,
+		attributes: true,
+		attributeFilter: ["data-current"],
+	});
+
+	updateTidalFollowActiveLine();
+};
+
 // watch for re-renders
 const watchForRerender = (): void => {
 	unwatchRerender();
@@ -1964,17 +2505,21 @@ const watchForRerender = (): void => {
 		}
 		rerenderDebounce = window.setTimeout(() => {
 			rerenderDebounce = null;
-			if (!isActive || !lyricsData) return;
+			if (!isActive || lyricsMode === "none") return;
 
 			// check if our container has been nuked by a react re-render (thx react again again..)
 			const existing = lyricsContainer.querySelector(".rl-wbw-container");
 			if (!existing) {
-				sylTrace(
-					"Word-by-word: re-applying after Tidal re-render",
-				);
+				sylTrace("Lyrics overlay: re-applying after Tidal re-render");
 				hideTidalLyrics();
-				const result = buildWordSpans();
-				lines = result.lines;
+				if (lyricsMode === "line-tidal") {
+					const result = buildTidalLineSpans();
+					lines = result.lines;
+					startTidalFollowLoop();
+				} else if (lyricsData) {
+					const result = buildWordSpans();
+					lines = result.lines;
+				}
 			}
 		}, 100);
 	});
@@ -2007,6 +2552,7 @@ const clearTickLoop = (): void => {
 const teardown = (): void => {
 	trackChangeToken++;
 	clearTickLoop();
+	stopTidalFollowLoop();
 	clearScrollAnim();
 	unwatchRerender();
 	unhookUserScroll();
@@ -2014,6 +2560,7 @@ const teardown = (): void => {
 	unlockScroll();
 	scrollSynced = true;
 	isActive = false;
+	lyricsMode = "none";
 	lyricsData = null;
 	lyricsResponse = null;
 	lines = [];
@@ -2086,9 +2633,14 @@ const lockScroll = (parent: HTMLElement): void => {
 // Restore original scroll methods
 const unlockScroll = (): void => {
 	if (!scrollParentRef) return;
-	if (savedScrollTo) scrollParentRef.scrollTo = savedScrollTo as typeof Element.prototype.scrollTo;
-	if (savedScroll) scrollParentRef.scroll = savedScroll as typeof Element.prototype.scroll;
-	if (savedScrollBy) scrollParentRef.scrollBy = savedScrollBy as typeof Element.prototype.scrollBy;
+	if (savedScrollTo)
+		scrollParentRef.scrollTo =
+			savedScrollTo as typeof Element.prototype.scrollTo;
+	if (savedScroll)
+		scrollParentRef.scroll = savedScroll as typeof Element.prototype.scroll;
+	if (savedScrollBy)
+		scrollParentRef.scrollBy =
+			savedScrollBy as typeof Element.prototype.scrollBy;
 	// Remove instance-level scrollTop override
 	delete (scrollParentRef as any).scrollTop;
 	scrollParentRef = null;
@@ -2113,7 +2665,8 @@ const scrollToActiveLine = (): void => {
 	const lineRect = line.el.getBoundingClientRect();
 	const parentRect = scroller.getBoundingClientRect();
 	const targetOffset = parentRect.height * 0.2;
-	const scrollTarget = scroller.scrollTop + (lineRect.top - parentRect.top) - targetOffset;
+	const scrollTarget =
+		scroller.scrollTop + (lineRect.top - parentRect.top) - targetOffset;
 	clearScrollAnim();
 	scrollTo(scroller, { top: Math.max(0, scrollTarget), behavior: "instant" });
 };
@@ -2122,10 +2675,14 @@ const scrollToActiveLine = (): void => {
 const resync = (): void => {
 	scrollSynced = true;
 	if (settings.blurInactive) {
-		document.querySelector(".rl-wbw-container")?.classList.add("rl-blur-active");
+		document
+			.querySelector(".rl-wbw-container")
+			?.classList.add("rl-blur-active");
 	}
 	scrollToActiveLine();
-	const tidalSyncBtn = document.querySelector('div[class*="_syncButton"] button') as HTMLElement;
+	const tidalSyncBtn = document.querySelector(
+		'div[class*="_syncButton"] button',
+	) as HTMLElement;
 	if (tidalSyncBtn) tidalSyncBtn.click();
 	unhookSyncButton();
 	sylLog("[RL-Syllable] Scroll resynced");
@@ -2138,7 +2695,9 @@ const hookUserScroll = (parent: HTMLElement): void => {
 		if (!scrollSynced) return;
 		scrollSynced = false;
 		if (settings.blurInactive) {
-			document.querySelector(".rl-wbw-container")?.classList.remove("rl-blur-active");
+			document
+				.querySelector(".rl-wbw-container")
+				?.classList.remove("rl-blur-active");
 		}
 		sylLog("[RL-Syllable] User scrolled — auto-scroll unhooked");
 	};
@@ -2160,7 +2719,9 @@ const unhookUserScroll = (): void => {
 // Hook lyric scroll sync button
 const hookSyncButton = (): void => {
 	unhookSyncButton();
-	const btn = document.querySelector('div[class*="_syncButton"] button') as HTMLElement;
+	const btn = document.querySelector(
+		'div[class*="_syncButton"] button',
+	) as HTMLElement;
 	if (!btn) return;
 	syncButtonEl = btn;
 	const handler = () => resync();
@@ -2185,284 +2746,330 @@ const startTickLoop = (): void => {
 	let lastLogTime = 0;
 	let lastTickMs = 0;
 
-	tickLoopUnload = safeInterval(unloads, () => {
-		if (!isActive || lines.length === 0) return;
+	tickLoopUnload = safeInterval(
+		unloads,
+		() => {
+			if (!isActive || lines.length === 0) return;
 
-		const nowMs = getPlaybackMs();
-		const isSyl = settings.lyricsStyle === 2;
-		const CLS_ACTIVE = isSyl ? "rl-syl-active" : "rl-wbw-active";
-		const CLS_FINISHED = isSyl ? "rl-syl-finished" : "rl-wbw-finished";
+			const nowMs = getPlaybackMs();
+			const effectiveStyle = getEffectiveLyricsStyle();
+			const isSyl = effectiveStyle === 2;
+			const isLineStyle = effectiveStyle === 0;
+			const CLS_ACTIVE = isSyl ? "rl-syl-active" : "rl-wbw-active";
+			const CLS_FINISHED = isSyl ? "rl-syl-finished" : "rl-wbw-finished";
 
-		// scrub/seek detection: time went backward or jumped forward significantly
-		const timeDelta = nowMs - lastTickMs;
-		const didScrub = lastTickMs >= 0 && (timeDelta < -100 || timeDelta > 1000);
-		lastTickMs = nowMs;
+			// scrub/seek detection: time went backward or jumped forward significantly
+			const timeDelta = nowMs - lastTickMs;
+			const didScrub =
+				lastTickMs >= 0 && (timeDelta < -100 || timeDelta > 1000);
+			lastTickMs = nowMs;
 
-		// remove data-current from tidals hidden spans
-		const tidalCurrentSpans = document.querySelectorAll(
-			'span[data-test="lyrics-line"][data-current]',
-		);
-		for (const span of tidalCurrentSpans) {
-			span.removeAttribute("data-current");
-		}
-
-		if (nowMs - lastLogTime >= 1000) {
-			lastLogTime = nowMs;
-			sylLog(`[RL-Syllable] Playback | ${nowMs.toFixed(0)} ms`);
-		}
-
-		// find all active lines (supports overlapping duet/adlib lines)
-		const newActiveSet = new Set<number>();
-		for (let i = 0; i < lines.length; i++) {
-			const lineEnd = lines[i].endMs;
-			// skip over background/adlib lines when computing nextStart so main lines
-			// stay active while their attached adlibs play (vewy important thx Opus 4.6)
-			let nextMainIdx = i + 1;
-			while (nextMainIdx < lines.length && lines[nextMainIdx].isBg) nextMainIdx++;
-			const nextStart = nextMainIdx < lines.length ? lines[nextMainIdx].startMs : Infinity;
-			const effectiveEnd = Math.max(lineEnd, Math.min(lineEnd + 2500, nextStart));
-			if (nowMs >= lines[i].startMs && nowMs < effectiveEnd) {
-				newActiveSet.add(i);
+			// remove data-current from tidals hidden spans
+			const tidalCurrentSpans = document.querySelectorAll(
+				'span[data-test="lyrics-line"][data-current]',
+			);
+			for (const span of tidalCurrentSpans) {
+				span.removeAttribute("data-current");
 			}
-		}
-		const newPrimary = newActiveSet.size > 0 ? Math.min(...newActiveSet) : -1;
 
-		// single pass to set correct state for all words (scrub or seek)
-		if (didScrub) {
-			for (let li = 0; li < lines.length; li++) {
-				const allEntries = lines[li].bgWords.length > 0
-					? [...lines[li].words, ...lines[li].bgWords]
-					: lines[li].words;
-				for (const w of allEntries) {
-					if (li < newPrimary) {
-						w.el.classList.remove(CLS_ACTIVE);
-						if (isSyl) w.el.style.animation = "";
-						if (!w.el.classList.contains(CLS_FINISHED)) w.el.classList.add(CLS_FINISHED);
-					} else {
-						w.el.classList.remove(CLS_ACTIVE, CLS_FINISHED);
-						if (isSyl) w.el.style.animation = "";
+			if (nowMs - lastLogTime >= 1000) {
+				lastLogTime = nowMs;
+				sylLog(`[RL-Syllable] Playback | ${nowMs.toFixed(0)} ms`);
+			}
+
+			// find all active lines (supports overlapping duet/adlib lines)
+			const newActiveSet = new Set<number>();
+			for (let i = 0; i < lines.length; i++) {
+				const lineEnd = lines[i].endMs;
+				// skip over background/adlib lines when computing nextStart so main lines
+				// stay active while their attached adlibs play (vewy important thx Opus 4.6)
+				let nextMainIdx = i + 1;
+				while (nextMainIdx < lines.length && lines[nextMainIdx].isBg)
+					nextMainIdx++;
+				const nextStart =
+					nextMainIdx < lines.length ? lines[nextMainIdx].startMs : Infinity;
+				const effectiveEnd = Math.max(
+					lineEnd,
+					Math.min(lineEnd + 2500, nextStart),
+				);
+				if (nowMs >= lines[i].startMs && nowMs < effectiveEnd) {
+					newActiveSet.add(i);
+				}
+			}
+			const newPrimary = newActiveSet.size > 0 ? Math.min(...newActiveSet) : -1;
+
+			// single pass to set correct state for all words (scrub or seek)
+			if (didScrub) {
+				for (let li = 0; li < lines.length; li++) {
+					const allEntries =
+						lines[li].bgWords.length > 0
+							? [...lines[li].words, ...lines[li].bgWords]
+							: lines[li].words;
+					for (const w of allEntries) {
+						if (li < newPrimary) {
+							w.el.classList.remove(CLS_ACTIVE);
+							if (isSyl) w.el.style.animation = "";
+							if (!w.el.classList.contains(CLS_FINISHED))
+								w.el.classList.add(CLS_FINISHED);
+						} else {
+							w.el.classList.remove(CLS_ACTIVE, CLS_FINISHED);
+							if (isSyl) w.el.style.animation = "";
+						}
 					}
 				}
-			}
-			activeWordEls.clear();
-			activeBgWordEls.clear();
-			for (const idx of activeLineIdxs) {
-				if (idx < lines.length) {
-					lines[idx].el.classList.remove("rl-wbw-line-active");
-					lines[idx].el.removeAttribute("data-current");
+				activeWordEls.clear();
+				activeBgWordEls.clear();
+				for (const idx of activeLineIdxs) {
+					if (idx < lines.length) {
+						lines[idx].el.classList.remove("rl-wbw-line-active");
+						lines[idx].el.removeAttribute("data-current");
+					}
 				}
-			}
-			activeLineIdxs.clear();
-			primaryLineIdx = -1;
-			const held = document.querySelector(".rl-gap-hold");
-			if (held) held.classList.remove("rl-gap-hold");
-			sylLog(`[RL-Syllable] Scrub detected (${timeDelta > 0 ? "+" : ""}${timeDelta.toFixed(0)} ms) → resync`);
-		}
-
-		// deactivate lines no longer active
-		for (const idx of activeLineIdxs) {
-			if (!newActiveSet.has(idx) && idx < lines.length) {
-				lines[idx].el.classList.remove("rl-wbw-line-active");
-				lines[idx].el.removeAttribute("data-current");
-				const lastWord = activeWordEls.get(idx);
-				if (lastWord) {
-					lastWord.classList.remove(CLS_ACTIVE);
-					if (isSyl) lastWord.style.animation = "";
-					lastWord.classList.add(CLS_FINISHED);
-				}
-				const lastBgWord = activeBgWordEls.get(idx);
-				if (lastBgWord) {
-					lastBgWord.classList.remove(CLS_ACTIVE);
-					if (isSyl) lastBgWord.style.animation = "";
-					lastBgWord.classList.add(CLS_FINISHED);
-				}
-				activeWordEls.delete(idx);
-				activeBgWordEls.delete(idx);
-			}
-		}
-
-		// activate newly active lines
-		for (const idx of newActiveSet) {
-			if (!activeLineIdxs.has(idx)) {
-				lines[idx].el.classList.add("rl-wbw-line-active");
-				lines[idx].el.classList.remove("rl-pos-1", "rl-pos-2", "rl-pos-3");
-				lines[idx].el.setAttribute("data-current", "true");
-				sylLog(
-					`[RL-Syllable] Line ${idx} Active "${lines[idx].el.textContent?.slice(0, 40)}" | ${lines[idx].startMs} ms - ${lines[idx].endMs} ms   [${nowMs.toFixed(0)} ms]`,
-				);
-			}
-		}
-
-		// instrumental gaps, keep the last-active line unblurred
-		if (settings.blurInactive) {
-			if (newActiveSet.size === 0 && primaryLineIdx >= 0 && primaryLineIdx < lines.length) {
-				lines[primaryLineIdx].el.classList.add("rl-gap-hold");
-			} else if (newActiveSet.size > 0) {
+				activeLineIdxs.clear();
+				primaryLineIdx = -1;
 				const held = document.querySelector(".rl-gap-hold");
 				if (held) held.classList.remove("rl-gap-hold");
-			}
-		}
-
-		activeLineIdxs = newActiveSet;
-
-		// scroll to primary (topmost) active line
-		if (newPrimary !== primaryLineIdx && newPrimary >= 0) {
-			const prevPrimary = primaryLineIdx;
-			primaryLineIdx = newPrimary;
-			const newLine = lines[primaryLineIdx];
-			const scrollParent = findScroller(newLine.el);
-			lockScroll(scrollParent);
-			hookUserScroll(scrollParent);
-
-			if (scrollSynced) {
-				const lineRect = newLine.el.getBoundingClientRect();
-				const parentRect = scrollParent.getBoundingClientRect();
-				const targetOffset = parentRect.height * 0.2;
-				const scrollTarget = scrollParent.scrollTop + (lineRect.top - parentRect.top) - targetOffset;
-				// only bounce on normal sequential line changes (not scrubs, jumps, or overlapping activations)
-				const isSequential = !didScrub && prevPrimary >= 0 && newActiveSet.size <= 1;
-				if (settings.bubbledLyrics && isSequential) {
-					applyScrollBounce(scrollParent, primaryLineIdx, scrollTarget);
-				} else if (isSequential) {
-					clearScrollAnim();
-					scrollTo(scrollParent, { top: Math.max(0, scrollTarget), behavior: "smooth" });
-				} else {
-					clearScrollAnim();
-					scrollTo(scrollParent, { top: Math.max(0, scrollTarget), behavior: "instant" });
-				}
+				sylLog(
+					`[RL-Syllable] Scrub detected (${timeDelta > 0 ? "+" : ""}${timeDelta.toFixed(0)} ms) → resync`,
+				);
 			}
 
-			// distance-based blur position classes (skip active lines)
-			if (settings.blurInactive) {
-				for (let i = 0; i < lines.length; i++) {
-					lines[i].el.classList.remove("rl-pos-1", "rl-pos-2", "rl-pos-3");
-				}
-				for (let dist = 1; dist <= 3; dist++) {
-					const before = newPrimary - dist;
-					const after = newPrimary + dist;
-					const cls = `rl-pos-${dist}`;
-					if (before >= 0 && !newActiveSet.has(before)) lines[before].el.classList.add(cls);
-					if (after < lines.length && !newActiveSet.has(after)) lines[after].el.classList.add(cls);
-				}
-			}
-		}
-
-		// hook lyric scroll sync button
-		if (!scrollSynced && !syncButtonEl) {
-			hookSyncButton();
-		}
-
-		// highlight words in all active lines
-		if (activeLineIdxs.size === 0) return;
-
-		for (const lineIdx of activeLineIdxs) {
-			const currentLine = lines[lineIdx];
-			const prevActiveWord = activeWordEls.get(lineIdx) ?? null;
-
-			let activeWordIdx = -1;
-			for (let i = currentLine.words.length - 1; i >= 0; i--) {
-				if (nowMs >= currentLine.words[i].start) {
-					activeWordIdx = i;
-					break;
-				}
-			}
-
-			if (activeWordIdx < 0) continue;
-			const word = currentLine.words[activeWordIdx];
-
-			for (let i = 0; i < activeWordIdx; i++) {
-				const prev = currentLine.words[i].el;
-				if (prev.classList.contains(CLS_ACTIVE) || !prev.classList.contains(CLS_FINISHED)) {
-					prev.classList.remove(CLS_ACTIVE);
-					if (isSyl) prev.style.animation = "";
-					prev.classList.add(CLS_FINISHED);
-				}
-			}
-
-			const isStillSinging = nowMs <= word.end;
-			if (isStillSinging) {
-				if (prevActiveWord !== word.el) {
-					if (prevActiveWord) {
-						prevActiveWord.classList.remove(CLS_ACTIVE);
-						if (isSyl) prevActiveWord.style.animation = "";
-						prevActiveWord.classList.add(CLS_FINISHED);
+			// deactivate lines no longer active
+			for (const idx of activeLineIdxs) {
+				if (!newActiveSet.has(idx) && idx < lines.length) {
+					lines[idx].el.classList.remove("rl-wbw-line-active");
+					lines[idx].el.removeAttribute("data-current");
+					const lastWord = activeWordEls.get(idx);
+					if (lastWord) {
+						lastWord.classList.remove(CLS_ACTIVE);
+						if (isSyl) lastWord.style.animation = "";
+						lastWord.classList.add(CLS_FINISHED);
 					}
-					word.el.classList.add(CLS_ACTIVE);
-					word.el.classList.remove(CLS_FINISHED);
-					if (isSyl) {
-						const wipe = `rl-wipe ${word.duration}ms linear forwards`;
-						const sylAnim = settings.syllableStyle === 1 ? ", rl-pop 0.6s ease-out"
-							: settings.syllableStyle === 2 ? ", rl-jump 0.35s ease-out" : "";
-						word.el.style.animation = wipe + sylAnim;
+					const lastBgWord = activeBgWordEls.get(idx);
+					if (lastBgWord) {
+						lastBgWord.classList.remove(CLS_ACTIVE);
+						if (isSyl) lastBgWord.style.animation = "";
+						lastBgWord.classList.add(CLS_FINISHED);
 					}
-					activeWordEls.set(lineIdx, word.el);
+					activeWordEls.delete(idx);
+					activeBgWordEls.delete(idx);
+				}
+			}
+
+			// activate newly active lines
+			for (const idx of newActiveSet) {
+				if (!activeLineIdxs.has(idx)) {
+					lines[idx].el.classList.add("rl-wbw-line-active");
+					lines[idx].el.classList.remove("rl-pos-1", "rl-pos-2", "rl-pos-3");
+					lines[idx].el.setAttribute("data-current", "true");
 					sylLog(
-						`[RL-Syllable] Word/Syllable "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
+						`[RL-Syllable] Line ${idx} Active "${lines[idx].el.textContent?.slice(0, 40)}" | ${lines[idx].startMs} ms - ${lines[idx].endMs} ms   [${nowMs.toFixed(0)} ms]`,
 					);
 				}
-			} else {
-				word.el.classList.remove(CLS_ACTIVE);
-				if (isSyl) word.el.style.animation = "";
-				if (!word.el.classList.contains(CLS_FINISHED)) {
-					word.el.classList.add(CLS_FINISHED);
-				}
-				if (prevActiveWord === word.el) {
-					activeWordEls.set(lineIdx, null);
+			}
+
+			// instrumental gaps, keep the last-active line unblurred
+			if (settings.blurInactive) {
+				if (
+					newActiveSet.size === 0 &&
+					primaryLineIdx >= 0 &&
+					primaryLineIdx < lines.length
+				) {
+					lines[primaryLineIdx].el.classList.add("rl-gap-hold");
+				} else if (newActiveSet.size > 0) {
+					const held = document.querySelector(".rl-gap-hold");
+					if (held) held.classList.remove("rl-gap-hold");
 				}
 			}
 
-			// highlight bg words independently (adlibs no interfere with main words *angy*)
-			const bgWords = currentLine.bgWords;
-			if (bgWords.length === 0) continue;
-			const prevBgWord = activeBgWordEls.get(lineIdx) ?? null;
+			activeLineIdxs = newActiveSet;
 
-			let activeBgIdx = -1;
-			for (let i = bgWords.length - 1; i >= 0; i--) {
-				if (nowMs >= bgWords[i].start) {
-					activeBgIdx = i;
-					break;
-				}
-			}
+			// scroll to primary (topmost) active line
+			if (newPrimary !== primaryLineIdx && newPrimary >= 0) {
+				const prevPrimary = primaryLineIdx;
+				primaryLineIdx = newPrimary;
+				const newLine = lines[primaryLineIdx];
+				const scrollParent = findScroller(newLine.el);
+				lockScroll(scrollParent);
+				hookUserScroll(scrollParent);
 
-			if (activeBgIdx < 0) continue;
-			const bgWord = bgWords[activeBgIdx];
-
-			for (let i = 0; i < activeBgIdx; i++) {
-				const prev = bgWords[i].el;
-				if (prev.classList.contains(CLS_ACTIVE) || !prev.classList.contains(CLS_FINISHED)) {
-					prev.classList.remove(CLS_ACTIVE);
-					if (isSyl) prev.style.animation = "";
-					prev.classList.add(CLS_FINISHED);
-				}
-			}
-
-			const bgStillSinging = nowMs <= bgWord.end;
-			if (bgStillSinging) {
-				if (prevBgWord !== bgWord.el) {
-					if (prevBgWord) {
-						prevBgWord.classList.remove(CLS_ACTIVE);
-						if (isSyl) prevBgWord.style.animation = "";
-						prevBgWord.classList.add(CLS_FINISHED);
+				if (scrollSynced) {
+					const lineRect = newLine.el.getBoundingClientRect();
+					const parentRect = scrollParent.getBoundingClientRect();
+					const targetOffset = parentRect.height * 0.2;
+					const scrollTarget =
+						scrollParent.scrollTop +
+						(lineRect.top - parentRect.top) -
+						targetOffset;
+					// only bounce on normal sequential line changes (not scrubs, jumps, or overlapping activations)
+					const isSequential =
+						!didScrub && prevPrimary >= 0 && newActiveSet.size <= 1;
+					if (settings.bubbledLyrics && isSequential) {
+						applyScrollBounce(scrollParent, primaryLineIdx, scrollTarget);
+					} else if (isSequential) {
+						clearScrollAnim();
+						scrollTo(scrollParent, {
+							top: Math.max(0, scrollTarget),
+							behavior: "smooth",
+						});
+					} else {
+						clearScrollAnim();
+						scrollTo(scrollParent, {
+							top: Math.max(0, scrollTarget),
+							behavior: "instant",
+						});
 					}
-					bgWord.el.classList.add(CLS_ACTIVE);
-					bgWord.el.classList.remove(CLS_FINISHED);
-					if (isSyl) {
-						bgWord.el.style.animation = `rl-wipe ${bgWord.duration}ms linear forwards`;
+				}
+
+				// distance-based blur position classes (skip active lines)
+				if (settings.blurInactive) {
+					for (let i = 0; i < lines.length; i++) {
+						lines[i].el.classList.remove("rl-pos-1", "rl-pos-2", "rl-pos-3");
 					}
-					activeBgWordEls.set(lineIdx, bgWord.el);
-				}
-			} else {
-				bgWord.el.classList.remove(CLS_ACTIVE);
-				if (isSyl) bgWord.el.style.animation = "";
-				if (!bgWord.el.classList.contains(CLS_FINISHED)) {
-					bgWord.el.classList.add(CLS_FINISHED);
-				}
-				if (prevBgWord === bgWord.el) {
-					activeBgWordEls.set(lineIdx, null);
+					for (let dist = 1; dist <= 3; dist++) {
+						const before = newPrimary - dist;
+						const after = newPrimary + dist;
+						const cls = `rl-pos-${dist}`;
+						if (before >= 0 && !newActiveSet.has(before))
+							lines[before].el.classList.add(cls);
+						if (after < lines.length && !newActiveSet.has(after))
+							lines[after].el.classList.add(cls);
+					}
 				}
 			}
-		}
-	}, 50);
+
+			// hook lyric scroll sync button
+			if (!scrollSynced && !syncButtonEl) {
+				hookSyncButton();
+			}
+
+			// highlight words in all active lines
+			if (activeLineIdxs.size === 0) return;
+
+			for (const lineIdx of activeLineIdxs) {
+				const currentLine = lines[lineIdx];
+				const prevActiveWord = activeWordEls.get(lineIdx) ?? null;
+
+				let activeWordIdx = -1;
+				for (let i = currentLine.words.length - 1; i >= 0; i--) {
+					if (nowMs >= currentLine.words[i].start) {
+						activeWordIdx = i;
+						break;
+					}
+				}
+
+				if (activeWordIdx < 0) continue;
+				const word = currentLine.words[activeWordIdx];
+
+				for (let i = 0; i < activeWordIdx; i++) {
+					const prev = currentLine.words[i].el;
+					if (
+						prev.classList.contains(CLS_ACTIVE) ||
+						!prev.classList.contains(CLS_FINISHED)
+					) {
+						prev.classList.remove(CLS_ACTIVE);
+						if (isSyl) prev.style.animation = "";
+						prev.classList.add(CLS_FINISHED);
+					}
+				}
+
+				const isStillSinging = isLineStyle
+					? activeLineIdxs.has(lineIdx)
+					: nowMs <= word.end;
+				if (isStillSinging) {
+					if (prevActiveWord !== word.el) {
+						if (prevActiveWord) {
+							prevActiveWord.classList.remove(CLS_ACTIVE);
+							if (isSyl) prevActiveWord.style.animation = "";
+							prevActiveWord.classList.add(CLS_FINISHED);
+						}
+						word.el.classList.add(CLS_ACTIVE);
+						word.el.classList.remove(CLS_FINISHED);
+						if (isSyl) {
+							const wipe = `rl-wipe ${word.duration}ms linear forwards`;
+							const sylAnim =
+								settings.syllableStyle === 1
+									? ", rl-pop 0.6s ease-out"
+									: settings.syllableStyle === 2
+										? ", rl-jump 0.35s ease-out"
+										: "";
+							word.el.style.animation = wipe + sylAnim;
+						}
+						activeWordEls.set(lineIdx, word.el);
+						sylLog(
+							`[RL-Syllable] Word/Syllable "${word.el.textContent}" | ${word.start} ms - ${word.end} ms   [${nowMs.toFixed(0)} ms]`,
+						);
+					}
+				} else {
+					word.el.classList.remove(CLS_ACTIVE);
+					if (isSyl) word.el.style.animation = "";
+					if (!word.el.classList.contains(CLS_FINISHED)) {
+						word.el.classList.add(CLS_FINISHED);
+					}
+					if (prevActiveWord === word.el) {
+						activeWordEls.set(lineIdx, null);
+					}
+				}
+
+				// highlight bg words independently (adlibs no interfere with main words *angy*)
+				const bgWords = currentLine.bgWords;
+				if (bgWords.length === 0) continue;
+				const prevBgWord = activeBgWordEls.get(lineIdx) ?? null;
+
+				let activeBgIdx = -1;
+				for (let i = bgWords.length - 1; i >= 0; i--) {
+					if (nowMs >= bgWords[i].start) {
+						activeBgIdx = i;
+						break;
+					}
+				}
+
+				if (activeBgIdx < 0) continue;
+				const bgWord = bgWords[activeBgIdx];
+
+				for (let i = 0; i < activeBgIdx; i++) {
+					const prev = bgWords[i].el;
+					if (
+						prev.classList.contains(CLS_ACTIVE) ||
+						!prev.classList.contains(CLS_FINISHED)
+					) {
+						prev.classList.remove(CLS_ACTIVE);
+						if (isSyl) prev.style.animation = "";
+						prev.classList.add(CLS_FINISHED);
+					}
+				}
+
+				const bgStillSinging = isLineStyle
+					? activeLineIdxs.has(lineIdx)
+					: nowMs <= bgWord.end;
+				if (bgStillSinging) {
+					if (prevBgWord !== bgWord.el) {
+						if (prevBgWord) {
+							prevBgWord.classList.remove(CLS_ACTIVE);
+							if (isSyl) prevBgWord.style.animation = "";
+							prevBgWord.classList.add(CLS_FINISHED);
+						}
+						bgWord.el.classList.add(CLS_ACTIVE);
+						bgWord.el.classList.remove(CLS_FINISHED);
+						if (isSyl) {
+							bgWord.el.style.animation = `rl-wipe ${bgWord.duration}ms linear forwards`;
+						}
+						activeBgWordEls.set(lineIdx, bgWord.el);
+					}
+				} else {
+					bgWord.el.classList.remove(CLS_ACTIVE);
+					if (isSyl) bgWord.el.style.animation = "";
+					if (!bgWord.el.classList.contains(CLS_FINISHED)) {
+						bgWord.el.classList.add(CLS_FINISHED);
+					}
+					if (prevBgWord === bgWord.el) {
+						activeBgWordEls.set(lineIdx, null);
+					}
+				}
+			}
+		},
+		50,
+	);
 };
 
 // Called by track change or style toggle
@@ -2482,14 +3089,26 @@ const onTrackChange = async (): Promise<void> => {
 		`RL API: looking up "${trackInfo.title}" by "${trackInfo.artist}"${trackInfo.isrc ? ` (ISRC: ${trackInfo.isrc})` : ""}`,
 	);
 
-	const response = await fetchWordLyrics(
+	const response = await fetchLyrics(
 		trackInfo.title,
 		trackInfo.artist,
 		trackInfo.isrc,
 	);
 	if (token !== trackChangeToken) return;
 	if (!response) {
-		trace.log("RL API: no word/syllable lyrics available");
+		trace.log("RL API: no API lyrics available, falling back to TIDAL lines");
+		isActive = true;
+		lyricsMode = "line-tidal";
+		hideTidalLyrics();
+		const tidalResult = buildTidalLineSpans();
+		lines = tidalResult.lines;
+		if (lines.length === 0) {
+			trace.log("No TIDAL lines available yet");
+			teardown();
+			return;
+		}
+		watchForRerender();
+		startTidalFollowLoop();
 		return;
 	}
 
@@ -2500,10 +3119,18 @@ const onTrackChange = async (): Promise<void> => {
 		`[RL-Syllable] Loaded "${trackInfo.title}" by "${trackInfo.artist}" — ${response.data.length} lines`,
 	);
 
-	// Store data
-	lyricsData = response.data;
+	lyricsMode = response.type === "Word" ? "word" : "line-api";
+	lyricsData =
+		response.type === "Word"
+			? response.data
+			: normalizeLineLyricsData(response.data);
 	lyricsResponse = response;
 	isActive = true;
+	if (!lyricsData || lyricsData.length === 0) {
+		trace.log("Lyrics payload had no usable lines");
+		teardown();
+		return;
+	}
 
 	// Remove Tidal classes
 	hideTidalLyrics();
@@ -2535,12 +3162,37 @@ const reapplyWordLyrics = (): void => {
 	primaryLineIdx = -1;
 
 	isActive = true;
+	lyricsMode = lyricsMode === "line-api" ? "line-api" : "word";
 	hideTidalLyrics();
 	const result = buildWordSpans();
 	lines = result.lines;
 	watchForRerender();
 	startTickLoop();
 	sylLog("[RL-Syllable] Reapplied word/syllable lyrics (cached)");
+};
+
+const reapplyTidalLineLyrics = (): void => {
+	clearTickLoop();
+	stopTidalFollowLoop();
+	clearScrollAnim();
+	unwatchRerender();
+	unhookUserScroll();
+	unhookSyncButton();
+	unlockScroll();
+	activeWordEls.clear();
+	activeBgWordEls.clear();
+	activeLineIdxs.clear();
+	primaryLineIdx = -1;
+
+	isActive = true;
+	lyricsMode = "line-tidal";
+	hideTidalLyrics();
+	const result = buildTidalLineSpans();
+	lines = result.lines;
+	if (lines.length === 0) return;
+	watchForRerender();
+	startTidalFollowLoop();
+	sylLog("[RL-Syllable] Reapplied TIDAL line lyrics (fallback)");
 };
 
 // Called by Settings or dropdown
