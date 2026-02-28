@@ -266,7 +266,7 @@
 /* These change allot so i gave them their own section */
 
 /* Fixes the new Sticky Header Tidal added.. in the shittest jankiest way possible */
-[class*="_stickyHeader"] {
+/* [class*="_stickyHeader"] {
 	background: transparent !important;
 	backdrop-filter: blur(50px);
 	background-color: transparent !important;
@@ -280,7 +280,6 @@
 		linear-gradient(to right, black 85%, transparent) !important;
 	-webkit-mask-composite: source-in !important;
 	mask-composite: intersect !important;
-	/* border-radius: 3px 0 0 0 !important; */
 	padding-bottom: 5px !important;
 }
 
@@ -296,7 +295,7 @@
 [data-test="playqueue-sticky-clear-source-items"] {
 	visibility: collapse !important;
 	width: 0px !important;
-}
+} */
 
 
 /* Remove the background color from the small header */

@@ -116,8 +116,8 @@ const applyFloatingPlayerBar = (): void => {
 // Alias for settings callback
 const updateRadiantLyricsPlayerBarTint = applyFloatingPlayerBar;
 
-// Apply Tint and Observe in case doesn't exist yet (ik this isnt the best way to do it but.. make a PR i dare ya!)
-applyPlayerBarTintToElement();
+// Apply floating player bar + tint on load
+applyFloatingPlayerBar();
 observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
 	applyPlayerBarTintToElement();
 });

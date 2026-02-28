@@ -5,5 +5,5 @@
 [data-test="footer-player"] {
 	position: absolute !important;
 	backdrop-filter: blur(10px);
-	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin) !important;
+	border: 1px solid var(--wave-color-opacity-contrast-fill-ultra-thin, rgba(255, 255, 255, 0.1)) !important;
 }
