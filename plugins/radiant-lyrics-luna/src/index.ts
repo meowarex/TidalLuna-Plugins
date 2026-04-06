@@ -9,6 +9,15 @@ import {
 	safeTimeout,
 	redux,
 } from "@luna/lib";
+import {
+	type ApiLine,
+	type LyricsApiResponse,
+	type WordLine,
+	type WordTiming,
+	fetchLyrics as fetchLyricsApi,
+	flushLyrics as flushLyricsApi,
+	romanizeLyrics as romanizeLyricsApi,
+} from "./api";
 import { Settings, settings } from "./Settings";
 
 // Interpret integer backgroundScale (e.g., 10=1.0x, 20=2.0x)
@@ -39,16 +48,6 @@ const toastErr = (msg: string) =>
 
 // clean up resources
 export const unloads = new Set<LunaUnload>();
-
-let cachedPublicIP: string | undefined;
-async function getPublicIPv4(): Promise<string | undefined> {
-	if (cachedPublicIP) return cachedPublicIP;
-	try {
-		const res = await fetch("https://api.ipify.org?format=text");
-		if (res.ok) cachedPublicIP = (await res.text()).trim();
-	} catch {}
-	return cachedPublicIP;
-}
 
 // MARKER: Player Market UI (Ensure new UI is enabled)
 
@@ -199,11 +198,8 @@ const applyFloatingPlayerBar = (): void => {
 // Alias for settings callback
 const updateRadiantLyricsPlayerBarTint = applyFloatingPlayerBar;
 
-// Apply floating player bar + tint on load
+// Apply floating player bar on load (Fixes race condition with flush button)
 applyFloatingPlayerBar();
-observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
-	applyPlayerBarTintToElement();
-});
 
 // MARKER: Quality-Based Seeker Color
 // Maps data-test-quality-badge-streaming-quality values to colors
@@ -417,9 +413,10 @@ const applyIntegratedSeekBar = (): void => {
 	}, 250);
 };
 
-// Apply on load
+// Apply integrated seek bar on load (fixes race condition with flush button)
 applyIntegratedSeekBar();
 observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
+	applyPlayerBarTintToElement();
 	applyIntegratedSeekBar();
 });
 
@@ -572,37 +569,26 @@ const flushLyrics = async (): Promise<void> => {
 
 	lockFlush();
 
-	let params = `?title=${encodeURIComponent(trackInfo.title)}&artist=${encodeURIComponent(trackInfo.artist)}`;
-	if (trackInfo.isrc) params += `&isrc=${encodeURIComponent(trackInfo.isrc)}`;
-	params += "&flush=true&platform=" + encodeURIComponent("Radiant Lyrics");
-
-	const url = `https://api.atomix.one/rl-api${params}`;
 	try {
-		const clientIP = await getPublicIPv4();
-		const flushHeaders: Record<string, string> = {
-			"P-Access-Token-Id": "58hy4s86",
-			"P-Access-Token": "xjehy2lfg5h5mjwotoxrcqugam",
-		};
-		flushHeaders["x-client-ip"] = clientIP ?? "null";
-		const res = await fetch(url, { headers: flushHeaders });
-		if (res.status === 404) {
-			toast("No lyrics found for this track");
+		const result = await flushLyricsApi(trackInfo);
+		if (!result.ok) {
+			if (result.notFound) {
+				toast("No lyrics found for this track");
+				return;
+			}
+			toastErr(`Flush failed (${result.status})`);
 			return;
 		}
-		if (!res.ok) {
-			toastErr(`Flush failed (${res.status})`);
-			return;
-		}
-		const data = (await res.json()) as LyricsApiResponse & { _flush?: string };
-		const flush = data?._flush ?? "";
+		const data = result.data;
+		const note = data?._flush ?? "";
 
-		const needsReload = flush.startsWith("Created") || flush.startsWith("Updated");
-		if (flush) {
-			toast(flush);
+		const needsReload = note.startsWith("Created") || note.startsWith("Updated");
+		if (note) {
+			toast(note);
 		} else {
 			toast("Lyrics flushed");
 		}
-		if (needsReload || !flush) {
+		if (needsReload || !note) {
 			cachedLyricsKey = null;
 			cachedLyricsData = null;
 			onTrackChange();
@@ -612,7 +598,7 @@ const flushLyrics = async (): Promise<void> => {
 	}
 };
 
-const createFlushButton = function (): void {
+const flushBtn = function (): void {
 	const closeButton = document.querySelector(
 		'[data-test="new-now-playing-close"]',
 	) as HTMLButtonElement;
@@ -1605,75 +1591,6 @@ const onGlobalTrackChange = (listener: () => void): void => {
 
 // MARKER: Syllable Lyrics
 
-interface WordTiming {
-	text: string;
-	time: number; // ms
-	duration: number; // ms
-	isBackground: boolean;
-	romanized?: string;
-}
-
-interface WordLine {
-	text: string;
-	startTime: number; // s
-	duration: number; // s
-	endTime: number; // s
-	syllabus: WordTiming[];
-	element: {
-		key: string;
-		songPart?: string;
-		songPartIndex?: number;
-		singer: string;
-	};
-	translation: string | null;
-	romanized?: string;
-}
-
-interface ApiLine {
-	text: string;
-	startTime: number;
-	duration: number;
-	endTime: number;
-	syllabus?: WordTiming[];
-	element?: {
-		key: string;
-		songPart?: string;
-		songPartIndex?: number;
-		singer?: string;
-	};
-	translation?: string | null;
-	romanized?: string;
-}
-
-interface WordLyricsResponse {
-	type: "Word";
-	data: WordLine[];
-	metadata: {
-		source: string;
-		title: string;
-		language: string;
-		totalDuration: string;
-		agents?: Record<string, { type: string; name: string; alias: string }>;
-		songParts?: Array<{ name: string; time: number; duration: number }>;
-	};
-	_cached?: boolean;
-}
-
-interface LineLyricsResponse {
-	type: "Line";
-	data: ApiLine[];
-	metadata: {
-		source: string;
-		title: string;
-		language: string;
-		totalDuration: string;
-		agents?: Record<string, { type: string; name: string; alias: string }>;
-		songParts?: Array<{ name: string; time: number; duration: number }>;
-	};
-	_cached?: boolean;
-}
-
-type LyricsApiResponse = WordLyricsResponse | LineLyricsResponse;
 type LyricsOverlayMode = "none" | "word" | "line-api" | "line-tidal";
 
 interface TrackInfo {
@@ -2345,99 +2262,15 @@ const fetchLyrics = async (
 		sylLog(`[RL-Syllable] Cache hit for "${title}" by "${artist}"`);
 		return cachedLyricsData;
 	}
-
-	let params = `?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
-	if (isrc) params += `&isrc=${encodeURIComponent(isrc)}`;
-	if (settings.romanizeLyrics) params += "&romanize=true";
-
-	const platformParam = "&platform=" + encodeURIComponent("Radiant Lyrics");
-	const primaryUrls = [
-		`https://api.atomix.one/rl-api${params}${platformParam}`,
-		`https://lyricsplus-api.atomix.one/lyrics${params}${platformParam}`,
-	];
-	const fallbackUrl = `https://rl-api.kineticsand.net/lyrics${params}`;
-
-	// "ok" = got a response (data may still be null if type is unsupported)
-	// "404" = lyrics not found, stop all attempts immediately
-	// "500" = serverless timeout, skip remaining primaries and go to fallback
-	// "err" = network/other error, try next host
-	type FetchOutcome =
-		| { status: "ok"; data: LyricsApiResponse | null }
-		| { status: "404" }
-		| { status: "500" }
-		| { status: "err" };
-
-	const rlApiHeaders: Record<string, string> = {
-		"P-Access-Token-Id": "58hy4s86",
-		"P-Access-Token": "xjehy2lfg5h5mjwotoxrcqugam",
-	};
-	const clientIP = await getPublicIPv4();
-	rlApiHeaders["x-client-ip"] = clientIP ?? "null";
-
-	const tryFetch = async (url: string): Promise<FetchOutcome> => {
-		try {
-			sylTrace(`RL API: Fetching lyrics: ${url}`);
-			const res = await fetch(url, {
-				headers: url.includes("api.atomix.one") ? rlApiHeaders : undefined,
-			});
-			if (!res.ok) {
-				trace.log(`RL API: fetch failed: ${res.status} from ${url}`);
-				if (res.status === 404) return { status: "404" };
-				return res.status === 500 ? { status: "500" } : { status: "err" };
-			}
-			const data = (await res.json()) as LyricsApiResponse;
-			if (!data?.data || !Array.isArray(data.data)) {
-				trace.log("Lyrics API returned invalid payload");
-				return { status: "ok", data: null };
-			}
-			if (data.type !== "Word" && data.type !== "Line") {
-				trace.log("Lyrics not available in supported format");
-				return { status: "ok", data: null };
-			}
-			return { status: "ok", data };
-		} catch (err) {
-			trace.log(`RL API: fetch error from ${url}: ${err}`);
-			return { status: "err" };
-		}
-	};
-
-	const finish = (data: LyricsApiResponse | null): LyricsApiResponse | null => {
-		cachedLyricsKey = cacheKey;
-		cachedLyricsData = data;
-		return data;
-	};
-
-	// Try primary hosts; bail to fallback immediately on 500, stop entirely on 404
-	for (const url of primaryUrls) {
-		const outcome = await tryFetch(url);
-		if (outcome.status === "ok") return finish(outcome.data);
-		if (outcome.status === "404") {
-			trace.log("RL API: 404 — no API lyrics exist for this track");
-			return finish(null);
-		}
-		if (outcome.status === "500") {
-			trace.log("RL API: 500 (Execution Timeout) — fallback");
-			break;
-		}
-		// "err" → try next primary
-	}
-
-	// Fallback: kineticsand (no serverless timeout)
-	const fallback = await tryFetch(fallbackUrl);
-	if (fallback.status === "ok") return finish(fallback.data);
-	if (fallback.status === "404") {
-		trace.log("RL API: 404 from fallback — no API lyrics exist for this track");
-		return finish(null);
-	}
-	if (fallback.status === "500") {
-		trace.log("RL API: 500 from fallback — API IS ACTUALLY BORKED!");
-		return finish(null);
-	}
-
-	trace.log("RL API: All Endpoints Failed");
+	const data = await fetchLyricsApi(
+		title,
+		artist,
+		isrc,
+		settings.romanizeLyrics,
+	);
 	cachedLyricsKey = cacheKey;
-	cachedLyricsData = null;
-	return null;
+	cachedLyricsData = data;
+	return data;
 };
 
 const normalizeLineData = (data: ApiLine[]): WordLine[] => {
@@ -2497,7 +2330,7 @@ const getTidalLines = (): string[] => {
 		.filter((text) => text.trim().length > 0);
 };
 
-const romanizeLines = async (lineTexts: string[]): Promise<string[] | null> => {
+const romanizeLyrics = async (lineTexts: string[]): Promise<string[] | null> => {
 	if (!settings.romanizeLyrics || lineTexts.length === 0) return null;
 
 	const cacheKey = `${lineTexts.join("\n")}\0r`;
@@ -2505,70 +2338,12 @@ const romanizeLines = async (lineTexts: string[]): Promise<string[] | null> => {
 		return cachedTidalRomanizedLines;
 	}
 
-	const payload = {
-		type: "Line" as const,
-		data: lineTexts.map((text, idx) => ({
-			text,
-			startTime: idx,
-			duration: 0,
-			endTime: idx,
-		})),
-	};
-
-	const romanizePlatform = "?platform=" + encodeURIComponent("Radiant Lyrics");
-	const urls = [
-		`https://api.atomix.one/rl-api/romanize${romanizePlatform}`,
-		`https://lyricsplus-api.atomix.one/romanize${romanizePlatform}`,
-		"https://rl-api.kineticsand.net/romanize",
-	];
-
-	for (const url of urls) {
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), 5000);
-		try {
-			const romanizeHeaders: Record<string, string> = { "content-type": "application/json" };
-			if (url.includes("api.atomix.one")) {
-				romanizeHeaders["P-Access-Token-Id"] = "58hy4s86";
-				romanizeHeaders["P-Access-Token"] = "xjehy2lfg5h5mjwotoxrcqugam";
-				const ip = await getPublicIPv4();
-				romanizeHeaders["x-client-ip"] = ip ?? "null";
-			}
-			const res = await fetch(url, {
-				method: "POST",
-				headers: romanizeHeaders,
-				body: JSON.stringify(payload),
-				signal: controller.signal,
-			});
-			clearTimeout(timeout);
-			if (!res.ok) {
-				trace.log(`Romanize: request failed ${res.status} from ${url}`);
-				continue;
-			}
-
-			const data = (await res.json()) as {
-				type?: string;
-				data?: Array<{ text?: string; romanized?: string }>;
-			};
-			if (!Array.isArray(data?.data)) continue;
-
-			const romanized = lineTexts.map((original, idx) => {
-				const item = data.data?.[idx];
-				return item?.romanized ?? item?.text ?? original;
-			});
-			cachedTidalRomanizeKey = cacheKey;
-			cachedTidalRomanizedLines = romanized;
-			return romanized;
-		} catch (err) {
-			clearTimeout(timeout);
-			if (err instanceof DOMException && err.name === "AbortError") {
-				trace.log(`Romanize: request timed out from ${url}`);
-			} else {
-				trace.log(`Romanize: request error from ${url}: ${err}`);
-			}
-		}
+	const romanized = await romanizeLyricsApi(lineTexts);
+	if (romanized) {
+		cachedTidalRomanizeKey = cacheKey;
+		cachedTidalRomanizedLines = romanized;
 	}
-
-	return null;
+	return romanized;
 };
 
 // strip tidal css classes (prevent conflict)
@@ -4142,7 +3917,7 @@ const onTrackChange = async (): Promise<void> => {
 			disableFlushNoLyrics();
 			const tidalTexts = getTidalLines();
 			const romanized = settings.romanizeLyrics
-				? await romanizeLines(tidalTexts)
+				? await romanizeLyrics(tidalTexts)
 				: null;
 			if (token !== trackChangeToken) return;
 			cachedTidalRomanizedLines = romanized;
@@ -4303,7 +4078,7 @@ const reapplyTidalLines = async (): Promise<void> => {
 	lyricsMode = "line-tidal";
 	const tidalTexts = getTidalLines();
 	const romanized = settings.romanizeLyrics
-		? await romanizeLines(tidalTexts)
+		? await romanizeLyrics(tidalTexts)
 		: null;
 	hideTidalLyrics();
 	const result = buildTidalLines(romanized);
@@ -4380,7 +4155,7 @@ const setupTrackChangeListener = (): void => {
 
 function setupHeaderObserver(): void {
 	const injectButtons = () => {
-		if (!document.querySelector(".flush-lyrics-button")) createFlushButton();
+		if (!document.querySelector(".flush-lyrics-button")) flushBtn();
 		if (!document.querySelector(".hide-ui-button")) createHideUIButton();
 	};
 
