@@ -322,101 +322,12 @@ body.rl-integrated-seekbar .rl-seekbar-bar:hover [data-test="progress-bar"] [dat
 	height: 5px !important;
 }
 
-
-/* MARKER: PATCHES (Random Fixes for Tidals Changes) */
-/* These change a lot so I gave them their own section */
-
-/* Remove max-width cap on now-playing content */
-[class*="_contentInner"] {
-	max-width: none !important;
+/* Z-Index Fix for Integrated Seekbar (Volume slider) */
+body.rl-integrated-seekbar [data-test="footer-player"] [class*="playerContent"] > [class*="utilityContainer"] {
+	position: relative;
+	z-index: 110;
 }
 
-/* Round now-playing artwork corners */
-[data-test="now-playing-artwork"] {
-	/* biome-ignore lint: Override flat corners */
-	border-radius: 10px !important;
-}
-
-/* Hide the Overlay Scrollbar (people just use mouse scroll) */
-.os-scrollbar {
-	display: none !important;
-	pointer-events: none !important;
-}
-
-._artworkTilt_1c6d5cc {
-    border: none !important;
-}
-
-/* Hide fullscreen button — breaks Radiant Lyrics */
-[data-test="new-now-playing-expand"] {
-	display: none !important;
-}
-
-
-/* Restore the Old Quality Tag style | thx Aya <3 */
-
-._gradientMax_9111fba {
-	background-color: #ffd4321a !important;
-	box-shadow: none;
-	border-style: none;
-	border-radius: 0.75em;
-}
-
-._max_894bc7c ._badgeText_1c9dd30 {
-	color: #ffd432 !important;
-	text-shadow: 0 0 10px #0000 !important;
-	font-weight: 600 !important;
-	font-size: 90% !important;
-}
-
-._gradientHigh_87f2c3b {
-	background-color: #073430 !important;
-	box-shadow: none;
-	border-style: none;
-	border-radius: 0.75em;
-}
-
-._high_4b5525b ._badgeText_1c9dd30 {
-	color: #33ffee !important;
-	text-shadow: none !important;
-	font-weight: 600 !important;
-	font-size: 90% !important;
-}
-
-._gradientLow_3f9bc0d {
-	background-color: #ffffff1a !important;
-	box-shadow: none;
-	border-style: none;
-	border-radius: 0.75em;
-}
-
-._badgeText_1c9dd30 {
-	color: #e4e4e7 !important;
-	text-shadow: none;
-	font-weight: 600 !important;
-	font-size: 90% !important;
-}
-
-._badge_7b2911e {
-	border: none;
-	box-shadow: none;
-	background: none;
-	height: 33px;
-	padding: 0 !important;
-	width: 111px;
-	min-width: 111px;
-	border-radius: 0.75em;
-	transform: scale(1);
-}
-
-._badge_7b2911e:hover {
-	transition: 100ms;
-	filter: saturate(1.25) brightness(1.1);
-}
-
-._glowEffect_74c5e85 {
-	display: none !important;
-}
 
 /* MARKER: Lyrics core CSS (always loaded) */
 
@@ -879,4 +790,100 @@ body.rl-integrated-seekbar .rl-seekbar-bar:hover [data-test="progress-bar"] [dat
 	padding-left: calc(var(--rl-glow-outer, 20px) + 0px) !important; /* 4px cushion (not needed atm) */
 	padding-right: calc(var(--rl-glow-outer, 20px) + 0px) !important; /* 4px cushion (not needed atm) */
 	box-sizing: border-box !important;
+}
+
+
+/* MARKER: PATCHES (Random Fixes for Tidals Changes) */
+/* These change a lot so I gave them their own section */
+
+/* Remove max-width cap on now-playing content */
+[class*="_contentInner"] {
+	max-width: none !important;
+}
+
+/* Round now-playing artwork corners */
+[data-test="now-playing-artwork"] {
+	/* biome-ignore lint: Override flat corners */
+	border-radius: 10px !important;
+}
+
+/* Hide the Overlay Scrollbar (people just use mouse scroll) */
+.os-scrollbar {
+	display: none !important;
+	pointer-events: none !important;
+}
+
+._artworkTilt_1c6d5cc {
+    border: none !important;
+}
+
+/* Hide fullscreen button — breaks Radiant Lyrics */
+[data-test="new-now-playing-expand"] {
+	display: none !important;
+}
+
+
+/* Restore the Old Quality Tag style | thx Aya <3 */
+
+._gradientMax_9111fba {
+	background-color: #ffd4321a !important;
+	box-shadow: none;
+	border-style: none;
+	border-radius: 0.75em;
+}
+
+._max_894bc7c ._badgeText_1c9dd30 {
+	color: #ffd432 !important;
+	text-shadow: 0 0 10px #0000 !important;
+	font-weight: 600 !important;
+	font-size: 90% !important;
+}
+
+._gradientHigh_87f2c3b {
+	background-color: #073430 !important;
+	box-shadow: none;
+	border-style: none;
+	border-radius: 0.75em;
+}
+
+._high_4b5525b ._badgeText_1c9dd30 {
+	color: #33ffee !important;
+	text-shadow: none !important;
+	font-weight: 600 !important;
+	font-size: 90% !important;
+}
+
+._gradientLow_3f9bc0d {
+	background-color: #ffffff1a !important;
+	box-shadow: none;
+	border-style: none;
+	border-radius: 0.75em;
+}
+
+._badgeText_1c9dd30 {
+	color: #e4e4e7 !important;
+	text-shadow: none;
+	font-weight: 600 !important;
+	font-size: 90% !important;
+}
+
+._badge_7b2911e {
+	border: none;
+	box-shadow: none;
+	background: none;
+	height: 33px;
+	padding: 0 !important;
+	width: 111px;
+	min-width: 111px;
+	border-radius: 0.75em;
+	transform: scale(1);
+}
+
+._badge_7b2911e:hover {
+	transition: 100ms;
+	filter: saturate(1.25) brightness(1.1);
+}
+
+._glowEffect_74c5e85 {
+	display: none !important;
 }
