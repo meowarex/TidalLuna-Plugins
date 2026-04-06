@@ -90,9 +90,6 @@ const floatingPlayerBarStyleTag = new StyleTag(
 	unloads,
 );
 
-// Always load lyrics CSS (glow is toggled via .lyrics-glow-disabled class)
-lyricsGlowStyleTag.css = lyricsGlow;
-
 // MARKER: Floating Player Bar
 
 // Hex color to RGB
@@ -426,20 +423,20 @@ observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
 	applyIntegratedSeekBar();
 });
 
-// Apply base styles always (I kinda dont really remember what this does but it's important i guess)
+// Apply styles.css
 baseStyleTag.css = baseStyles;
 
-// Update CSS variables for lyrics glow + font scale
+// Lyrics glow vars & lyrics-glow.css (when enabled)
 const updateRadiantLyricsTextGlow = function (): void {
 	const root = document.documentElement;
 	if (settings.lyricsGlowEnabled) {
 		root.style.setProperty("--rl-glow-outer", `${settings.textGlow}px`);
 		root.style.setProperty("--rl-glow-inner", "2px");
-		root.classList.remove("lyrics-glow-disabled");
+		lyricsGlowStyleTag.css = lyricsGlow;
 	} else {
 		root.style.setProperty("--rl-glow-outer", "0px");
 		root.style.setProperty("--rl-glow-inner", "0px");
-		root.classList.add("lyrics-glow-disabled");
+		lyricsGlowStyleTag.css = "";
 	}
 	root.style.setProperty("--rl-font-scale", `${settings.lyricsFontSize / 100}`);
 };
@@ -463,7 +460,7 @@ const updateRadiantLyricsStyles = function (): void {
 	// Handle Floating Player Bar
 	applyFloatingPlayerBar();
 
-	// Toggle glow via CSS vars + class on :root (always available, no timing issues)
+	// Lyrics glow vars & lyrics-glow.css (when enabled)
 	updateRadiantLyricsTextGlow();
 };
 

@@ -417,3 +417,466 @@ body.rl-integrated-seekbar .rl-seekbar-bar:hover [data-test="progress-bar"] [dat
 ._glowEffect_74c5e85 {
 	display: none !important;
 }
+
+/* MARKER: Lyrics core CSS (always loaded) */
+
+@font-face {
+	font-family: "AbyssFont";
+	font-weight: 400;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsRegular.woff2")
+		format("woff2");
+}
+
+@font-face {
+	font-family: "AbyssFont";
+	font-weight: 500;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsMedium.woff2")
+		format("woff2");
+}
+
+@font-face {
+	font-family: "AbyssFont";
+	font-weight: 600;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsSemibold.woff2")
+		format("woff2");
+}
+
+@font-face {
+	font-family: "AbyssFont";
+	font-weight: 700;
+	src: url("https://excel.lexploits.top/extra/tidal/LyricsBold.woff2")
+		format("woff2");
+}
+
+[data-test="now-playing-lyrics"] {
+	--rl-line-shift: 20px;
+}
+
+[data-test="now-playing-lyrics"] span[data-test="lyrics-line"][class*="_current_"] {
+	text-shadow: none;
+	padding-left: 0;
+	transition-duration: 0.7s;
+	font-size: calc(55px * var(--rl-font-scale, 1));
+	/* biome-ignore lint: Active lyric uses Colorama color */
+	color: var(--cl-glow1, #fff) !important;
+	font-family:
+		"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+	font-weight: 700;
+}
+
+[data-test="now-playing-lyrics"] span[data-test="lyrics-line"] {
+	text-shadow:
+		0 0 0px transparent,
+		0 0 0px transparent;
+	transition-duration: 0.25s;
+	color: rgba(255, 255, 255, 0.4);
+	font-size: calc(40px * var(--rl-font-scale, 1));
+	font-family:
+		"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+	font-weight: 700;
+}
+
+[data-test="now-playing-lyrics"] span[data-test="lyrics-line"]:hover {
+	text-shadow: none;
+	/* biome-ignore lint: Hover color override */
+	color: lightgray !important;
+	padding-left: 0;
+	transition-duration: 0.7s;
+}
+
+/* Current line transitions */
+[data-test="now-playing-lyrics"] span[data-test="lyrics-line"] {
+	transition:
+		text-shadow 0.7s ease-in-out,
+		color 0.7s ease-in-out,
+		/* biome-ignore lint: Transition priority needed */
+		padding 0.7s ease-in-out !important;
+}
+
+/* Honestly forgot exactly why i wrote this... i just know it's smthn to do with the fact that .rl-wbw-line already does the shift & pre-wrap*/
+.rl-wbw-active {
+	padding-left: 0 !important;
+}
+
+/* WBW parent only (adapt to vanilla padding [stops the sudden snap in position]) */
+[data-test="now-playing-lyrics"] div.rl-wbw-active:not(.rl-wbw-word) {
+	margin-left: 7px;
+}
+
+/* Lyrics container styling */
+[data-test="now-playing-lyrics"] span[data-test="lyrics-line"] {
+	margin-bottom: 2rem;
+	/* biome-ignore lint: Must beat Tidal _hasCues_ opacity */
+	opacity: 1 !important;
+	font-family:
+		"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+	font-weight: 700;
+	/* biome-ignore lint: Typography override for readability */
+	font-size: calc(38px * var(--rl-font-scale, 1)) !important;
+}
+
+/* Hide the Musixmatch attribution footer in the lyrics panel */
+[data-test="now-playing-lyrics"] [class*="_footer_"] {
+	display: none !important;
+}
+
+/* MARKER: WBW lyrics CSS */
+
+/* hide tidal spans for wbw */
+.rl-wbw-active span[data-test="lyrics-line"] {
+	/* biome-ignore lint: hide original lines when word-by-word is on */
+	display: none !important;
+}
+
+/* Active line slide & Pre Word Wrap */
+.rl-wbw-line {
+	--rl-line-shift: 20px;
+	text-align: left;
+	padding-left: 0;
+	padding-right: var(--rl-line-shift);
+	filter: none;
+	transform: translateZ(0);
+	transform-origin: left;
+	transition:
+		filter 0.4s ease,
+		padding 0.7s ease-in-out;
+	overflow: visible;
+}
+
+.rl-wbw-line.rl-wbw-spacer {
+	filter: none;
+	padding-left: 0;
+	padding-right: 0;
+}
+
+/* Blur Inactive */
+.rl-blur-active .rl-wbw-line {
+	filter: blur(0.07em);
+}
+
+.rl-blur-active .rl-wbw-line.rl-pos-1 {
+	filter: blur(0.035em);
+}
+
+.rl-blur-active .rl-wbw-line.rl-pos-2 {
+	filter: blur(0.05em);
+}
+
+.rl-blur-active .rl-wbw-line.rl-pos-3 {
+	filter: blur(0.06em);
+}
+
+/* Active line overrides */
+.rl-wbw-line.rl-wbw-line-active,
+.rl-blur-active .rl-wbw-line.rl-wbw-line-active {
+	padding-left: var(--rl-line-shift, 20px);
+	padding-right: 0;
+	filter: none;
+}
+
+/* Right singer: mirror shift + pre-wrap (inactive pl = shift, active pr = shift) */
+.rl-wbw-line.rl-singer-right:not(.rl-wbw-line-active) {
+	padding-left: var(--rl-line-shift, 20px);
+	padding-right: 0;
+}
+
+.rl-wbw-line.rl-singer-right.rl-wbw-line-active,
+.rl-blur-active .rl-wbw-line.rl-singer-right.rl-wbw-line-active {
+	padding-left: 0;
+	padding-right: var(--rl-line-shift, 20px);
+}
+
+/* Keep last-active line unblurred during instrumental gaps */
+.rl-blur-active .rl-wbw-line.rl-gap-hold {
+	filter: none;
+}
+
+/* Bubbled Lyrics scale */
+.rl-bubbled .rl-wbw-line {
+	scale: 0.93 0.93 0.95;
+	transition:
+		scale 0.7s ease,
+		filter 0.4s ease,
+		padding 0.7s ease-in-out;
+	will-change: scale, translate, filter;
+}
+
+.rl-bubbled .rl-wbw-line.rl-wbw-spacer {
+	scale: none;
+}
+
+.rl-bubbled .rl-wbw-line.rl-wbw-line-active {
+	scale: 1;
+	transition:
+		scale 0.5s ease,
+		filter 0.4s ease,
+		padding 0.7s ease-in-out;
+}
+
+/* Staggered scroll bounce animation (Bubbled Lyrics WIP) */
+@keyframes rl-scroll-bounce {
+	from {
+		translate: 0 var(--rl-scroll-delta);
+	}
+	to {
+		translate: 0 0;
+	}
+}
+
+.rl-wbw-line:not(.rl-scroll-animate) {
+	animation: none;
+}
+
+.rl-scroll-animate {
+	animation: rl-scroll-bounce 400ms cubic-bezier(0.41, 0, 0.12, 0.99) both;
+	animation-delay: var(--rl-line-delay, 0ms);
+}
+
+/* Word span */
+.rl-wbw-word {
+	text-shadow: none;
+	color: rgba(255, 255, 255, 0.4);
+	/* biome-ignore lint: Must beat Tidal _hasCues_ opacity */
+	opacity: 1 !important;
+	line-height: 1.15;
+	transition:
+		text-shadow 0.15s ease-out,
+		color 0.15s ease-out;
+}
+
+/* Hover word (Grouped Syllables) */
+.rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word:hover,
+.rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word.rl-wbw-word-hover,
+.rl-wbw-line:not(.rl-wbw-line-active) .rl-wbw-main .rl-wbw-word:hover,
+.rl-wbw-line:not(.rl-wbw-line-active)
+	.rl-wbw-main
+	.rl-wbw-word.rl-wbw-word-hover {
+	text-shadow: none;
+	/* biome-ignore lint: Hover color override */
+	color: lightgray !important;
+	cursor: pointer;
+}
+
+/* Active word */
+.rl-wbw-word.rl-wbw-active {
+	/* biome-ignore lint: Active word uses Colorama color */
+	color: var(--cl-glow1, #fff) !important;
+	text-shadow: none;
+}
+
+/* MARKER: Syllable sweep/wipe animation CSS */
+
+@keyframes rl-wipe {
+	from {
+		background-size:
+			0.75em 100%,
+			0% 100%,
+			100% 100%;
+		background-position:
+			-0.375em 0%,
+			left,
+			left;
+	}
+	to {
+		background-size:
+			0.75em 100%,
+			100% 100%,
+			100% 100%;
+		background-position:
+			calc(100% + 0.375em) 0%,
+			left,
+			left;
+	}
+}
+
+/* Syllable active: gradient sweep/wipe via background-clip */
+.rl-wbw-word.rl-syl-active {
+	/* biome-ignore lint: Kill base transitions so class swaps are instant */
+	transition: none !important;
+	/* biome-ignore lint: Transparent fill so gradient paints the text */
+	color: transparent !important;
+	/* biome-ignore lint: Clip gradient to text glyphs */
+	-webkit-background-clip: text !important;
+	/* biome-ignore lint: Clip gradient to text glyphs */
+	background-clip: text !important;
+	background-repeat: no-repeat;
+	background-image:
+		linear-gradient(
+			90deg,
+			transparent 0%,
+			var(--cl-glow1, #fff) 50%,
+			transparent 100%
+		),
+		linear-gradient(90deg, var(--cl-glow1, #fff) 100%, transparent 100%),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4));
+	background-size:
+		0.75em 100%,
+		0% 100%,
+		100% 100%;
+	background-position:
+		-0.375em 0%,
+		left,
+		left;
+	/* biome-ignore lint: No glow for syllable mode */
+	text-shadow: none !important;
+	/* biome-ignore lint: No glow for syllable mode */
+	filter: none !important;
+}
+
+/* Syllable finished: word stays Colorama color */
+.rl-wbw-word.rl-syl-finished {
+	/* biome-ignore lint: Kill base transitions so class swaps are instant */
+	transition: none !important;
+	/* biome-ignore lint: Finished syllable uses Colorama color */
+	color: var(--cl-glow1, #fff) !important;
+	/* biome-ignore lint: No glow for syllable mode */
+	text-shadow: none !important;
+	/* biome-ignore lint: No glow for syllable mode */
+	filter: none !important;
+}
+
+/* MARKER: Syllable animations CSS (WIP coming soon) */
+/* syllableStyle: 0 = none, 1 = Pop!, 2 = Jump */
+
+@keyframes rl-pop {
+	0%,
+	100% {
+		transform: scale(1);
+	}
+	25%,
+	35% {
+		transform: scale(1.03) translateY(-0.5%);
+	}
+}
+
+@keyframes rl-jump {
+	0% {
+		transform: translateY(8px);
+	}
+	50% {
+		transform: translateY(-3px);
+	}
+	100% {
+		transform: translateY(0);
+	}
+}
+
+/* Pop! for word mode */
+.rl-syl-pop .rl-wbw-word.rl-wbw-active {
+	transform-origin: center bottom;
+	animation: rl-pop 0.6s ease-out;
+}
+
+/* Pop! for syllable mode */
+.rl-syl-pop .rl-wbw-word.rl-syl-active {
+	transform-origin: center bottom;
+}
+
+/* Jump for word mode */
+.rl-syl-jump .rl-wbw-word.rl-wbw-active {
+	animation: rl-jump 0.35s ease-out;
+}
+
+/* Tidals "..." at the top of the container */
+.rl-wbw-active > span:not([data-test="lyrics-line"]) {
+	display: block;
+	font-size: calc(40px * var(--rl-font-scale, 1));
+	font-family:
+		"AbyssFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+	font-weight: 700;
+	color: rgba(255, 255, 255, 0.4);
+	/* biome-ignore lint: Must beat Tidal _hasCues_ opacity */
+	opacity: 1 !important;
+	text-shadow: none;
+	margin-bottom: 2rem;
+}
+
+/* MARKER: Context Aware Lyrics CSS */
+
+/* Background vocal sub-container */
+.rl-wbw-bg-container {
+	max-height: 0;
+	overflow: visible;
+	opacity: 0;
+	font-size: 0.55em;
+	padding-top: 0.15em;
+	transition:
+		max-height 0.3s ease,
+		opacity 0.5s ease;
+	color: rgba(255, 255, 255, 0.4);
+}
+
+.rl-wbw-line.rl-wbw-line-active .rl-wbw-bg-container {
+	max-height: 3em;
+	opacity: 1;
+	transition:
+		max-height 0.5s ease,
+		opacity 0.5s ease;
+}
+
+/* Singer duet positioning */
+.rl-wbw-line.rl-singer-right {
+	text-align: end;
+	transform-origin: right;
+}
+
+/* Duet: 20% column inset + same shift / pre-wrap as single (inactive reserves along outer edge) */
+.rl-dual-side .rl-wbw-line.rl-singer-left:not(.rl-wbw-line-active) {
+	padding-left: 0;
+	padding-right: calc(20% + var(--rl-line-shift, 20px));
+}
+
+.rl-dual-side .rl-wbw-line.rl-singer-left.rl-wbw-line-active {
+	padding-left: var(--rl-line-shift, 20px);
+	padding-right: 20%;
+}
+
+.rl-dual-side .rl-wbw-line.rl-singer-right:not(.rl-wbw-line-active) {
+	padding-left: calc(20% + var(--rl-line-shift, 20px));
+	padding-right: 0;
+}
+
+.rl-dual-side .rl-wbw-line.rl-singer-right.rl-wbw-line-active {
+	padding-left: 20%;
+	padding-right: var(--rl-line-shift, 20px);
+}
+
+.rl-dual-side .rl-wbw-line.rl-singer-right .rl-wbw-bg-container {
+	text-align: end;
+}
+
+/* MARKER: Lyrics panel vertical fade (Tidal’s mask clips sides) */
+[data-test="now-playing-lyrics"] {
+	/* biome-ignore lint: Override Tidal mask with vertical fade */
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0%,
+		#fff 10%,
+		#fff 95%,
+		transparent 100%
+	) !important;
+	-webkit-mask-image: linear-gradient(
+		to bottom,
+		transparent 0%,
+		#fff 10%,
+		#fff 95%,
+		transparent 100%
+	) !important;
+	mask-repeat: no-repeat;
+	-webkit-mask-repeat: no-repeat;
+	mask-size: 100% 100%;
+	-webkit-mask-size: 100% 100%;
+}
+
+/* Lyrics Cutoff Padding (Glow radius + 4px extra) */
+[data-test="now-playing-lyrics"] > div:has(.rl-wbw-active),
+[data-test="now-playing-lyrics"] > div:has([data-test="lyrics-line"]) {
+	/* biome-ignore lint: Override Tidal inline padding on lyrics scrollport */
+	padding-left: calc(var(--rl-glow-outer, 20px) + 0px) !important; /* 4px cushion (not needed atm) */
+	padding-right: calc(var(--rl-glow-outer, 20px) + 0px) !important; /* 4px cushion (not needed atm) */
+	box-sizing: border-box !important;
+}
