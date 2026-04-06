@@ -35,7 +35,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	hideUIEnabled: true,
 	playerBarVisible: false,
 	qualityProgressColor: true,
-	integratedSeekBar: true,
+	integratedSeekBar: false,
 	floatingPlayerBar: true,
 	playerBarRadius: 5,
 	playerBarSpacing: 10,

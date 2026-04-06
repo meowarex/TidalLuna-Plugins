@@ -108,11 +108,12 @@
 	display: none !important;
 }
 
-/* Active line slide */
+/* Active line slide — inactive reserves same width as active pl via pr so wrapping stays stable */
 .rl-wbw-line {
+	--rl-line-shift: 20px;
 	text-align: left;
 	padding-left: 0;
-	padding-right: 0;
+	padding-right: var(--rl-line-shift);
 	filter: none;
 	transform: translateZ(0);
 	transform-origin: left;
@@ -125,6 +126,8 @@
 
 .rl-wbw-line.rl-wbw-spacer {
 	filter: none;
+	padding-left: 0;
+	padding-right: 0;
 }
 
 /* Blur Inactive (opt-in via .rl-blur-active on container) */
@@ -147,7 +150,8 @@
 /* Active line overrides (MUST come after blur rules to win on equal specificity) */
 .rl-wbw-line.rl-wbw-line-active,
 .rl-blur-active .rl-wbw-line.rl-wbw-line-active {
-	padding-left: 20px;
+	padding-left: var(--rl-line-shift, 20px);
+	padding-right: 0;
 	filter: none;
 }
 
