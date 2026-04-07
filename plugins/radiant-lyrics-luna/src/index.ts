@@ -1668,24 +1668,6 @@ const getReduxState = (preferOriginal = false): any => {
 	return redux.store.getState() as any;
 };
 
-/** Tidal Connect / cast: Luna PlayState often does not track remote playback; Redux matches the in-app progress bar. */
-const isRemotePlayback = (state = getReduxState()): boolean => {
-	if (state?.activePlayer?.activePlayer === "REMOTE_PLAYBACK") return true;
-	return state?.playbackControls?.playbackContext?.playbackSessionId === "tidal-connect";
-};
-
-const reduxPlaybackIsPlaying = (state = getReduxState()): boolean => {
-	const pc = state?.playbackControls;
-	if (!pc) return false;
-	if (pc.playbackState === "NOT_PLAYING") return false;
-	if (pc.playbackState === "PLAYING") return true;
-	const apt = state?.accumulatedPlaybackTime?.playbackState;
-	if (apt === "NOT_PLAYING") return false;
-	if (apt === "PLAYING") return true;
-	// Connect often leaves playbackState on IDLE while desiredPlaybackState is PLAYING.
-	return pc.desiredPlaybackState === "PLAYING";
-};
-
 const getNativeTrackEntity = (trackId: string): any | null =>
 	getReduxState(true)?.entities?.tracks?.entities?.[trackId] ?? null;
 
@@ -2073,7 +2055,6 @@ let scrollAnimPending: {
 } | null = null;
 let scrollUnlockTimeout: LunaUnload | null = null;
 let scrollCleanupTimeout: LunaUnload | null = null;
-let postTrackChangeResyncTimeout: LunaUnload | null = null;
 let animatingEls: HTMLElement[] = [];
 
 const clearScrollAnim = (): void => {
@@ -2093,13 +2074,6 @@ const clearScrollAnim = (): void => {
 	animatingEls = [];
 	scrollAnimIsAnimating = false;
 	scrollAnimPending = null;
-};
-
-const clearPostTrackChangeResync = (): void => {
-	if (postTrackChangeResyncTimeout) {
-		postTrackChangeResyncTimeout();
-		postTrackChangeResyncTimeout = null;
-	}
 };
 
 const applyScrollBounce = (
@@ -2225,15 +2199,56 @@ let savedScroll: any = null;
 let savedScrollBy: any = null;
 let scrollAllowed = false;
 
+// MARKER: Tidal Connect (Casting & Remote Lyrics Syncing)
+// Uses Redux to mirror Seek Bar progress because Luna PlayState doesn't track remote playback.
+const isRemotePlayback = (state = getReduxState()): boolean => {
+	if (state?.activePlayer?.activePlayer === "REMOTE_PLAYBACK") return true;
+	return state?.playbackControls?.playbackContext?.playbackSessionId === "tidal-connect";
+};
+
+const reduxPlaybackIsPlaying = (state = getReduxState()): boolean => {
+	const pc = state?.playbackControls;
+	if (!pc) return false;
+	if (pc.playbackState === "NOT_PLAYING") return false;
+	if (pc.playbackState === "PLAYING") return true;
+	const apt = state?.accumulatedPlaybackTime?.playbackState;
+	if (apt === "NOT_PLAYING") return false;
+	if (apt === "PLAYING") return true;
+	// Tidal Connect leaves playbackState on IDLE (that's why using desiredPlaybackState)
+	return pc.desiredPlaybackState === "PLAYING";
+};
+
+const getPrimaryArtistName = (value: unknown): string => {
+	if (!Array.isArray(value) || value.length === 0) return "";
+	const first = value[0] as { name?: unknown; artist?: { name?: unknown } } | undefined;
+	if (!first) return "";
+	if (typeof first.name === "string") return first.name;
+	if (typeof first.artist?.name === "string") return first.artist.name;
+	return "";
+};
+
+const trackInfoFromReduxProductId = (productId: string): TrackInfo | null => {
+	const ent = getNativeTrackEntity(productId);
+	if (!ent) return null;
+	const attr = ent.attributes ?? ent;
+	const title = String(attr.title ?? "");
+	const artist = String(attr.artist?.name ?? getPrimaryArtistName(attr.artists) ?? "");
+	const isrc = attr.isrc ?? undefined;
+	if (!title || !artist) return null;
+	return { trackId: productId, title, artist, isrc };
+};
+
 // playback time in ms (interpolated between currentTime updates)
 let lastPlayerTime = 0;
 let lastPlayerTimeAt = 0;
 let wasPlaying = false;
 
-// Remote playback: same interpolation idea, fed from Redux playbackControls.latestCurrentTime (seconds).
+// Remote playback time in seconds (interpolation [Redux playbackControls.latestCurrentTime])
 let lastRemotePlayerTime = 0;
 let lastRemotePlayerTimeAt = 0;
 let wasRemotePlaying = false;
+
+let postTrackChangeResyncTimeout: LunaUnload | null = null;
 
 const getRemotePlaybackMs = (state = getReduxState()): number => {
 	const pc = state?.playbackControls;
@@ -2294,7 +2309,7 @@ const getPlaybackMs = (): number => {
 	return playerTime * 1000;
 };
 
-/** Re-anchor lyric time to the same clock as getPlaybackMs (PlayState or Redux on Connect). */
+/** Re Sync Lyrics to getPlaybackMs (PlayState/Redux on Connect). */
 const snapPlaybackInterpolationToPlayer = (): void => {
 	const state = getReduxState();
 	if (isRemotePlayback(state)) {
@@ -2313,13 +2328,11 @@ const snapPlaybackInterpolationToPlayer = (): void => {
 const hasCurrentSyncAnchor = (): boolean =>
 	primaryLineIdx >= 0 && primaryLineIdx < lines.length && activeLineIdxs.size > 0;
 
-const getPrimaryArtistName = (value: unknown): string => {
-	if (!Array.isArray(value) || value.length === 0) return "";
-	const first = value[0] as { name?: unknown; artist?: { name?: unknown } } | undefined;
-	if (!first) return "";
-	if (typeof first.name === "string") return first.name;
-	if (typeof first.artist?.name === "string") return first.artist.name;
-	return "";
+const clearPostTrackChangeResync = (): void => {
+	if (postTrackChangeResyncTimeout) {
+		postTrackChangeResyncTimeout();
+		postTrackChangeResyncTimeout = null;
+	}
 };
 
 const scheduleRemoteTrackChangeResync = (attempt = 0): void => {
@@ -2345,17 +2358,6 @@ const scheduleRemoteTrackChangeResync = (attempt = 0): void => {
 		},
 		150,
 	);
-};
-
-const trackInfoFromReduxProductId = (productId: string): TrackInfo | null => {
-	const ent = getNativeTrackEntity(productId);
-	if (!ent) return null;
-	const attr = ent.attributes ?? ent;
-	const title = String(attr.title ?? "");
-	const artist = String(attr.artist?.name ?? getPrimaryArtistName(attr.artists) ?? "");
-	const isrc = attr.isrc ?? undefined;
-	if (!title || !artist) return null;
-	return { trackId: productId, title, artist, isrc };
 };
 
 // get title + artist from media item (Used everywhere now <3)
@@ -2385,6 +2387,9 @@ const getTrackInfo = async (): Promise<TrackInfo | null> => {
 
 	return null;
 };
+
+
+// MARKER: Lyrics API Fetching (Caching & Romanization)
 
 // fetch syllables from the API (wiped on track change)
 let cachedLyricsKey: string | null = null;
@@ -3490,7 +3495,7 @@ const clearTickLoop = (): void => {
 const teardown = (): void => {
 	trackChangeToken++;
 	clearTickLoop();
-	clearPostTrackChangeResync();
+	clearPostTrackChangeResync(); // Tidal Connect (see MARKER block)
 	stopTidalFollowLoop();
 	clearScrollAnim();
 	unwatchRerender();
@@ -4132,7 +4137,7 @@ const onTrackChange = async (): Promise<void> => {
 			lines = result.lines;
 			watchForRerender();
 			startTickLoop();
-			scheduleRemoteTrackChangeResync();
+			scheduleRemoteTrackChangeResync(); // Tidal Connect (see MARKER block)
 		} else {
 			safeTimeout(unloads, () => {
 				if (token !== trackChangeToken) return;
@@ -4158,7 +4163,7 @@ const onTrackChange = async (): Promise<void> => {
 						lines = result.lines;
 						watchForRerender();
 						startTickLoop();
-						scheduleRemoteTrackChangeResync();
+						scheduleRemoteTrackChangeResync(); // Tidal Connect (see MARKER block)
 					}
 				} else if (++panelRetries < 20) {
 					safeTimeout(unloads, waitForPanel, 250);
