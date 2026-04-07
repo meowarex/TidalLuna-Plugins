@@ -39,9 +39,13 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
 
+  plugins/audio-visualizer-luna: {}
+
+  plugins/colorama-lyrics-luna: {}
+
   plugins/copy-lyrics-luna: {}
 
-  plugins/oled-theme-luna: {}
+  plugins/element-hider-luna: {}
 
   plugins/radiant-lyrics-luna: {}
 

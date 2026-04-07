@@ -2199,11 +2199,90 @@ let savedScroll: any = null;
 let savedScrollBy: any = null;
 let scrollAllowed = false;
 
+// MARKER: Tidal Connect (Casting & Remote Lyrics Syncing)
+// Uses Redux to mirror Seek Bar progress because Luna PlayState doesn't track remote playback.
+const isRemotePlayback = (state = getReduxState()): boolean => {
+	if (state?.activePlayer?.activePlayer === "REMOTE_PLAYBACK") return true;
+	return state?.playbackControls?.playbackContext?.playbackSessionId === "tidal-connect";
+};
+
+const reduxPlaybackIsPlaying = (state = getReduxState()): boolean => {
+	const pc = state?.playbackControls;
+	if (!pc) return false;
+	if (pc.playbackState === "NOT_PLAYING") return false;
+	if (pc.playbackState === "PLAYING") return true;
+	const apt = state?.accumulatedPlaybackTime?.playbackState;
+	if (apt === "NOT_PLAYING") return false;
+	if (apt === "PLAYING") return true;
+	// Tidal Connect leaves playbackState on IDLE (that's why using desiredPlaybackState)
+	return pc.desiredPlaybackState === "PLAYING";
+};
+
+const getPrimaryArtistName = (value: unknown): string => {
+	if (!Array.isArray(value) || value.length === 0) return "";
+	const first = value[0] as { name?: unknown; artist?: { name?: unknown } } | undefined;
+	if (!first) return "";
+	if (typeof first.name === "string") return first.name;
+	if (typeof first.artist?.name === "string") return first.artist.name;
+	return "";
+};
+
+const trackInfoFromReduxProductId = (productId: string): TrackInfo | null => {
+	const ent = getNativeTrackEntity(productId);
+	if (!ent) return null;
+	const attr = ent.attributes ?? ent;
+	const title = String(attr.title ?? "");
+	const artist = String(attr.artist?.name ?? getPrimaryArtistName(attr.artists) ?? "");
+	const isrc = attr.isrc ?? undefined;
+	if (!title || !artist) return null;
+	return { trackId: productId, title, artist, isrc };
+};
+
 // playback time in ms (interpolated between currentTime updates)
 let lastPlayerTime = 0;
 let lastPlayerTimeAt = 0;
 let wasPlaying = false;
+
+// Remote playback time in seconds (interpolation [Redux playbackControls.latestCurrentTime])
+let lastRemotePlayerTime = 0;
+let lastRemotePlayerTimeAt = 0;
+let wasRemotePlaying = false;
+
+let postTrackChangeResyncTimeout: LunaUnload | null = null;
+
+const getRemotePlaybackMs = (state = getReduxState()): number => {
+	const pc = state?.playbackControls;
+	const raw = Number(pc?.latestCurrentTime);
+	const playerTime = Number.isFinite(raw) ? raw : 0;
+	const playing = reduxPlaybackIsPlaying(state);
+	const now = performance.now();
+
+	if (playing !== wasRemotePlaying) {
+		wasRemotePlaying = playing;
+		lastRemotePlayerTimeAt = now;
+		lastRemotePlayerTime = playerTime;
+		return playerTime * 1000;
+	}
+
+	if (playerTime !== lastRemotePlayerTime) {
+		lastRemotePlayerTime = playerTime;
+		lastRemotePlayerTimeAt = now;
+		return playerTime * 1000;
+	}
+
+	if (playing && lastRemotePlayerTimeAt > 0) {
+		const elapsed = now - lastRemotePlayerTimeAt;
+		return lastRemotePlayerTime * 1000 + elapsed;
+	}
+
+	return playerTime * 1000;
+};
+
 const getPlaybackMs = (): number => {
+	const state = getReduxState();
+	if (isRemotePlayback(state)) {
+		return getRemotePlaybackMs(state);
+	}
 	const playerTime = PlayState.currentTime;
 	const playing = PlayState.playing;
 	const now = performance.now();
@@ -2230,22 +2309,87 @@ const getPlaybackMs = (): number => {
 	return playerTime * 1000;
 };
 
+/** Re Sync Lyrics to getPlaybackMs (PlayState/Redux on Connect). */
+const snapPlaybackInterpolationToPlayer = (): void => {
+	const state = getReduxState();
+	if (isRemotePlayback(state)) {
+		const pc = state?.playbackControls;
+		const raw = Number(pc?.latestCurrentTime);
+		lastRemotePlayerTime = Number.isFinite(raw) ? raw : 0;
+		lastRemotePlayerTimeAt = performance.now();
+		wasRemotePlaying = reduxPlaybackIsPlaying(state);
+		return;
+	}
+	lastPlayerTime = PlayState.currentTime;
+	lastPlayerTimeAt = performance.now();
+	wasPlaying = PlayState.playing;
+};
+
+const hasCurrentSyncAnchor = (): boolean =>
+	primaryLineIdx >= 0 && primaryLineIdx < lines.length && activeLineIdxs.size > 0;
+
+const clearPostTrackChangeResync = (): void => {
+	if (postTrackChangeResyncTimeout) {
+		postTrackChangeResyncTimeout();
+		postTrackChangeResyncTimeout = null;
+	}
+};
+
+const scheduleRemoteTrackChangeResync = (attempt = 0): void => {
+	clearPostTrackChangeResync();
+	postTrackChangeResyncTimeout = safeTimeout(
+		unloads,
+		() => {
+			postTrackChangeResyncTimeout = null;
+			if (!isActive || lines.length === 0) return;
+			const state = getReduxState();
+			if (!isRemotePlayback(state)) return;
+			if (!reduxPlaybackIsPlaying(state)) {
+				if (attempt < 10) scheduleRemoteTrackChangeResync(attempt + 1);
+				return;
+			}
+			if (!hasCurrentSyncAnchor()) {
+				if (attempt < 10) scheduleRemoteTrackChangeResync(attempt + 1);
+				return;
+			}
+			snapPlaybackInterpolationToPlayer();
+			resync(false);
+			sylLog("[RL-Syllable] Post-track-change resync");
+		},
+		150,
+	);
+};
+
 // get title + artist from media item (Used everywhere now <3)
 const getTrackInfo = async (): Promise<TrackInfo | null> => {
 	const mi = await MediaItem.fromPlaybackContext();
-	if (!mi?.tidalItem) return null;
+	if (mi?.tidalItem) {
+		const baseTitle = mi.tidalItem.title ?? "";
+		const version = mi.tidalItem.version; // REMIX Detection
+		const title = version ? `${baseTitle} (${version})` : baseTitle;
+		const artist =
+			mi.tidalItem.artist?.name ?? getPrimaryArtistName(mi.tidalItem.artists) ?? ""; // REMIX Detection
+		const isrc = mi.tidalItem.isrc ?? undefined;
+		const trackId = String(mi.tidalItem.id ?? PlayState.playbackContext?.actualProductId ?? "");
 
-	const baseTitle = mi.tidalItem.title ?? "";
-	const version = mi.tidalItem.version; // REMIX Detection
-	const title = version ? `${baseTitle} (${version})` : baseTitle;
-	const artist =
-		mi.tidalItem.artist?.name ?? mi.tidalItem.artists?.[0]?.name ?? ""; // REMIX Detection
-	const isrc = mi.tidalItem.isrc ?? undefined;
-	const trackId = String(mi.tidalItem.id ?? PlayState.playbackContext?.actualProductId ?? "");
+		if (!baseTitle || !artist || !trackId) return null;
+		return { trackId, title, artist, isrc };
+	}
 
-	if (!baseTitle || !artist || !trackId) return null;
-	return { trackId, title, artist, isrc };
+	const state = getReduxState();
+	if (isRemotePlayback(state)) {
+		const pid = String(state?.playbackControls?.mediaProduct?.productId ?? "");
+		if (pid) {
+			const fromRedux = trackInfoFromReduxProductId(pid);
+			if (fromRedux) return fromRedux;
+		}
+	}
+
+	return null;
 };
+
+
+// MARKER: Lyrics API Fetching (Caching & Romanization)
 
 // fetch syllables from the API (wiped on track change)
 let cachedLyricsKey: string | null = null;
@@ -2719,15 +2863,22 @@ const buildWordSpans = (): {
 			}
 		} else {
 			for (const group of wordGroups) {
-				const groupIsBg = splitBg && syllabus[group[0]].isBackground;
+				if (!Array.isArray(group) || group.length === 0) continue;
+				const firstIndex = group[0];
+				const lastIndex = group[group.length - 1];
+				const firstSyl = syllabus[firstIndex];
+				const lastSyl = syllabus[lastIndex];
+				if (!firstSyl || !lastSyl) continue;
+				const groupIsBg = splitBg && firstSyl.isBackground;
 				const targetContainer = groupIsBg ? bgContainer! : mainContainer;
 				const targetWords = groupIsBg ? lineBgWords : lineWords;
 
 				if (isSylMode) {
-					const wordStartMs = syllabus[group[0]].time;
+					const wordStartMs = firstSyl.time;
 					const groupSpans: HTMLSpanElement[] = [];
 					for (const si of group) {
 						const syl = syllabus[si];
+						if (!syl) continue;
 						const span = makeSpan(
 							sylDisplay(syl).trimEnd(),
 							wordStartMs,
@@ -2752,13 +2903,13 @@ const buildWordSpans = (): {
 					}
 				} else {
 					const mergedText = group
-						.map((si) => sylDisplay(syllabus[si]).trimEnd())
+						.map((si) => syllabus[si])
+						.filter((syl): syl is WordTiming => Boolean(syl))
+						.map((syl) => sylDisplay(syl).trimEnd())
 						.join("");
-					const first = syllabus[group[0]];
-					const last = syllabus[group[group.length - 1]];
-					const start = first.time;
-					const end = last.time + last.duration;
-					const bg = first.isBackground;
+					const start = firstSyl.time;
+					const end = lastSyl.time + lastSyl.duration;
+					const bg = firstSyl.isBackground;
 					const span = makeSpan(mergedText, start, bg);
 					targetContainer.appendChild(span);
 					const entry: WordEntry = {
@@ -3344,6 +3495,7 @@ const clearTickLoop = (): void => {
 const teardown = (): void => {
 	trackChangeToken++;
 	clearTickLoop();
+	clearPostTrackChangeResync(); // Tidal Connect (see MARKER block)
 	stopTidalFollowLoop();
 	clearScrollAnim();
 	unwatchRerender();
@@ -3985,6 +4137,7 @@ const onTrackChange = async (): Promise<void> => {
 			lines = result.lines;
 			watchForRerender();
 			startTickLoop();
+			scheduleRemoteTrackChangeResync(); // Tidal Connect (see MARKER block)
 		} else {
 			safeTimeout(unloads, () => {
 				if (token !== trackChangeToken) return;
@@ -4010,6 +4163,7 @@ const onTrackChange = async (): Promise<void> => {
 						lines = result.lines;
 						watchForRerender();
 						startTickLoop();
+						scheduleRemoteTrackChangeResync(); // Tidal Connect (see MARKER block)
 					}
 				} else if (++panelRetries < 20) {
 					safeTimeout(unloads, waitForPanel, 250);
