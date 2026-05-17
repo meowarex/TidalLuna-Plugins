@@ -1,5 +1,7 @@
 packages:
  - "plugins/*"
 
-onlyBuiltDependencies:
- - esbuild
+# pnpm 11 renamed `onlyBuiltDependencies` (list) to `allowBuilds` (map of name -> bool).
+# This whitelists postinstall/build scripts non-interactively in CI.
+allowBuilds:
+ esbuild: true
