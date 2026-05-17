@@ -54,6 +54,7 @@ export const settings = await ReactiveStore.getPluginStorage(
 		scrollingOscilloscope: false,
 		groupedSlots: false,
 		transparentContainers: false,
+		idleMode: 1,
 		miniSlots: [] as string[],
 		customColors: [] as string[],
 	},
@@ -92,6 +93,7 @@ export const Settings = () => {
 	const [transparentContainers, setTransparentContainers] = React.useState(
 		settings.transparentContainers,
 	);
+	const [idleMode, setIdleMode] = React.useState(settings.idleMode);
 
 	const [showColorPicker, setShowColorPicker] = React.useState(false);
 	const [isColorAnimIn, setIsColorAnimIn] = React.useState(false);
@@ -312,6 +314,21 @@ export const Settings = () => {
 					settings.transparentContainers = checked;
 				}}
 			/>
+
+			<LunaSelectSetting
+				title="Idle Animation"
+				desc="Behaviour when no audio is playing"
+				value={idleMode}
+				onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+					const v = Number(e.target.value);
+					setIdleMode(v);
+					settings.idleMode = v;
+				}}
+			>
+				<LunaSelectItem value={0}>Enabled</LunaSelectItem>
+				<LunaSelectItem value={1}>Disabled &amp; Hide</LunaSelectItem>
+				<LunaSelectItem value={2}>Disabled &amp; Static</LunaSelectItem>
+			</LunaSelectSetting>
 
 			{/* Color picker modal */}
 			{shouldRenderColor && (

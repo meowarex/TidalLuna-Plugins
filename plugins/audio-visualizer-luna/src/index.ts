@@ -46,6 +46,7 @@ interface SlotGroup {
 
 const groups = new Map<string, SlotGroup>();
 let navArrowsEl: HTMLElement | null = null;
+let idleHidden = false;
 
 const getSlot = (key: SlotKey): VisualizerType =>
 	(settings as unknown as Record<string, VisualizerType>)[key] ?? "none";
@@ -134,8 +135,9 @@ const syncGroupHeights = (group: SlotGroup): void => {
 const updateGroupVisibility = (group: SlotGroup): void => {
 	const activeCount = group.slots.filter(s => s.currentType !== "none").length;
 	const allNone = activeCount === 0;
-	group.groupContainer.style.display = allNone ? "none" : "flex";
-	if (!allNone) syncGroupHeights(group);
+	const hidden = allNone || idleHidden;
+	group.groupContainer.style.display = hidden ? "none" : "flex";
+	if (!hidden) syncGroupHeights(group);
 
 	group.groupContainer.classList.toggle(
 		"av-grouped",
@@ -143,7 +145,7 @@ const updateGroupVisibility = (group: SlotGroup): void => {
 	);
 
 	if (group === groups.get("topNav-left") && navArrowsEl) {
-		navArrowsEl.style.marginRight = allNone ? "" : "0";
+		navArrowsEl.style.marginRight = hidden ? "" : "0";
 	}
 };
 
@@ -398,6 +400,19 @@ const generateIdleData = (): AudioData => {
 	};
 };
 
+// Static idle data — flat, silent, no movement
+const STATIC_IDLE_DATA: AudioData = {
+	byteFrequency: new Uint8Array(IDLE_SIZE),
+	byteTimeDomain: new Uint8Array(IDLE_SIZE).fill(128),
+	floatFrequency: new Float32Array(IDLE_SIZE).fill(-100),
+	floatTimeDomain: new Float32Array(IDLE_SIZE),
+	leftTimeDomain: new Float32Array(IDLE_SIZE),
+	rightTimeDomain: new Float32Array(IDLE_SIZE),
+	sampleRate: 44100,
+	fftSize: IDLE_SIZE * 2,
+	binCount: IDLE_SIZE,
+};
+
 // Animation Loop
 
 let animationId: number | null = null;
@@ -478,12 +493,24 @@ const animate = (): void => {
 		scheduleRetry();
 	}
 
-	const renderData = hasSignal ? data : generateIdleData();
+	// idleMode: 0 = animated, 1 = hide when idle, 2 = static when idle
+	const idleMode = settings.idleMode ?? 0;
+	const newIdleHidden = !hasSignal && idleMode === 1;
+	if (newIdleHidden !== idleHidden) {
+		idleHidden = newIdleHidden;
+		for (const group of groups.values()) updateGroupVisibility(group);
+	}
 
-	for (const group of groups.values()) {
-		for (const slot of group.slots) {
-			if (!slot.canvas || slot.currentType === "none" || !slot.visualizer) continue;
-			slot.visualizer.render(renderData, settings.barColor);
+	if (!idleHidden) {
+		let renderData: AudioData;
+		if (hasSignal) renderData = data as AudioData;
+		else if (idleMode === 2) renderData = STATIC_IDLE_DATA;
+		else renderData = generateIdleData();
+		for (const group of groups.values()) {
+			for (const slot of group.slots) {
+				if (!slot.canvas || slot.currentType === "none" || !slot.visualizer) continue;
+				slot.visualizer.render(renderData, settings.barColor);
+			}
 		}
 	}
 
