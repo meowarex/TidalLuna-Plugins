@@ -2,6 +2,7 @@
 	"name": "@meowarex/TidalLuna-Plugins",
 	"description": "A Collection of Plugins for TidalLuna",
 	"type": "module",
+	"packageManager": "pnpm@11.1.2",
 	"scripts": {
 		"watch": "concurrently \"pnpm:build --watch\" pnpm:serve",
 		"build": "rimraf ./dist && tsx esbuild.config.ts",
@@ -18,10 +19,5 @@
 		"rimraf": "^6.0.1",
 		"tsx": "^4.19.4",
 		"typescript": "^5.8.3"
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"esbuild"
-		]
 	}
 }
