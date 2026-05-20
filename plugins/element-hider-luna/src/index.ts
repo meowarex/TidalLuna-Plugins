@@ -19,7 +19,13 @@ new StyleTag("Element-Hider", unloads, styles);
 // State management
 let targetElement: HTMLElement | null = null;
 let hiddenElements = new WeakSet<HTMLElement>();
-let hiddenElementsArray: HTMLElement[] = [];
+
+// Count of elements currently hidden in the live DOM. The `.element-hider-hidden`
+// class is the source of truth — querying it avoids retaining detached nodes
+// across SPA navigations.
+function getHiddenCount(): number {
+	return document.querySelectorAll(".element-hider-hidden").length;
+}
 
 // MutationObserver for reactive element detection
 let elementObserver: MutationObserver | null = null;
@@ -179,7 +185,6 @@ function hideElementDirectly(element: HTMLElement): void {
 
 	element.classList.add("element-hider-hidden");
 	hiddenElements.add(element);
-	hiddenElementsArray.push(element);
 	trace.log(
 		`Hidden element: ${element.tagName}${element.className ? "." + element.className.split(" ")[0] : ""}`,
 	);
@@ -210,7 +215,6 @@ function hideTargetElement(): void {
 			"element-hider-target",
 		);
 		hiddenElements.add(elementToHide);
-		hiddenElementsArray.push(elementToHide);
 	}, 300);
 
 	// Clear target reference
@@ -220,20 +224,19 @@ function hideTargetElement(): void {
 // Unhide all elements permanently (remove from storage)
 function unhideAllElements(): void {
 	trace.log(
-		`Permanently unhiding ${settings.hiddenElements.length} saved elements`,
+		`Permanently unhiding ${settings.hiddenElements.length} saved selectors`,
 	);
 
 	// Show all currently hidden elements
-	hiddenElementsArray.forEach((element) => {
-		if (document.body.contains(element)) {
+	document
+		.querySelectorAll(".element-hider-hidden, .element-hider-hiding")
+		.forEach((element) => {
 			element.classList.remove("element-hider-hidden", "element-hider-hiding");
-		}
-	});
+		});
 
 	// Clear both storage and runtime collections
 	settings.hiddenElements = [];
 	hiddenElements = new WeakSet<HTMLElement>();
-	hiddenElementsArray = [];
 }
 
 // Process all elements in the document to hide matching ones (with strict matching)
@@ -334,7 +337,7 @@ window.showAllElementsFromSettings = unhideAllElements;
 window.debugElementHider = () => {
 	trace.log(`=== Element Hider Debug Info ===`);
 	trace.log(`Stored elements: ${settings.hiddenElements.length}`);
-	trace.log(`Currently hidden elements: ${hiddenElementsArray.length}`);
+	trace.log(`Currently hidden elements: ${getHiddenCount()}`);
 	trace.log(`Reactive hiding enabled: true`);
 	settings.hiddenElements.forEach((element, index) => {
 		trace.log(`${index + 1}. ${element.selector} (${element.tagName})`);
@@ -472,7 +475,7 @@ function createCustomMenu(): HTMLElement {
 	// Unhide All Elements option
 	const unhideAllItem = document.createElement("button");
 	unhideAllItem.className = "element-hider-menu-item";
-	unhideAllItem.innerHTML = `Unhide All Elements (${hiddenElementsArray.length})`;
+	unhideAllItem.innerHTML = `Unhide All Elements (${getHiddenCount()})`;
 	unhideAllItem.addEventListener("click", () => {
 		unhideAllElements();
 		closeCustomMenu();
@@ -593,7 +596,7 @@ function addElementHiderOptions(contextMenu: HTMLElement): void {
 	const unhideAllButton = document.createElement("button");
 	unhideAllButton.className = "element-hider-menu-item";
 	unhideAllButton.style.cssText = hideButton.style.cssText;
-	unhideAllButton.innerHTML = `Unhide All Elements (${hiddenElementsArray.length})`;
+	unhideAllButton.innerHTML = `Unhide All Elements (${getHiddenCount()})`;
 
 	unhideAllButton.addEventListener("click", unhideAllElements);
 
