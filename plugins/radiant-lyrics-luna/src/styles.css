@@ -887,3 +887,9 @@ body.rl-integrated-seekbar [data-test="footer-player"] [class*="playerContent"] 
 ._glowEffect_74c5e85 {
 	display: none !important;
 }
+
+/* Make the small header red */
+[class*="_smallHeader_"] {
+    background-color: rgba(0, 0, 0, .3) !important;
+    backdrop-filter: blur(10px) !important;
+}
