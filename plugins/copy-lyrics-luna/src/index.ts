@@ -15,7 +15,11 @@ new StyleTag("Copy-Lyrics", unloads, unlockSelection);
 function SetClipboard(text: string): void {
 	const textarea = document.createElement("textarea");
 	textarea.value = text;
+	textarea.setAttribute("readonly", "");
 	textarea.style.position = "fixed"; // Avoid scrolling to bottom
+	textarea.style.top = "0";
+	textarea.style.left = "0";
+	textarea.style.opacity = "0";
 	document.body.appendChild(textarea);
 	textarea.select();
 
@@ -29,101 +33,152 @@ function SetClipboard(text: string): void {
 	}
 }
 
-let isSelecting = false;
+const LINE_SELECTORS = [
+	".rl-wbw-container .rl-wbw-line",
+	'[data-test="now-playing-lyrics"] span[data-test="lyrics-line"]',
+	'[class*="_lyricsText"] > div > span',
+].join(",");
 
-const onMouseDown = (): void => {
-	isSelecting = true;
+const OVERLAY_LINE_SELECTOR = ".rl-wbw-container .rl-wbw-line";
+const LYRICS_ROOT_SELECTOR = [
+	'[data-test="now-playing-lyrics"]',
+	'[class*="_lyricsText"]',
+	".rl-wbw-container",
+].join(",");
+
+let isPointerDownInLyrics = false;
+let suppressNextClick = false;
+let suppressClickResetTimer: number | null = null;
+
+const isElement = (node: Node | null): node is Element =>
+	Boolean(node && node.nodeType === Node.ELEMENT_NODE);
+
+const getElementFromNode = (node: Node | null): Element | null => {
+	if (!node) return null;
+	return isElement(node) ? node : node.parentElement;
+};
+
+const isInLyrics = (node: Node | null): boolean =>
+	Boolean(getElementFromNode(node)?.closest(LYRICS_ROOT_SELECTOR));
+
+const rangeIntersectsNode = (range: Range, node: Node): boolean => {
+	try {
+		return range.intersectsNode(node);
+	} catch {
+		return false;
+	}
+};
+
+const normalizeLineText = (text: string): string =>
+	text
+		.replace(/\u00a0/g, " ")
+		.replace(/[ \t]+\n/g, "\n")
+		.replace(/\n[ \t]+/g, "\n")
+		.replace(/[ \t]{2,}/g, " ")
+		.trim();
+
+const getTextInsideRange = (line: HTMLElement, range: Range): string => {
+	if (
+		!line.contains(range.startContainer) &&
+		!line.contains(range.endContainer)
+	) {
+		return normalizeLineText(line.textContent ?? "");
+	}
+
+	const selected = document.createRange();
+	selected.selectNodeContents(line);
+	if (line.contains(range.startContainer)) {
+		selected.setStart(range.startContainer, range.startOffset);
+	}
+	if (line.contains(range.endContainer)) {
+		selected.setEnd(range.endContainer, range.endOffset);
+	}
+
+	return normalizeLineText(selected.toString());
+};
+
+const getSelectedLines = (range: Range, selector: string): HTMLElement[] =>
+	Array.from(document.querySelectorAll(selector)).filter(
+		(node): node is HTMLElement =>
+			node instanceof HTMLElement && rangeIntersectsNode(range, node),
+	);
+
+const getLyricsTextFromRange = (range: Range): string => {
+	const overlayLines = getSelectedLines(range, OVERLAY_LINE_SELECTOR);
+	const lines =
+		overlayLines.length > 0
+			? overlayLines
+			: getSelectedLines(range, LINE_SELECTORS);
+
+	if (lines.length === 0) {
+		return isInLyrics(range.commonAncestorContainer)
+			? normalizeLineText(range.toString())
+			: "";
+	}
+
+	return lines
+		.map((line) =>
+			line.classList.contains("rl-wbw-spacer")
+				? ""
+				: getTextInsideRange(line, range),
+		)
+		.join("\n")
+		.trim();
+};
+
+const getSelectedLyricsText = (selection: Selection): string => {
+	const chunks: string[] = [];
+	for (let i = 0; i < selection.rangeCount; i++) {
+		const text = getLyricsTextFromRange(selection.getRangeAt(i));
+		if (text.length > 0) chunks.push(text);
+	}
+	return chunks.join("\n").trim();
+};
+
+const suppressUpcomingClick = (): void => {
+	suppressNextClick = true;
+	if (suppressClickResetTimer !== null) {
+		window.clearTimeout(suppressClickResetTimer);
+	}
+	suppressClickResetTimer = window.setTimeout(() => {
+		suppressNextClick = false;
+		suppressClickResetTimer = null;
+	}, 250);
+};
+
+const onMouseDown = (event: MouseEvent): void => {
+	isPointerDownInLyrics = isInLyrics(event.target as Node | null);
 };
 
 const onMouseUp = (): void => {
-	if (isSelecting) {
-		const selection = window.getSelection();
-		if (selection?.toString().length > 0) {
-			const selectedSpans: HTMLSpanElement[] = [];
-			const range = selection.getRangeAt(0);
-			let container: Node | null = range.commonAncestorContainer;
+	if (!isPointerDownInLyrics) return;
 
-			// Normalize container: if it's a text node, use its parent element/node
-			if (container && container.nodeType === Node.TEXT_NODE) {
-				container = (container.parentElement ?? container.parentNode) as Node | null;
-			}
-
-			// If parent has data-current, treat as single-line copy case
-			if (
-				container &&
-				container.nodeType === Node.ELEMENT_NODE &&
-				(container as Element).hasAttribute("data-current")
-			) {
-				const text_ = selection.toString().trim();
-				SetClipboard(text_);
-				trace.msg.log("Copied to clipboard!");
-				return;
-			}
-
-			// Ensure we have an Element or Document before querying
-			if (
-				!container ||
-				(container.nodeType !== Node.ELEMENT_NODE &&
-					container.nodeType !== Node.DOCUMENT_NODE)
-			) {
-				isSelecting = false;
-				return;
-			}
-
-			// Get all the spans inside the container.
-			const spans = (container as Element | Document).getElementsByTagName(
-				"span",
-			);
-			for (const span of spans) {
-				if (selection.containsNode(span, true)) {
-					selectedSpans.push(span as HTMLSpanElement);
-				}
-			}
-
-			// Concat the text of the selected spans.
-			let hasCorrectAttribute = false;
-			let text = "";
-			selectedSpans.forEach((span) => {
-				if (span.hasAttribute("data-current")) {
-					hasCorrectAttribute = true;
-					text += span.textContent + "\n";
-					if (
-						[...span.classList].some((className) =>
-							className.startsWith("endOfStanza--"),
-						)
-					) {
-						text += "\n";
-					}
-				}
-			});
-
-			text = text.trim();
-
-			if (hasCorrectAttribute) {
-				SetClipboard(text);
-				trace.msg.log("Copied to clipboard!");
-				selection.removeAllRanges();
-			}
+	const selection = window.getSelection();
+	if (selection?.toString().trim()) {
+		const text = getSelectedLyricsText(selection);
+		if (text.length > 0) {
+			SetClipboard(text);
+			trace.msg.log("Copied to clipboard!");
+			selection.removeAllRanges();
+			suppressUpcomingClick();
 		}
-		isSelecting = false;
 	}
+
+	isPointerDownInLyrics = false;
 };
 
 const onClickHooked = (event: MouseEvent): boolean | undefined => {
-	if (!isSelecting) return;
+	if (!suppressNextClick) return;
 
-	const target = event.target as HTMLElement;
-	if (
-		target.tagName.toLowerCase() === "span" &&
-		target.hasAttribute("data-current")
-	) {
-		// Prevent default behavior and stop event propagation
-		event.preventDefault();
-		event.stopPropagation();
-		event.stopImmediatePropagation();
-		return false;
+	suppressNextClick = false;
+	if (suppressClickResetTimer !== null) {
+		window.clearTimeout(suppressClickResetTimer);
+		suppressClickResetTimer = null;
 	}
-	return undefined;
+	event.preventDefault();
+	event.stopPropagation();
+	event.stopImmediatePropagation();
+	return false;
 };
 
 // Add event listener with capture phase to intercept events before they reach other handlers
@@ -140,4 +195,8 @@ unloads.add((): void => {
 	document.removeEventListener("click", onClickHooked, true);
 	document.removeEventListener("mousedown", onMouseDown);
 	document.removeEventListener("mouseup", onMouseUp);
+	if (suppressClickResetTimer !== null) {
+		window.clearTimeout(suppressClickResetTimer);
+		suppressClickResetTimer = null;
+	}
 });
