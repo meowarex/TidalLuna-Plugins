@@ -1,4 +1,11 @@
-[class^="_lyricsText"] > div > span {
+[data-test="now-playing-lyrics"],
+[data-test="now-playing-lyrics"] span[data-test="lyrics-line"],
+[class*="_lyricsText"] > div > span,
+.rl-wbw-container,
+.rl-wbw-line,
+.rl-wbw-word,
+.rl-wbw-main,
+.rl-wbw-bg-container {
 	user-select: text;
 	cursor: text;
 }
