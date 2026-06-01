@@ -1,29 +1,23 @@
 # Luna Plugins Collection
 
-A collection of Luna plugins for Tidal, ported from Neptune framework.
+A collection of [TidaLuna](https://github.com/Inrixia/TidaLuna) plugins that enhance and personalize the TIDAL Desktop experience. Build them yourself or grab them straight from the Plugin Store. Made with <3
 
 ## Plugins
 
-### 🎨 Obsidian
-**Location:** `plugins/obsidian-theme-luna/`
-
-A dark OLED-friendly theme that transforms Tidal Luna's appearance.
-
-**Features:**
-- Applies a dark, OLED-optimized theme
-- Reduces battery consumption on OLED displays.. i guess <3
-- Modern, sleek dark interface
-
-### 🎵 Radiant Lyrics
+### Radiant Lyrics
 **Location:** `plugins/radiant-lyrics-luna/`
 
 A radiant and beautiful lyrics view for TIDAL with dynamic visual effects.
 
 **Features:**
 - Dynamic cover art backgrounds with blur and rotation effects
+- Complete overhaul of tidals UI
+- Syllable level lyric highlighting
+- Romanization of lyrics
+- Fully customizable
 - Glowing Animated Lyrics with clean scrolling
 
-### 📋 Copy Lyrics
+### Copy Lyrics
 **Location:** `plugins/copy-lyrics-luna/`
 
 Allows users to copy song lyrics by selecting them directly in the interface.
@@ -33,7 +27,7 @@ Allows users to copy song lyrics by selecting them directly in the interface.
 - Automatic clipboard copying of selected lyrics
 - Smart lyric span detection
 
-### 🧽 Element Hider
+### Element Hider
 **Location:** `plugins/element-hider-luna/`
 
 Allows users to hide/remove UI elements by right clicking on them.
@@ -43,7 +37,7 @@ Allows users to hide/remove UI elements by right clicking on them.
 - Automagically saves hidden elements
 - Allows for elements to be restored
 
-### 🎶 Audio Visualizer
+### Audio Visualizer
 **Location:** `plugins/audio-visualizer-luna/`
 
 ⚠️ **Work in Progress** - Audio visualization plugin that displays real-time audio frequency data.
@@ -115,4 +109,3 @@ This project is made for:
 ## Credits
 
 Inrixia | [TidalLuna](https://github.com/Inrixia/TidaLuna) Plugin Framework (The successor Neptune)
-ItzzExcel | The Original Neptune version of "Radiant Lyrics" (Which was ported to Luna and Rewritten by me!)
