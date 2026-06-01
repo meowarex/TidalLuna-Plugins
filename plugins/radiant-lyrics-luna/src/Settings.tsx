@@ -281,7 +281,7 @@ export const Settings = () => {
 				}}
 			/>
 			<AnySwitch
-				title="Romanize Lyrics | Beta"
+				title="Romanize Lyrics"
 				desc="Display romanized (latin) text for non-latin lyrics (e.g. Korean, Japanese, Chinese)"
 				checked={romanizeLyrics}
 				onChange={(_: unknown, checked: boolean) => {

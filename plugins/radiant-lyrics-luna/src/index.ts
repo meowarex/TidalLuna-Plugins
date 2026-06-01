@@ -49,6 +49,14 @@ const toastErr = (msg: string) =>
 // clean up resources
 export const unloads = new Set<LunaUnload>();
 
+// MARKER: Romanization Gate
+const romanizedText = (
+	item: { text?: string | null; romanized?: string | null },
+	fallback = "",
+): string =>
+	(settings.romanizeLyrics && item.romanized ? item.romanized : item.text) ??
+	fallback;
+
 // MARKER: Player Market UI (Ensure new UI is enabled)
 
 function enablePlayerMarketUI() {
@@ -1852,17 +1860,13 @@ const formatLrcTime = (timeSeconds: number): string => {
 
 const buildSyntheticLyricsText = (response: LyricsApiResponse): string =>
 	response.data
-		.map((line) => ("romanized" in line && line.romanized ? line.romanized : line.text))
+		.map((line) => romanizedText(line))
 		.filter((line) => line.trim().length > 0)
 		.join("\n");
 
 const buildSyntheticLrcText = (response: LyricsApiResponse): string =>
 	response.data
-		.map((line) => {
-			const text =
-				("romanized" in line && line.romanized ? line.romanized : line.text) ?? "";
-			return `[${formatLrcTime(line.startTime)}]${text}`;
-		})
+		.map((line) => `[${formatLrcTime(line.startTime)}]${romanizedText(line)}`)
 		.join("\n");
 
 const registerSyntheticNativeLyrics = (
@@ -2432,19 +2436,19 @@ const normalizeLineData = (data: ApiLine[]): WordLine[] => {
 				: startMs + durationMs;
 			const safeSinger = line.element?.singer ?? "v1000";
 			const safeKey = line.element?.key ?? `line-${idx}`;
-			const text = line.romanized ?? line.text;
-
+			// Romanization Gate now decides which text to show (romanized or original)
 			return {
-				text,
+				text: romanizedText(line),
 				startTime: startMs / 1000,
 				duration: durationMs / 1000,
 				endTime: endMs / 1000,
 				syllabus: [
 					{
-						text: `${text} `,
+						text: `${line.text} `,
 						time: startMs,
 						duration: Math.max(1, endMs - startMs),
 						isBackground: false,
+						romanized: line.romanized ? `${line.romanized} ` : undefined,
 					},
 				],
 				element: {
@@ -2805,9 +2809,7 @@ const buildWordSpans = (): {
 			return span;
 		};
 
-		const useRomanized = settings.romanizeLyrics;
-		const sylDisplay = (s: WordTiming) =>
-			useRomanized && s.romanized != null ? s.romanized : s.text;
+		const sylDisplay = (s: WordTiming) => romanizedText(s);
 
 		// Group syllables into words: trailing whitespace in syl.text marks a word boundary
 		const wordGroups: number[][] = [];
@@ -3028,10 +3030,10 @@ const buildTidalLines = (
 	let textIdx = 0;
 	for (const tidalSpan of tidalSpans) {
 		const rawText = tidalSpan.textContent ?? "";
-		const text =
-			settings.romanizeLyrics && romanizedLines?.[textIdx]
-				? romanizedLines[textIdx]
-				: rawText;
+		const text = romanizedText({
+			text: rawText,
+			romanized: romanizedLines?.[textIdx],
+		});
 		if (rawText.trim().length > 0) textIdx++;
 		if (rawText.trim().length === 0) {
 			const spacer = document.createElement("div");
