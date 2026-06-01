@@ -276,85 +276,23 @@ if (existingArtist) attachNpGroups(existingArtist);
 const existingFooter = document.querySelector('[data-test="footer-player"]');
 if (existingFooter) attachPbGroups(existingFooter);
 
-// Audio Connection stuff
+// Audio Connection
 
 const fft = () => settings.fftSize ?? 2048;
 const reactivityToSmoothing = (r: number) => Math.max(0, Math.min(0.95, (100 - r) / 100));
 const smooth = () => reactivityToSmoothing(settings.reactivity ?? 30);
 
 let lastReactivity = settings.reactivity ?? 30;
-let retryTimer: ReturnType<typeof setTimeout> | null = null;
-let retryDelay = 500;
-const MAX_RETRY_DELAY = 5000;
-let silentFrames = 0;
-const SILENT_THRESHOLD = 120;
 
-const clearRetry = (): void => {
-	if (retryTimer !== null) {
-		clearTimeout(retryTimer);
-		retryTimer = null;
-	}
-	retryDelay = 500;
-};
-
-const tryConnect = (): boolean => {
-	const ok = audio.connect(fft(), smooth());
-	if (ok) {
-		clearRetry();
-		silentFrames = 0;
-	}
-	return ok;
-};
-
-const tryReconnect = (): boolean => {
-	const ok = audio.reconnect(fft(), smooth());
-	if (ok) {
-		clearRetry();
-		silentFrames = 0;
-	}
-	return ok;
-};
-
-const scheduleRetry = (): void => {
-	if (retryTimer !== null) return;
-	retryTimer = setTimeout(() => {
-		retryTimer = null;
-		if (!PlayState.playing) return;
-		if (!tryConnect()) {
-			retryDelay = Math.min(retryDelay * 2, MAX_RETRY_DELAY);
-			scheduleRetry();
-		}
-	}, retryDelay);
-};
-
-observe(unloads, "#video-one", () => {
-	log("video-one element observed in DOM");
-	silentFrames = 0;
-	if (PlayState.playing) {
-		if (!tryReconnect()) scheduleRetry();
-	}
+audio.setOnStateChange((state) => {
+	if (state === "live") log("Audio connected");
 });
 
 PlayState.onState(unloads, (state) => {
-	if (state === "PLAYING") {
-		silentFrames = 0;
-		if (!audio.isConnected() || audio.videoChanged()) {
-			if (!tryReconnect()) scheduleRetry();
-		}
-	} else {
-		clearRetry();
-	}
+	if (state === "PLAYING") audio.scan();
 });
 
-MediaItem.onMediaTransition(unloads, () => {
-	log("Media transition");
-	silentFrames = 0;
-	setTimeout(() => {
-		if (PlayState.playing) {
-			if (!tryReconnect()) scheduleRetry();
-		}
-	}, 300);
-});
+MediaItem.onMediaTransition(unloads, () => audio.scan());
 
 // Idle Animation Synthetic Data
 
@@ -478,21 +416,6 @@ const animate = (): void => {
 	const data = audio.sample();
 	const hasSignal = data && audio.hasSignal(data);
 
-	if (PlayState.playing && audio.isConnected()) {
-		if (!hasSignal) {
-			silentFrames++;
-			if (silentFrames >= SILENT_THRESHOLD) {
-				log("Silent for too long, reconnecting...");
-				silentFrames = 0;
-				if (!tryReconnect()) scheduleRetry();
-			}
-		} else {
-			silentFrames = 0;
-		}
-	} else if (PlayState.playing && !audio.isConnected() && retryTimer === null) {
-		scheduleRetry();
-	}
-
 	// idleMode: 0 = animated, 1 = hide when idle, 2 = static when idle
 	const idleMode = settings.idleMode ?? 0;
 	const newIdleHidden = !hasSignal && idleMode === 1;
@@ -521,9 +444,10 @@ const animate = (): void => {
 
 log("Initializing...");
 
-if (PlayState.playing) {
-	if (!tryConnect()) scheduleRetry();
-}
+audio.setFFTSize(fft());
+audio.setSmoothing(smooth());
+audio.init();
+audio.scan();
 
 animationId = requestAnimationFrame(animate);
 
@@ -531,7 +455,6 @@ animationId = requestAnimationFrame(animate);
 
 unloads.add(() => {
 	log("Plugin unloading");
-	clearRetry();
 
 	document.body.classList.remove("av-chromeless");
 
