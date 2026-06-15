@@ -8,7 +8,7 @@ const sylTrace = (...args: unknown[]) => {
 	if (settings.syllableLogging) trace.log(...args);
 };
 
-export const RL_PLATFORM = "Radiant Lyrics";
+export const RL_PLATFORM = "rl";
 
 const RL_ACCESS_TOKEN_ID = "58hy4s86";
 const RL_ACCESS_TOKEN = "xjehy2lfg5h5mjwotoxrcqugam";
