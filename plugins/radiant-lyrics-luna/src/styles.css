@@ -908,15 +908,8 @@ body.rl-integrated-seekbar [data-test="footer-player"] [class*="playerContent"] 
 	box-shadow: none !important;
 }
 
-/* player bar bg & filters + floating player bar */
+/* player bar margin fix */
 ._player_8c80ae6 {
-	background-color: rgba(32, 32, 32, 0.767) !important;
-	backdrop-filter: blur(10px) !important;
-	width: 98vw !important;
-	margin-left: auto !important;
-	margin-right: auto !important;
-	border-radius: 1em !important;
-	margin-bottom: 10px !important;
 	right: 10px !important;
 }
 
