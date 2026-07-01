@@ -917,3 +917,7 @@ body.rl-integrated-seekbar [data-test="footer-player"] [class*="playerContent"] 
 [class*="_playQueueWrapper"] {
 	height: calc(100% - var(--headerHeight) - var(--miniPlayerHeight) - 30px) !important;
 }
+
+/* Removes the veil for the play queue */
+._container_b3e8f28,._container_b3e8f28._nowPlayingVisible_6285d60 {
+  background: rgba(0, 0, 0, 0.402);}
