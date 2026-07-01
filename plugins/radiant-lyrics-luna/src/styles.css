@@ -893,3 +893,34 @@ body.rl-integrated-seekbar [data-test="footer-player"] [class*="playerContent"] 
     background-color: rgba(0, 0, 0, .3) !important;
     backdrop-filter: blur(10px) !important;
 }
+
+/* Floating player bar redesign */
+
+/* Removes new color veil & stuff */
+._player_8c80ae6::before,
+._player_8c80ae6.nowPlayingVisible ._veil_9a0b2e0 {
+	display: none !important;
+}
+
+._player_8c80ae6::after {
+	background: #0000 !important;
+	backdrop-filter: none !important;
+	box-shadow: none !important;
+}
+
+/* player bar bg & filters + floating player bar */
+._player_8c80ae6 {
+	background-color: rgba(32, 32, 32, 0.767) !important;
+	backdrop-filter: blur(10px) !important;
+	width: 98vw !important;
+	margin-left: auto !important;
+	margin-right: auto !important;
+	border-radius: 1em !important;
+	margin-bottom: 10px !important;
+	right: 10px !important;
+}
+
+/* stops the play queue from running under the floating player bar */
+[class*="_playQueueWrapper"] {
+	height: calc(100% - var(--headerHeight) - var(--miniPlayerHeight) - 30px) !important;
+}
