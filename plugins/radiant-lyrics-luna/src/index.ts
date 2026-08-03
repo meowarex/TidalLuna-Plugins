@@ -2370,7 +2370,7 @@ const scheduleRemoteTrackChangeResync = (attempt = 0): void => {
 				return;
 			}
 			snapPlaybackInterpolationToPlayer();
-			resync(false);
+			resync();
 			sylLog("[RL-Syllable] Post-track-change resync");
 		},
 		150,
@@ -3643,15 +3643,11 @@ const scrollToActiveLine = (): void => {
 };
 
 // Resync lyric scroll (scrubbing and lyric jumps)
-const resync = (syncNativeButton = true): void => {
+const resync = (): void => {
 	setScrollSynced(true);
 	applyInactiveBlurState(primaryLineIdx, activeLineIdxs.size === 0, activeLineIdxs);
 	scrollToActiveLine();
-	const nativeSyncButton = syncButtonEl;
 	unhookSyncButton();
-	if (syncNativeButton && nativeSyncButton?.isConnected) {
-		nativeSyncButton.click();
-	}
 	sylLog("[RL-Syllable] Scroll resynced");
 };
 
@@ -3688,7 +3684,7 @@ const SYNC_BTN_SELECTOR = 'div[class*="_syncButton"] button';
 
 const attachSyncButtonHandler = (btn: HTMLElement): void => {
 	syncButtonEl = btn;
-	const handler = () => resync(false);
+	const handler = () => resync();
 	btn.addEventListener("click", handler);
 	syncButtonListener = () => btn.removeEventListener("click", handler);
 };
