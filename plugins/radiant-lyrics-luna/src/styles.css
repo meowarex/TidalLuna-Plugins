@@ -553,6 +553,16 @@ body.rl-integrated-seekbar [data-test="footer-player"] [class*="playerContent"] 
 	/* biome-ignore lint: Must beat Tidal _hasCues_ opacity */
 	opacity: 1 !important;
 	line-height: 1.15;
+}
+
+/* Switch from !important to specify classes (fixes _hasCues_) */
+.rl-wbw-container .rl-wbw-word,
+.rl-wbw-active [data-test="lyrics-intro"] {
+	transform: none;
+	filter: none;
+}
+
+.rl-wbw-container .rl-wbw-word {
 	transition:
 		text-shadow 0.15s ease-out,
 		color 0.15s ease-out;
