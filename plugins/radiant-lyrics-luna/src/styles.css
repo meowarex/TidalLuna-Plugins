@@ -446,6 +446,7 @@ body.rl-integrated-seekbar [data-test="footer-player"] [class*="playerContent"] 
 .rl-wbw-line {
 	--rl-line-shift: 20px;
 	text-align: left;
+	line-height: 1.15;
 	padding-left: 0;
 	padding-right: var(--rl-line-shift);
 	filter: none;
