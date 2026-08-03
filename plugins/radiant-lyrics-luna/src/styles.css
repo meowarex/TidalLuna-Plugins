@@ -568,6 +568,11 @@ body.rl-integrated-seekbar [data-test="footer-player"] [class*="playerContent"] 
 		color 0.15s ease-out;
 }
 
+/* Hides sync button untilt he user aactually scrolls (Stops tidal from thinking RL line changes are user scroll) */
+body.rl-owns-lyric-scroll [class*="_syncButtonContainer_"] {
+	display: none !important;
+}
+
 /* Hover word (Grouped Syllables) */
 .rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word:hover,
 .rl-wbw-line:not(.rl-wbw-line-active) > .rl-wbw-word.rl-wbw-word-hover,
