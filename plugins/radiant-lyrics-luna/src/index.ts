@@ -2050,6 +2050,19 @@ let syncButtonListener: (() => void) | null = null;
 let syncButtonEl: HTMLElement | null = null;
 let syncButtonObserverUnload: (() => void) | null = null;
 
+/* Stops tidal from thinking RL line changes are User Scrolls (Hides sync button manually until user scrolls) */
+const applyScrollOwnerState = (): void => {
+	document.body.classList.toggle(
+		"rl-owns-lyric-scroll",
+		isActive && scrollSynced,
+	);
+};
+
+const setScrollSynced = (value: boolean): void => {
+	scrollSynced = value;
+	applyScrollOwnerState();
+};
+
 // scroll bounce animation state
 let scrollAnimIsAnimating = false;
 let scrollAnimPending: {
@@ -3518,9 +3531,10 @@ const teardown = (): void => {
 	clearLineSlideTimers();
 	clearSyntheticNativeLyrics();
 	restoreTidalLyrics();
+	applyScrollOwnerState();
 };
 
-// find scrollable parent — walk up but never past the now-playing boundary
+// find scrollable parent
 // to avoid scrolling a shared ancestor that would shift the play queue
 const findScroller = (el: HTMLElement): HTMLElement => {
 	const lyricsPanel = el.closest(
@@ -3630,7 +3644,7 @@ const scrollToActiveLine = (): void => {
 
 // Resync lyric scroll (scrubbing and lyric jumps)
 const resync = (syncNativeButton = true): void => {
-	scrollSynced = true;
+	setScrollSynced(true);
 	applyInactiveBlurState(primaryLineIdx, activeLineIdxs.size === 0, activeLineIdxs);
 	scrollToActiveLine();
 	const nativeSyncButton = syncButtonEl;
@@ -3646,7 +3660,7 @@ const hookUserScroll = (parent: HTMLElement): void => {
 	unhookUserScroll();
 	const onUserScroll = () => {
 		if (!scrollSynced) return;
-		scrollSynced = false;
+		setScrollSynced(false);
 		clearScrollAnim();
 		if (settings.blurInactive) {
 			clearInactiveBlurState();
@@ -3711,6 +3725,7 @@ const unhookSyncButton = (): void => {
 // Tick Loop: determine active line and word
 const startTickLoop = (): void => {
 	clearTickLoop();
+	applyScrollOwnerState();
 
 	sylLog("[RL-Syllable] Tick loop started");
 
