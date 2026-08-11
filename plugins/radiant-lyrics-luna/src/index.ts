@@ -1377,7 +1377,7 @@ const ensureStickyDropdown = (): HTMLElement => {
 			</label>
 		</div>
 		<div class="sticky-lyrics-dropdown-row">
-			<span class="sticky-lyrics-label">AI Syllables</span>
+			<span class="sticky-lyrics-label">AI Syllables | WIP</span>
 			<label class="sticky-lyrics-switch">
 				<input type="checkbox" data-setting="aiSyllables" ${settings.aiSyllables ? "checked" : ""}>
 				<span class="sticky-lyrics-slider"></span>

@@ -318,7 +318,7 @@ export const Settings = () => {
 				}}
 			/>
 			<AnySwitch
-				title="AI Generated Syllables"
+				title="WIP | AI Generated Syllables"
 				desc="Radiant AI generates word & syllable timings from the Line timings"
 				checked={aiSyllables}
 				onChange={(_: unknown, checked: boolean) => {
