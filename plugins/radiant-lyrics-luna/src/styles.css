@@ -142,6 +142,11 @@ body.rl-dropdown-open [data-test="toggle-lyrics"] {
 	gap: 10px;
 }
 
+/* Breathing room between stacked rows */
+.sticky-lyrics-dropdown-row + .sticky-lyrics-dropdown-row {
+	margin-top: 8px;
+}
+
 .sticky-lyrics-label {
 	font-size: 11px;
 	font-weight: 600;
@@ -599,21 +604,21 @@ body.rl-owns-lyric-scroll [class*="_syncButtonContainer_"] {
 @keyframes rl-wipe {
 	from {
 		background-size:
-			0.75em 100%,
+			var(--rl-wipe-feather, 0.75em) 100%,
 			0% 100%,
 			100% 100%;
 		background-position:
-			-0.375em 0%,
+			calc(var(--rl-wipe-feather, 0.75em) / -2) 0%,
 			left,
 			left;
 	}
 	to {
 		background-size:
-			0.75em 100%,
+			var(--rl-wipe-feather, 0.75em) 100%,
 			100% 100%,
 			100% 100%;
 		background-position:
-			calc(100% + 0.375em) 0%,
+			calc(100% + var(--rl-wipe-feather, 0.75em) / 2) 0%,
 			left,
 			left;
 	}
@@ -640,17 +645,26 @@ body.rl-owns-lyric-scroll [class*="_syncButtonContainer_"] {
 		linear-gradient(90deg, var(--cl-glow1, #fff) 100%, transparent 100%),
 		linear-gradient(90deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4));
 	background-size:
-		0.75em 100%,
+		var(--rl-wipe-feather, 0.75em) 100%,
 		0% 100%,
 		100% 100%;
 	background-position:
-		-0.375em 0%,
+		calc(var(--rl-wipe-feather, 0.75em) / -2) 0%,
 		left,
 		left;
 	/* biome-ignore lint: No glow for syllable mode */
 	text-shadow: none !important;
 	/* biome-ignore lint: No glow for syllable mode */
 	filter: none !important;
+}
+
+/* AI-generated timing: soften word-mode color flips so a boundary that's off
+   by a bit has no crisp edge to expose it. Per-span --rl-wipe-feather is set
+   inline from the AI model's confidence. SUPER WIP */
+.rl-wbw-container.rl-ai .rl-wbw-word {
+	transition:
+		text-shadow 0.25s ease-out,
+		color 0.3s ease-out;
 }
 
 /* Syllable finished: word stays Colorama color */

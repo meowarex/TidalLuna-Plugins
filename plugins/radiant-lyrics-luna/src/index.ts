@@ -11,6 +11,7 @@ import {
 } from "@luna/lib";
 import {
 	type ApiLine,
+	type LineLyricsResponse,
 	type LyricsApiResponse,
 	type WordLine,
 	type WordTiming,
@@ -1368,6 +1369,19 @@ const ensureStickyDropdown = (): HTMLElement => {
 				<input type="checkbox" data-setting="stickyLyrics" ${settings.stickyLyrics ? "checked" : ""}>
 				<span class="sticky-lyrics-slider"></span>
 			</label>
+		</div>		<div class="sticky-lyrics-dropdown-row">
+			<span class="sticky-lyrics-label">Romanization</span>
+			<label class="sticky-lyrics-switch">
+				<input type="checkbox" data-setting="romanizeLyrics" ${settings.romanizeLyrics ? "checked" : ""}>
+				<span class="sticky-lyrics-slider"></span>
+			</label>
+		</div>
+		<div class="sticky-lyrics-dropdown-row">
+			<span class="sticky-lyrics-label">AI Syllables | WIP</span>
+			<label class="sticky-lyrics-switch">
+				<input type="checkbox" data-setting="aiSyllables" ${settings.aiSyllables ? "checked" : ""}>
+				<span class="sticky-lyrics-slider"></span>
+			</label>
 		</div>
 		<div class="sticky-lyrics-dropdown-row rl-style-row">
 			<div class="rl-seg-control">
@@ -1387,6 +1401,26 @@ const ensureStickyDropdown = (): HTMLElement => {
 		if (settings.stickyLyrics) {
 			handleStickyLyricsTrackChange();
 		}
+	});
+
+	// AI Generated Syllables (Radiant AI [RL API])
+	const synthCheckbox = dropdown.querySelector(
+		'input[data-setting="aiSyllables"]',
+	) as HTMLInputElement;
+	synthCheckbox.addEventListener("change", () => {
+		settings.aiSyllables = synthCheckbox.checked;
+		(window as any).updateAiSyllablesSetting?.(synthCheckbox.checked);
+		updateAiSyllablesFromSettings();
+	});
+
+	// Romanization (mirrors the Romanize Lyrics setting)
+	const romanizeCheckbox = dropdown.querySelector(
+		'input[data-setting="romanizeLyrics"]',
+	) as HTMLInputElement;
+	romanizeCheckbox.addEventListener("change", () => {
+		settings.romanizeLyrics = romanizeCheckbox.checked;
+		(window as any).updateRomanizeLyricsSetting?.(romanizeCheckbox.checked);
+		updateRomanizeLyricsFromSettings();
 	});
 
 	const styleNames = ["Line", "Word", "Syllable"];
@@ -1622,6 +1656,7 @@ interface SyntheticNativeLyricsState {
 let trackChangeToken = 0;
 let lyricsData: WordLine[] | null = null;
 let lyricsResponse: LyricsApiResponse | null = null;
+let lyricsIsAiGenerated = false;
 let lyricsMode: LyricsOverlayMode = "none";
 let tickLoopUnload: LunaUnload | null = null;
 let isActive = false;
@@ -2418,16 +2453,41 @@ const fetchLyrics = async (
 	artist: string,
 	isrc?: string,
 ): Promise<LyricsApiResponse | null> => {
-	const cacheKey = `${title}\0${artist}\0${isrc ?? ""}\0${settings.romanizeLyrics ? "r" : ""}`;
+	const cacheKey = `${title}\0${artist}\0${isrc ?? ""}\0${settings.romanizeLyrics ? "r" : ""}${settings.aiSyllables ? "a" : ""}`;
 	if (cachedLyricsKey === cacheKey) {
 		sylLog(`[RL-Syllable] Cache hit for "${title}" by "${artist}"`);
 		return cachedLyricsData;
 	}
+
+	// AI toggled off mid song, AI response has the original lines (no refetch)
+	if (
+		!settings.aiSyllables &&
+		cachedLyricsKey === `${cacheKey}a` &&
+		cachedLyricsData?.type === "Word" &&
+		cachedLyricsData._synthesized &&
+		cachedLyricsData.lines
+	) {
+		const derived: LineLyricsResponse = {
+			type: "Line",
+			data: cachedLyricsData.lines,
+			metadata: {
+				...cachedLyricsData.metadata,
+				source: cachedLyricsData.metadata.source.replace(/ • AI$/, ""),
+			},
+			_cached: cachedLyricsData._cached,
+		};
+		cachedLyricsKey = cacheKey;
+		cachedLyricsData = derived;
+		sylLog(`[RL-Syllable] AI off — using line timings from the AI response`);
+		return derived;
+	}
+
 	const data = await fetchLyricsApi(
 		title,
 		artist,
 		isrc,
 		settings.romanizeLyrics,
+		settings.aiSyllables,
 	);
 	cachedLyricsKey = cacheKey;
 	cachedLyricsData = data;
@@ -2689,6 +2749,7 @@ const buildWordSpans = (): {
 	if (settings.blurInactive && scrollSynced && blurActivated)
 		wbwContainer.classList.add("rl-blur-active");
 	if (settings.bubbledLyrics) wbwContainer.classList.add("rl-bubbled");
+	if (lyricsIsAiGenerated) wbwContainer.classList.add("rl-ai");
 	const effectiveStyle = getLyricsStyle();
 	const allowWordSylStyles = isWordMode();
 	// MARKER: Syllable animations (WIP coming soon)
@@ -2804,6 +2865,7 @@ const buildWordSpans = (): {
 			text: string,
 			seekMs: number,
 			bg: boolean,
+			confidence?: number,
 		): HTMLSpanElement => {
 			const span = document.createElement("span");
 			span.className = "rl-wbw-word";
@@ -2813,6 +2875,12 @@ const buildWordSpans = (): {
 				span.textContent = text;
 			}
 			forceStyle(span, WORD_SPAN_STYLE);
+			// Confidence-proportional wipe feather: crisp edges where the
+			// synthesizer had real evidence, soft where it guessed. SUPER WIP
+			if (confidence !== undefined) {
+				const feather = 0.55 + (1 - Math.max(0, Math.min(1, confidence))) * 1.3;
+				span.style.setProperty("--rl-wipe-feather", `${feather.toFixed(2)}em`);
+			}
 			if (bg) span.classList.add("rl-wbw-bg");
 			span.addEventListener("click", () => {
 				PlayState.seek(seekMs / 1000);
@@ -2898,6 +2966,7 @@ const buildWordSpans = (): {
 							sylDisplay(syl).trimEnd(),
 							wordStartMs,
 							syl.isBackground,
+							syl.confidence,
 						);
 						span.addEventListener("mouseenter", () => {
 							for (const s of groupSpans) s.classList.add("rl-wbw-word-hover");
@@ -2925,7 +2994,7 @@ const buildWordSpans = (): {
 					const start = firstSyl.time;
 					const end = lastSyl.time + lastSyl.duration;
 					const bg = firstSyl.isBackground;
-					const span = makeSpan(mergedText, start, bg);
+					const span = makeSpan(mergedText, start, bg, firstSyl.confidence);
 					targetContainer.appendChild(span);
 					const entry: WordEntry = {
 						el: span,
@@ -3523,6 +3592,7 @@ const teardown = (): void => {
 	lyricsMode = "none";
 	lyricsData = null;
 	lyricsResponse = null;
+	lyricsIsAiGenerated = false;
 	lines = [];
 	activeWordEls.clear();
 	activeBgWordEls.clear();
@@ -4126,6 +4196,15 @@ const onTrackChange = async (): Promise<void> => {
 		);
 
 		unlockFlush();
+
+		// MARKER: Radiant AI Syllables [RL API]
+		if (response.type === "Word" && response._synthesized) {
+			lyricsIsAiGenerated = true;
+			sylLog(
+				`[RL-Syllable] AI generated syllable timings for ${response.data.length} lines (source: ${response.metadata.source})`,
+			);
+		}
+
 		lyricsMode = response.type === "Word" ? "word" : "line-api";
 		if (token !== trackChangeToken) return;
 		lyricsData =
@@ -4278,6 +4357,10 @@ const updateLyricsStyleFromSettings = (): void => {
 (window as any).updateLyricsStyle = updateLyricsStyleFromSettings;
 
 const updateRomanizeLyricsFromSettings = (): void => {
+	const checkbox = document.querySelector(
+		'input[data-setting="romanizeLyrics"]',
+	) as HTMLInputElement | null;
+	if (checkbox) checkbox.checked = settings.romanizeLyrics;
 	cachedLyricsKey = null;
 	cachedLyricsData = null;
 	cachedTidalRomanizeKey = null;
@@ -4285,6 +4368,19 @@ const updateRomanizeLyricsFromSettings = (): void => {
 	toggle();
 };
 (window as any).updateRomanizeLyrics = updateRomanizeLyricsFromSettings;
+
+// Turning AI off reuses the line timings the AI response already has (no refetch). turning it on refetches with ?synthesize=true
+const updateAiSyllablesFromSettings = (): void => {
+	const checkbox = document.querySelector(
+		'input[data-setting="aiSyllables"]',
+	) as HTMLInputElement | null;
+	if (checkbox) checkbox.checked = settings.aiSyllables;
+	sylLog(
+		`[RL-Syllable] AI Generated Syllables ${settings.aiSyllables ? "enabled" : "disabled"}`,
+	);
+	toggle();
+};
+(window as any).updateAiSyllables = updateAiSyllablesFromSettings;
 
 // Update lyrics on track change (wipe cache for new song)
 onGlobalTrackChange(() => {

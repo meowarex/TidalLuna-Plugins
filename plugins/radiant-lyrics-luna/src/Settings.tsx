@@ -17,6 +17,8 @@ declare global {
 		updateLyricsStyleSetting?: (value: number) => void;
 		updateRomanizeLyrics?: () => void;
 		updateRomanizeLyricsSetting?: (checked: boolean) => void;
+		updateAiSyllables?: () => void;
+		updateAiSyllablesSetting?: (checked: boolean) => void;
 	}
 }
 
@@ -29,6 +31,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	contextAwareLyrics: true,
 	bubbledLyrics: true,
 	romanizeLyrics: false,
+	aiSyllables: false,
 	stickyLyrics: false,
 	syllableStyle: 0, // MARKER: Syllable animations SETTINGS (WIP coming soon)
 	syllableLogging: false,
@@ -171,6 +174,16 @@ export const Settings = () => {
 			window.updateRomanizeLyricsSetting = undefined;
 		};
 	}, []);
+	const [aiSyllables, setAiSyllables] = React.useState(
+		settings.aiSyllables,
+	);
+	React.useEffect(() => {
+		window.updateAiSyllablesSetting = (checked: boolean) =>
+			setAiSyllables(checked);
+		return () => {
+			window.updateAiSyllablesSetting = undefined;
+		};
+	}, []);
 
 	// Derive props and override onChange to accept a broader first param type
 	type BaseSwitchProps = React.ComponentProps<typeof LunaSwitchSetting>;
@@ -279,6 +292,18 @@ export const Settings = () => {
 						window.updateLyricsStyle();
 					}
 				}}
+      />
+      <AnySwitch
+				title="Sticky Lyrics"
+				desc="auto-switches to Play Queue when lyrics aren't available (mirrored in lyrics dropdown)"
+				checked={stickyLyrics}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.stickyLyrics = checked;
+					setStickyLyrics(checked);
+					if (window.updateStickyLyricsFeature) {
+						window.updateStickyLyricsFeature();
+					}
+				}}
 			/>
 			<AnySwitch
 				title="Romanize Lyrics"
@@ -293,14 +318,14 @@ export const Settings = () => {
 				}}
 			/>
 			<AnySwitch
-				title="Sticky Lyrics"
-				desc="auto-switches to Play Queue when lyrics aren't available (mirrored in lyrics dropdown)"
-				checked={stickyLyrics}
+				title="WIP | AI Generated Syllables"
+				desc="Radiant AI generates word & syllable timings from the Line timings"
+				checked={aiSyllables}
 				onChange={(_: unknown, checked: boolean) => {
-					settings.stickyLyrics = checked;
-					setStickyLyrics(checked);
-					if (window.updateStickyLyricsFeature) {
-						window.updateStickyLyricsFeature();
+					settings.aiSyllables = checked;
+					setAiSyllables(checked);
+					if (window.updateAiSyllables) {
+						window.updateAiSyllables();
 					}
 				}}
 			/>
