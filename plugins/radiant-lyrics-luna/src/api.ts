@@ -43,12 +43,13 @@ function query(
 	title: string,
 	artist: string,
 	isrc: string | undefined,
-	options?: { romanize?: boolean; flush?: boolean },
+	options?: { romanize?: boolean; flush?: boolean; synthesize?: boolean },
 ): string {
 	let q = `?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
 	if (isrc) q += `&isrc=${encodeURIComponent(isrc)}`;
 	if (options?.romanize) q += "&romanize=true";
 	if (options?.flush) q += "&flush=true";
+	if (options?.synthesize) q += "&synthesize=true";
 	q += `&${platformQs}`;
 	return q;
 }
@@ -61,6 +62,8 @@ export interface WordTiming {
 	duration: number;
 	isBackground: boolean;
 	romanized?: string;
+	/** 0..1 model confidence for synthesized timings; unset for provider data */
+	confidence?: number;
 }
 
 export interface WordLine {
@@ -107,6 +110,10 @@ export interface WordLyricsResponse {
 		songParts?: Array<{ name: string; time: number; duration: number }>;
 	};
 	_cached?: boolean;
+	/** true when timings came from the hosted Radiant AI model (?synthesize=true) */
+	_synthesized?: boolean;
+	/** original line-level data, kept so AI timings can be toggled off without a refetch */
+	lines?: ApiLine[];
 }
 
 export interface LineLyricsResponse {
@@ -137,8 +144,9 @@ export async function fetchLyrics(
 	artist: string,
 	isrc: string | undefined,
 	romanize: boolean,
+	synthesize = false,
 ): Promise<LyricsApiResponse | null> {
-	const params = query(title, artist, isrc, { romanize });
+	const params = query(title, artist, isrc, { romanize, synthesize });
 	const atomixUrl = `https://api.atomix.one/rl-api${params}`;
 	const fallbackUrl = `https://rl-api.kineticsand.net/lyrics${params}`;
 
