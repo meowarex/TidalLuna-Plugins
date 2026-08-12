@@ -19,14 +19,10 @@ import {
 	flushLyrics as flushLyricsApi,
 	romanizeLyrics as romanizeLyricsApi,
 } from "./api";
+import { KawarpLayer } from "./backdrop";
 import { Settings, settings } from "./Settings";
 
-// Interpret integer backgroundScale (e.g., 10=1.0x, 20=2.0x)
-const getScaledMultiplier = (): number => {
-	const value = settings.backgroundScale;
-	return value / 10;
-};
-
+import backdropStylesCss from "file://backdrop-styles.css?minify";
 import coverEverywhereCss from "file://cover-everywhere.css?minify";
 import floatingPlayerBarCss from "file://floating-player-bar.css?minify";
 import lyricsGlow from "file://lyrics-glow.css?minify";
@@ -429,8 +425,8 @@ observe<HTMLElement>(unloads, '[data-test="footer-player"]', () => {
 	applyIntegratedSeekBar();
 });
 
-// Apply styles.css
-baseStyleTag.css = baseStyles;
+// Apply styles.css + backdrop keyframes (Now Playing needs these even with Cover Everywhere off)
+baseStyleTag.css = `${baseStyles}\n${backdropStylesCss}`;
 
 // Lyrics glow vars & lyrics-glow.css (when enabled)
 const updateRadiantLyricsTextGlow = function (): void {
@@ -681,48 +677,174 @@ const createHideUIButton = function (): void {
 	buttonContainer.insertBefore(hideUIButton, closeButton);
 };
 
-// MARKER: Background Rendering
-// Variable setup
+// MARKER: Background Rendering (Kawarp Shader)
+// cover art URL -> kawarp -> Animated Backdrop <3
 let globalSpinningBgStyleTag: StyleTag | null = null;
 let globalBackgroundContainer: HTMLElement | null = null;
-let globalBackgroundImage: HTMLImageElement | null = null;
-let globalBlackBg: HTMLElement | null = null;
-let globalGradientOverlay: HTMLElement | null = null;
-let currentGlobalCoverSrc: string | null = null;
-let lastUpdateTime = 0;
-const getUpdateThrottle = () => (settings.performanceMode ? 1500 : 500);
-
-// Now Playing background caching
 let nowPlayingBackgroundContainer: HTMLElement | null = null;
-let nowPlayingBackgroundImage: HTMLImageElement | null = null;
-let nowPlayingBlackBg: HTMLElement | null = null;
-let nowPlayingGradientOverlay: HTMLElement | null = null;
-let spinAnimationAdded = false;
+let currentCoverSrc: string | null = null;
 
-// apply scaled pixel sizes to cover art
-const applyScaledPixelSize = (img: HTMLImageElement | null): void => {
-	if (!img) return;
-	const scale = getScaledMultiplier();
-	const apply = () => {
-		const w = img.naturalWidth;
-		const h = img.naturalHeight;
-		if (w > 0 && h > 0) {
-			const wPx = Math.round(w * scale);
-			const hPx = Math.round(h * scale);
-			const wStr = `${wPx}px`;
-			const hStr = `${hPx}px`;
-			if (img.style.width !== wStr) img.style.width = wStr;
-			if (img.style.height !== hStr) img.style.height = hStr;
-		}
-	};
-	if (img.complete && img.naturalWidth > 0) {
-		apply();
-	} else {
-		img.addEventListener("load", apply, { once: true });
-	}
+const kawarpLayers: {
+	global: KawarpLayer | null;
+	nowPlaying: KawarpLayer | null;
+} = { global: null, nowPlaying: null };
+
+const disposeKawarpLayer = (slot: "global" | "nowPlaying"): void => {
+	kawarpLayers[slot]?.dispose();
+	kawarpLayers[slot] = null;
 };
 
-// Update Cover Art background for Now Playing and Global
+/**
+ * Only ever run one shader chain
+ */
+// Now Playing view slides = ~1 second (stops frozen backdrop on reveal) [Super WIP]
+const PAUSE_GRACE_MS = 1500;
+const pauseHiddenSince: { global: number; nowPlaying: number } = {
+	global: 0,
+	nowPlaying: 0,
+};
+
+const setLayerRunning = (
+	slot: "global" | "nowPlaying",
+	layer: KawarpLayer | null,
+	shouldRun: boolean,
+	now: number,
+): void => {
+	if (!layer) return;
+	if (shouldRun) {
+		pauseHiddenSince[slot] = 0;
+		layer.setPaused(false);
+		return;
+	}
+	// window hidden [Untested dk why it wouldn't work tho]
+	if (document.hidden) {
+		pauseHiddenSince[slot] = 0;
+		layer.setPaused(true);
+		return;
+	}
+	if (pauseHiddenSince[slot] === 0) pauseHiddenSince[slot] = now;
+	if (now - pauseHiddenSince[slot] >= PAUSE_GRACE_MS) layer.setPaused(true);
+};
+
+const syncBackdropActivity = (): void => {
+	const nowPlaying = kawarpLayers.nowPlaying;
+	const global = kawarpLayers.global;
+	const nowPlayingVisible = nowPlaying?.isVisible() ?? false;
+	const now = Date.now();
+
+	// Ramp shader down when playback pauses (maybe not the best way but it does work sooo)
+	const playing = settings.backdropPlaybackReactive
+		? reduxPlaybackIsPlaying()
+		: true;
+	nowPlaying?.setPlaying(playing);
+	global?.setPlaying(playing);
+
+	setLayerRunning(
+		"nowPlaying",
+		nowPlaying,
+		!document.hidden && nowPlayingVisible && playing,
+		now,
+	);
+	// keep animating underneath for whole slide (stops freeze before hidden) [Super WIP]
+	setLayerRunning(
+		"global",
+		global,
+		!document.hidden &&
+			!nowPlayingVisible &&
+			playing &&
+			(global?.isVisible() ?? false),
+		now,
+	);
+};
+
+/** cover art @ resolution worth sampling */
+const getCoverArtSrc = (): string | null => {
+	const targetRes = settings.performanceMode ? "640x640" : "1280x1280";
+	const img = document.querySelector(
+		'[data-test="current-media-imagery"] img',
+	) as HTMLImageElement | null;
+	if (img?.src) return img.src.replace(/\d+x\d+/, targetRes);
+
+	const video = document.querySelector(
+		'[data-test="current-media-imagery"] video',
+	) as HTMLVideoElement | null;
+	const poster = video?.getAttribute("poster");
+	return poster ? poster.replace(/\d+x\d+/, targetRes) : null;
+};
+
+/** Mount/remount kawarp canvas */
+const ensureLayer = (
+	slot: "global" | "nowPlaying",
+	container: HTMLElement,
+	zIndex: string,
+): KawarpLayer | null => {
+	let layer = kawarpLayers[slot];
+	if (layer && !layer.isMountedIn(container)) {
+		// Tidal rebuilt the container
+		disposeKawarpLayer(slot);
+		layer = null;
+	}
+	if (!layer) {
+		layer = new KawarpLayer(container, slot, zIndex);
+		kawarpLayers[slot] = layer;
+	}
+	return layer;
+};
+
+// Apply backdrop across whole app (cover everywhere)
+const applyGlobalBackdrop = (coverArtImageSrc: string): void => {
+	if (!settings.CoverEverywhere) {
+		cleanUpGlobalBackground();
+		return;
+	}
+
+	const appContainer = document.querySelector(
+		'[data-test="main"]',
+	) as HTMLElement | null;
+	if (!appContainer) return;
+
+	if (!globalSpinningBgStyleTag) {
+		globalSpinningBgStyleTag = new StyleTag(
+			"RadiantLyrics-global-backdrop",
+			unloads,
+			coverEverywhereCss,
+		);
+	}
+
+	if (!globalBackgroundContainer?.isConnected) {
+		globalBackgroundContainer = document.createElement("div");
+		globalBackgroundContainer.className = "global-background-container";
+		appContainer.appendChild(globalBackgroundContainer);
+	}
+
+	ensureLayer("global", globalBackgroundContainer, "-1")?.apply(
+		coverArtImageSrc,
+	);
+};
+
+// Apply backdrop in Now Playing
+const applyNowPlayingBackdrop = (coverArtImageSrc: string): void => {
+	const nowPlayingContainerElement = document.querySelector(
+		'[class*="_nowPlayingContainer"]',
+	) as HTMLElement | null;
+	if (!nowPlayingContainerElement) return;
+
+	if (
+		!nowPlayingBackgroundContainer?.isConnected ||
+		!nowPlayingContainerElement.contains(nowPlayingBackgroundContainer)
+	) {
+		nowPlayingBackgroundContainer = document.createElement("div");
+		nowPlayingBackgroundContainer.className =
+			"now-playing-background-container";
+		nowPlayingContainerElement.appendChild(nowPlayingBackgroundContainer);
+	}
+
+	ensureLayer("nowPlaying", nowPlayingBackgroundContainer, "0")?.apply(
+		coverArtImageSrc,
+	);
+};
+
+// Feed cover art into both backdrops
 function updateCoverArtBackground(method: number = 0): void {
 	if (method === 1) {
 		safeTimeout(
@@ -735,315 +857,30 @@ function updateCoverArtBackground(method: number = 0): void {
 		return;
 	}
 
-	const coverArtImageElement = document.querySelector(
-		'[data-test="current-media-imagery"] img',
-	) as HTMLImageElement;
-	let coverArtImageSrc: string | null = null;
-
-	if (coverArtImageElement) {
-		coverArtImageSrc = coverArtImageElement.src;
-		// Use higher resolution for better quality, but consider performance mode
-		const targetRes = settings.performanceMode ? "640x640" : "1280x1280";
-		coverArtImageSrc = coverArtImageSrc.replace(/\d+x\d+/, targetRes);
-		if (coverArtImageElement.src !== coverArtImageSrc) {
-			coverArtImageElement.src = coverArtImageSrc;
-		}
-	} else {
-		const videoElement = document.querySelector(
-			'[data-test="current-media-imagery"] video',
-		) as HTMLVideoElement;
-		if (videoElement) {
-			coverArtImageSrc = videoElement.getAttribute("poster");
-			if (coverArtImageSrc) {
-				const targetRes = settings.performanceMode ? "640x640" : "1280x1280";
-				coverArtImageSrc = coverArtImageSrc.replace(/\d+x\d+/, targetRes);
-			}
-		} else {
-			cleanUpDynamicArt();
-			return;
-		}
-	}
-
-	// Update backgrounds when we have a valid cover art source
-	if (coverArtImageSrc) {
-		// Apply global spinning background if enabled
-		if (settings.CoverEverywhere) {
-			applyGlobalSpinningBackground(coverArtImageSrc);
-		}
-
-		// Apply spinning CoverArt background to the Now Playing container - OPTIMIZED
-		const nowPlayingContainerElement = document.querySelector(
-			'[class*="_nowPlayingContainer"]',
-		) as HTMLElement;
-		if (nowPlayingContainerElement) {
-			// Create DOM structure if it doesn't exist (REUSE ELEMENTS)
-			if (
-				!nowPlayingBackgroundContainer ||
-				!nowPlayingContainerElement.contains(nowPlayingBackgroundContainer)
-			) {
-				// Clean up any old elements first
-				nowPlayingContainerElement
-					.querySelectorAll(
-						".now-playing-background-image, .now-playing-black-bg, .now-playing-gradient-overlay",
-					)
-					.forEach((el) => {
-						el.remove();
-					});
-
-				// Create container
-				nowPlayingBackgroundContainer = document.createElement("div");
-				nowPlayingBackgroundContainer.className =
-					"now-playing-background-container";
-				nowPlayingBackgroundContainer.style.cssText = `
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    height: 100%;
-                    z-index: 0;
-                    pointer-events: none;
-                    overflow: hidden;
-                `;
-				nowPlayingContainerElement.appendChild(nowPlayingBackgroundContainer);
-
-				// Create black background layer
-				nowPlayingBlackBg = document.createElement("div");
-				nowPlayingBlackBg.className = "now-playing-black-bg";
-				nowPlayingBlackBg.style.cssText = `
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: #000;
-                    z-index: 0;
-                `;
-				nowPlayingBackgroundContainer.appendChild(nowPlayingBlackBg);
-
-				// Create image element
-				nowPlayingBackgroundImage = document.createElement("img");
-				nowPlayingBackgroundImage.className = "now-playing-background-image";
-				nowPlayingBackgroundImage.style.cssText = `
-                    position: absolute;
-                    left: 50%;
-                    top: 50%;
-                    transform: translate(-50%, -50%);
-                    object-fit: cover;
-                    z-index: 1;
-                    will-change: transform;
-                    transform-origin: center center;
-                `;
-				nowPlayingBackgroundContainer.appendChild(nowPlayingBackgroundImage);
-
-				// Create gradient overlay
-				nowPlayingGradientOverlay = document.createElement("div");
-				nowPlayingGradientOverlay.className = "now-playing-gradient-overlay";
-				nowPlayingGradientOverlay.style.cssText = `
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.3) 60%, rgba(0, 0, 0, 0.8) 90%);
-                    z-index: 2;
-                    pointer-events: none;
-                `;
-				nowPlayingBackgroundContainer.appendChild(nowPlayingGradientOverlay);
-			}
-
-			// Update image source efficiently
-			if (
-				nowPlayingBackgroundImage &&
-				nowPlayingBackgroundImage.src !== coverArtImageSrc
-			) {
-				nowPlayingBackgroundImage.src = coverArtImageSrc;
-			}
-
-			// Apply pixel-based size using intrinsic dimensions
-			applyScaledPixelSize(nowPlayingBackgroundImage);
-
-			if (nowPlayingBackgroundImage) {
-				const blur = settings.performanceMode
-					? Math.min(settings.backgroundBlur, 20)
-					: settings.backgroundBlur;
-				const contrast = settings.performanceMode
-					? Math.min(settings.backgroundContrast, 150)
-					: settings.backgroundContrast;
-				const radius = `${settings.backgroundRadius}%`;
-				if (nowPlayingBackgroundImage.style.borderRadius !== radius)
-					nowPlayingBackgroundImage.style.borderRadius = radius;
-				const filt = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
-				if (nowPlayingBackgroundImage.style.filter !== filt)
-					nowPlayingBackgroundImage.style.filter = filt;
-				const anim = settings.spinningArt
-					? `spin ${settings.spinSpeed}s linear infinite`
-					: "none";
-				const wc = settings.spinningArt ? "transform" : "auto";
-				if (nowPlayingBackgroundImage.style.animation !== anim)
-					nowPlayingBackgroundImage.style.animation = anim;
-				if (nowPlayingBackgroundImage.style.willChange !== wc)
-					nowPlayingBackgroundImage.style.willChange = wc;
-			}
-
-			// Add keyframe animation only once
-			if (!spinAnimationAdded) {
-				const styleSheet = document.createElement("style");
-				styleSheet.id = "spinAnimation";
-				styleSheet.textContent = `
-                    @keyframes spin {
-                        from { transform: translate(-50%, -50%) rotate(0deg); }
-                        to { transform: translate(-50%, -50%) rotate(360deg); }
-                    }
-                `;
-				document.head.appendChild(styleSheet);
-				spinAnimationAdded = true;
-			}
-		}
-	}
-}
-
-// Function to apply spinning background to the entire app (cover everywhere)
-const applyGlobalSpinningBackground = (coverArtImageSrc: string): void => {
-	const appContainer = document.querySelector(
-		'[data-test="main"]',
-	) as HTMLElement;
-
-	if (!settings.CoverEverywhere) {
-		cleanUpGlobalSpinningBackground();
+	// Teardown <3
+	if (!settings.backdropEnabled) {
+		cleanUpDynamicArt();
 		return;
 	}
 
-	// Only throttle image src updates; style updates below always run for responsiveness
-	const now = Date.now();
-	const shouldUpdateImageSrc =
-		now - lastUpdateTime >= getUpdateThrottle() ||
-		currentGlobalCoverSrc !== coverArtImageSrc;
-	if (shouldUpdateImageSrc) {
-		lastUpdateTime = now;
-		currentGlobalCoverSrc = coverArtImageSrc;
+	const coverArtImageSrc = getCoverArtSrc();
+	if (!coverArtImageSrc) {
+		cleanUpDynamicArt();
+		return;
 	}
+	currentCoverSrc = coverArtImageSrc;
 
-	// Add StyleTag if not present
-	if (!globalSpinningBgStyleTag) {
-		globalSpinningBgStyleTag = new StyleTag(
-			"RadiantLyrics-global-spinning-bg",
-			unloads,
-			coverEverywhereCss,
-		);
-	}
+	applyGlobalBackdrop(coverArtImageSrc);
+	applyNowPlayingBackdrop(coverArtImageSrc);
+	syncBackdropActivity();
+}
 
-	if (!appContainer) return;
+const cleanUpGlobalBackground = function (): void {
+	// Release WebGL context before canvas is orphaned (otherwise death occurs)
+	disposeKawarpLayer("global");
 
-	// Create container structure if it doesn't exist (REUSE DOM ELEMENTS)
-	if (!globalBackgroundContainer) {
-		globalBackgroundContainer = document.createElement("div");
-		globalBackgroundContainer.className = "global-background-container";
-		globalBackgroundContainer.style.cssText = `
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -3;
-            pointer-events: none;
-            overflow: hidden;
-        `;
-		appContainer.appendChild(globalBackgroundContainer);
-
-		// Create black background layer
-		globalBlackBg = document.createElement("div");
-		globalBlackBg.className = "global-spinning-black-bg";
-		globalBackgroundContainer.appendChild(globalBlackBg);
-
-		// Create image element
-		globalBackgroundImage = document.createElement("img");
-		globalBackgroundImage.className = "global-spinning-image";
-		globalBackgroundImage.style.cssText = `
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            object-fit: cover;
-            z-index: -1;
-            will-change: transform;
-            transform-origin: center center;
-        `;
-		globalBackgroundContainer.appendChild(globalBackgroundImage);
-
-		// Create gradient overlay
-		globalGradientOverlay = document.createElement("div");
-		globalGradientOverlay.className = "global-spinning-gradient-overlay";
-		globalGradientOverlay.style.cssText = `
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.3) 60%, rgba(0, 0, 0, 0.8) 90%);
-            z-index: -1;
-            pointer-events: none;
-        `;
-		globalBackgroundContainer.appendChild(globalGradientOverlay);
-	}
-
-	// Ensure gradient overlay exists even if container was pre-existing
-	if (!globalGradientOverlay && globalBackgroundContainer) {
-		globalGradientOverlay = document.createElement("div");
-		globalGradientOverlay.className = "global-spinning-gradient-overlay";
-		globalGradientOverlay.style.cssText = `
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.3) 60%, rgba(0, 0, 0, 0.8) 90%);
-            z-index: -1;
-            pointer-events: none;
-        `;
-		globalBackgroundContainer.appendChild(globalGradientOverlay);
-	}
-
-	// Update image source efficiently (throttled)
-	if (
-		shouldUpdateImageSrc &&
-		globalBackgroundImage &&
-		globalBackgroundImage.src !== coverArtImageSrc
-	) {
-		globalBackgroundImage.src = coverArtImageSrc;
-	}
-
-	if (globalBackgroundImage) {
-		applyScaledPixelSize(globalBackgroundImage);
-		const blur = settings.performanceMode
-			? Math.min(settings.backgroundBlur, 20)
-			: settings.backgroundBlur;
-		const contrast = settings.performanceMode
-			? Math.min(settings.backgroundContrast, 150)
-			: settings.backgroundContrast;
-		const radius = `${settings.backgroundRadius}%`;
-		globalBackgroundImage.style.filter = `blur(${blur}px) brightness(${settings.backgroundBrightness / 100}) contrast(${contrast}%)`;
-		if (globalBackgroundImage.style.borderRadius !== radius)
-			globalBackgroundImage.style.borderRadius = radius;
-		if (settings.spinningArt) {
-			globalBackgroundImage.style.animation = `spinGlobal ${settings.spinSpeed}s linear infinite`;
-			globalBackgroundImage.style.willChange = "transform";
-		} else {
-			globalBackgroundImage.style.animation = "none";
-			globalBackgroundImage.style.willChange = "auto";
-		}
-	}
-};
-
-// cleanup function
-const cleanUpGlobalSpinningBackground = function (): void {
-	if (globalBackgroundContainer && globalBackgroundContainer.parentNode) {
-		globalBackgroundContainer.parentNode.removeChild(globalBackgroundContainer);
-	}
+	globalBackgroundContainer?.remove();
 	globalBackgroundContainer = null;
-	globalBackgroundImage = null;
-	globalBlackBg = null;
-	globalGradientOverlay = null;
-	currentGlobalCoverSrc = null;
 
 	if (globalSpinningBgStyleTag) {
 		globalSpinningBgStyleTag.remove();
@@ -1051,137 +888,68 @@ const cleanUpGlobalSpinningBackground = function (): void {
 	}
 };
 
-// Function to update global background when settings change
-const updateRadiantLyricsGlobalBackground = function (): void {
-	// Apply performance mode class to document body
+const cleanUpDynamicArt = function (): void {
+	disposeKawarpLayer("nowPlaying");
+	nowPlayingBackgroundContainer?.remove();
+	nowPlayingBackgroundContainer = null;
+	currentCoverSrc = null;
+
+	// more more teardown <3
+	document
+		.querySelectorAll(".now-playing-background-container")
+		.forEach((el) => {
+			el.remove();
+		});
+
+	cleanUpGlobalBackground();
+};
+
+// Re-render both backdrops when settings change
+const updateRadiantLyricsBackdrop = function (): void {
 	if (settings.performanceMode) {
 		document.body.classList.add("performance-mode");
 	} else {
 		document.body.classList.remove("performance-mode");
 	}
 
-	if (settings.CoverEverywhere) {
-		// Get current cover art and apply global background
-		updateCoverArtBackground();
-	} else {
-		cleanUpGlobalSpinningBackground();
+	if (!settings.backdropEnabled) {
+		cleanUpDynamicArt();
+		return;
 	}
-};
 
-// Function to update Now Playing background when settings change
-const updateRadiantLyricsNowPlayingBackground = function (): void {
-	const nowPlayingBackgroundImages = document.querySelectorAll(
-		".now-playing-background-image",
-	);
-	nowPlayingBackgroundImages.forEach((img: Element) => {
-		const imgElement = img as HTMLImageElement;
+	if (!settings.CoverEverywhere) cleanUpGlobalBackground();
 
-		// Default values when settings don't affect Now Playing
-		const defaultBlur = 80;
-		const defaultBrightness = 40;
-		const defaultContrast = 120;
-		const defaultSpinSpeed = 45;
-
-		let blur: number, brightness: number, contrast: number, spinSpeed: number;
-
-		if (settings.settingsAffectNowPlaying) {
-			blur = settings.backgroundBlur;
-			brightness = settings.backgroundBrightness;
-			contrast = settings.backgroundContrast;
-			spinSpeed = settings.spinSpeed;
-		} else {
-			blur = defaultBlur;
-			brightness = defaultBrightness;
-			contrast = defaultContrast;
-			spinSpeed = defaultSpinSpeed;
-		}
-
-		// Apply pixel-based size using intrinsic dimensions and current scale
-		applyScaledPixelSize(imgElement);
-		const radius = `${settings.backgroundRadius}%`;
-		if (imgElement.style.borderRadius !== radius)
-			imgElement.style.borderRadius = radius;
-
-		if (settings.performanceMode) {
-			blur = Math.min(blur, 20);
-			contrast = Math.min(contrast, 150);
-		}
-		if (settings.spinningArt) {
-			imgElement.style.animation = `spin ${spinSpeed}s linear infinite`;
-			imgElement.style.willChange = "transform";
-		} else {
-			imgElement.style.animation = "none";
-			imgElement.style.willChange = "auto";
-		}
-		imgElement.style.filter = `blur(${blur}px) brightness(${brightness / 100}) contrast(${contrast}%)`;
-	});
+	if (currentCoverSrc) {
+		if (settings.CoverEverywhere) applyGlobalBackdrop(currentCoverSrc);
+		applyNowPlayingBackdrop(currentCoverSrc);
+		syncBackdropActivity();
+	} else {
+		updateCoverArtBackground();
+	}
 };
 
 // Make these functions available globally so Settings can call them
 (window as any).updateRadiantLyricsStyles = updateRadiantLyricsStyles;
-(window as any).updateRadiantLyricsGlobalBackground =
-	updateRadiantLyricsGlobalBackground;
-(window as any).updateRadiantLyricsNowPlayingBackground =
-	updateRadiantLyricsNowPlayingBackground;
+(window as any).updateRadiantLyricsBackdrop = updateRadiantLyricsBackdrop;
 (window as any).updateRadiantLyricsTextGlow = updateRadiantLyricsTextGlow;
 (window as any).updateRadiantLyricsPlayerBarTint =
 	updateRadiantLyricsPlayerBarTint;
 (window as any).updateQualityProgressColor = applyQualityProgressColor;
 (window as any).updateIntegratedSeekBar = applyIntegratedSeekBar;
 
-const cleanUpDynamicArt = function (): void {
-	// Clean up cached Now Playing elements
-	if (
-		nowPlayingBackgroundContainer &&
-		nowPlayingBackgroundContainer.parentNode
-	) {
-		nowPlayingBackgroundContainer.parentNode.removeChild(
-			nowPlayingBackgroundContainer,
-		);
+// halts the RAF loop (drives vissibility stuff)
+document.addEventListener("visibilitychange", syncBackdropActivity);
+
+// Tidal toggles the Now Playing view with visibility (dk why they don't unmount but oki)
+safeInterval(unloads, syncBackdropActivity, 200);
+
+// React the instant the slide starts/ends
+observe<HTMLElement>(unloads, '[class*="_nowPlayingContainer"]', (container) => {
+	for (const event of ["transitionrun", "transitionstart", "transitionend"]) {
+		container.addEventListener(event, syncBackdropActivity);
 	}
-	nowPlayingBackgroundContainer = null;
-	nowPlayingBackgroundImage = null;
-	nowPlayingBlackBg = null;
-	nowPlayingGradientOverlay = null;
-
-	// Clean up any remaining elements (fallback)
-	const nowPlayingBackgroundImages = document.getElementsByClassName(
-		"now-playing-background-image",
-	);
-	Array.from(nowPlayingBackgroundImages).forEach((element) => {
-		element.remove();
-	});
-
-	// Clean up spinning background
-	cleanUpGlobalSpinningBackground();
-};
-
-// I may or may not have forgotten what this does..
-document.addEventListener("visibilitychange", () => {
-	const isHiddenDoc = document.hidden;
-	const images = document.querySelectorAll(
-		".global-spinning-image, .now-playing-background-image",
-	);
-	images.forEach((img) => {
-		const el = img as HTMLElement;
-		if (isHiddenDoc) {
-			// Pause animation but keep state
-			if (el.style.animationPlayState !== "paused")
-				el.style.animationPlayState = "paused";
-			if (el.style.willChange !== "auto") el.style.willChange = "auto";
-		} else {
-			if (el.style.animationPlayState !== "running")
-				el.style.animationPlayState = "running";
-			if (
-				el.classList.contains("global-spinning-image") ||
-				el.classList.contains("now-playing-background-image")
-			) {
-				if (el.style.willChange !== "transform")
-					el.style.willChange = "transform";
-			}
-		}
-	});
 });
+
 
 // Init performance mode
 if (settings.performanceMode) {
@@ -1240,14 +1008,8 @@ unloads.add(() => {
 			el.remove();
 		});
 
-	// Clean up spin animations
-	const spinAnimationStyle = document.querySelector("#spinAnimation");
-	if (spinAnimationStyle && spinAnimationStyle.parentNode) {
-		spinAnimationStyle.parentNode.removeChild(spinAnimationStyle);
-	}
-
-	// Clean up spinning background
-	cleanUpGlobalSpinningBackground();
+	// even more more teardown <3
+	cleanUpDynamicArt();
 });
 
 // MARKER: Sticky Lyrics Feature
@@ -1917,7 +1679,10 @@ const registerSyntheticNativeLyrics = (
 		lyricsId: `radiant-lyrics-${trackInfo.trackId}`,
 		text: buildSyntheticLyricsText(response),
 		lrcText: buildSyntheticLrcText(response),
-		providerName: `Radiant Lyrics (${response.metadata.source})`,
+		providerName:
+			response.type === "Word" && response._synthesized
+				? "Radiant Lyrics (AI)"
+				: "Radiant Lyrics",
 		direction: "LEFT_TO_RIGHT",
 		response,
 	};
@@ -2470,10 +2235,7 @@ const fetchLyrics = async (
 		const derived: LineLyricsResponse = {
 			type: "Line",
 			data: cachedLyricsData.lines,
-			metadata: {
-				...cachedLyricsData.metadata,
-				source: cachedLyricsData.metadata.source.replace(/ • AI$/, ""),
-			},
+			metadata: cachedLyricsData.metadata,
 			_cached: cachedLyricsData._cached,
 		};
 		cachedLyricsKey = cacheKey;
@@ -4188,9 +3950,7 @@ const onTrackChange = async (): Promise<void> => {
 			);
 		}
 
-		sylTrace(
-			`RL API: loaded ${response.data.length} lines (source: ${response.metadata.source})`,
-		);
+		sylTrace(`RL API: loaded ${response.data.length} lines`);
 		sylLog(
 			`[RL-Syllable] Loaded "${trackInfo.title}" by "${trackInfo.artist}" — ${response.data.length} lines`,
 		);
@@ -4201,7 +3961,7 @@ const onTrackChange = async (): Promise<void> => {
 		if (response.type === "Word" && response._synthesized) {
 			lyricsIsAiGenerated = true;
 			sylLog(
-				`[RL-Syllable] AI generated syllable timings for ${response.data.length} lines (source: ${response.metadata.source})`,
+				`[RL-Syllable] AI generated syllable timings for ${response.data.length} lines`,
 			);
 		}
 

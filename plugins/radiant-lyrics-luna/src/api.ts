@@ -102,7 +102,6 @@ export interface WordLyricsResponse {
 	type: "Word";
 	data: WordLine[];
 	metadata: {
-		source: string;
 		title: string;
 		language: string;
 		totalDuration: string;
@@ -120,7 +119,6 @@ export interface LineLyricsResponse {
 	type: "Line";
 	data: ApiLine[];
 	metadata: {
-		source: string;
 		title: string;
 		language: string;
 		totalDuration: string;

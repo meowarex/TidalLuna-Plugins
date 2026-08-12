@@ -9,8 +9,7 @@ declare global {
 		updateStickyLyricsFeature?: () => void;
 		updateStickyLyricsSetting?: (checked: boolean) => void;
 		updateRadiantLyricsPlayerBarTint?: () => void;
-		updateRadiantLyricsGlobalBackground?: () => void;
-		updateRadiantLyricsNowPlayingBackground?: () => void;
+		updateRadiantLyricsBackdrop?: () => void;
 		updateQualityProgressColor?: () => void;
 		updateIntegratedSeekBar?: () => void;
 		updateLyricsStyle?: () => void;
@@ -48,16 +47,22 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	playerBarTint: 5,
 	playerBarTintColor: "#000000" as string,
 	playerBarTintCustomColors: [] as string[],
+	// Master switch
+	backdropEnabled: true,
+	backdropPlaybackReactive: true,
 	CoverEverywhere: true,
 	performanceMode: false,
-	spinningArt: true,
-	backgroundScale: 15,
-	backgroundRadius: 25,
-	backgroundContrast: 120,
-	backgroundBlur: 80,
-	backgroundBrightness: 40,
-	spinSpeed: 45,
-	settingsAffectNowPlaying: true,
+	// Backdrop is rendered entirely by kawarp (yay!)
+	backdropOpacity: 75,
+	backdropWarp: 100,
+	backdropBlurPasses: 5,
+	backdropSpeed: 175,
+	backdropContrast: 125,
+	backdropSaturation: 125,
+	backdropDithering: 15,
+	backdropScale: 100,
+	// Readability on bright covers <3
+	backdropDarken: 80,
 });
 
 export const Settings = () => {
@@ -74,27 +79,38 @@ export const Settings = () => {
 	const [CoverEverywhere, setCoverEverywhere] = React.useState(
 		settings.CoverEverywhere,
 	);
+	const [backdropEnabled, setBackdropEnabled] = React.useState(
+		settings.backdropEnabled,
+	);
+	const [backdropPlaybackReactive, setBackdropPlaybackReactive] =
+		React.useState(settings.backdropPlaybackReactive);
 	const [performanceMode, setPerformanceMode] = React.useState(
 		settings.performanceMode,
 	);
-	const [spinningArt, setspinningArt] = React.useState(settings.spinningArt);
-	const [backgroundContrast, setBackgroundContrast] = React.useState(
-		settings.backgroundContrast,
+	const [backdropOpacity, setBackdropOpacity] = React.useState(
+		settings.backdropOpacity,
 	);
-	const [backgroundBlur, setBackgroundBlur] = React.useState(
-		settings.backgroundBlur,
+	const [backdropWarp, setBackdropWarp] = React.useState(settings.backdropWarp);
+	const [backdropBlurPasses, setBackdropBlurPasses] = React.useState(
+		settings.backdropBlurPasses,
 	);
-	const [backgroundBrightness, setBackgroundBrightness] = React.useState(
-		settings.backgroundBrightness,
+	const [backdropSpeed, setBackdropSpeed] = React.useState(
+		settings.backdropSpeed,
 	);
-	const [spinSpeed, setSpinSpeed] = React.useState(settings.spinSpeed);
-	const [settingsAffectNowPlaying, setSettingsAffectNowPlaying] =
-		React.useState(settings.settingsAffectNowPlaying);
-	const [backgroundScale, setBackgroundScale] = React.useState(
-		settings.backgroundScale,
+	const [backdropContrast, setBackdropContrast] = React.useState(
+		settings.backdropContrast,
 	);
-	const [backgroundRadius, setBackgroundRadius] = React.useState(
-		settings.backgroundRadius,
+	const [backdropSaturation, setBackdropSaturation] = React.useState(
+		settings.backdropSaturation,
+	);
+	const [backdropDithering, setBackdropDithering] = React.useState(
+		settings.backdropDithering,
+	);
+	const [backdropScale, setBackdropScale] = React.useState(
+		settings.backdropScale,
+	);
+	const [backdropDarken, setBackdropDarken] = React.useState(
+		settings.backdropDarken,
 	);
 	const [floatingPlayerBar, setFloatingPlayerBar] = React.useState(
 		settings.floatingPlayerBar,
@@ -184,6 +200,10 @@ export const Settings = () => {
 			window.updateAiSyllablesSetting = undefined;
 		};
 	}, []);
+
+	const refreshBackdrop = () => {
+		window.updateRadiantLyricsBackdrop?.();
+	};
 
 	// Derive props and override onChange to accept a broader first param type
 	type BaseSwitchProps = React.ComponentProps<typeof LunaSwitchSetting>;
@@ -893,225 +913,163 @@ export const Settings = () => {
 				);
 			})()}
 			<AnySwitch
-				title="Cover Everywhere"
-				desc="Apply the spinning Cover Art background to the entire app, not just the Now Playing view, Heavily Inspired by Cover-Theme by @Inrixia"
-				checked={CoverEverywhere}
+				title="Custom Backdrop"
+				desc="Render the cover-art shader backdrop, off = Tidals cover spin"
+				checked={backdropEnabled}
 				onChange={(_: unknown, checked: boolean) => {
-					console.log(
-						"Spinning Cover Everywhere:",
-						checked ? "enabled" : "disabled",
-					);
-					settings.CoverEverywhere = checked;
-					setCoverEverywhere(checked);
-					// Update styles immediately when setting changes
-					if (window.updateRadiantLyricsGlobalBackground) {
-						window.updateRadiantLyricsGlobalBackground();
-					}
+					settings.backdropEnabled = checked;
+					setBackdropEnabled(checked);
+					refreshBackdrop();
 				}}
 			/>
-			{CoverEverywhere && (
-				<AnySwitch
-					title="Performance Mode | Experimental"
-					desc="Performance mode: Reduces blur effects & uses smaller image sizes, to optimize GPU usage"
-					checked={performanceMode}
-					onChange={(_: unknown, checked: boolean) => {
-						console.log("Performance Mode:", checked ? "enabled" : "disabled");
-						settings.performanceMode = checked;
-						setPerformanceMode(checked);
-						// Update background animations immediately when setting changes
-						if (window.updateRadiantLyricsGlobalBackground) {
-							window.updateRadiantLyricsGlobalBackground();
-						}
-						if (window.updateRadiantLyricsNowPlayingBackground) {
-							window.updateRadiantLyricsNowPlayingBackground();
-						}
-					}}
-				/>
-			)}
-			{CoverEverywhere && (
-				<AnySwitch
-					title="Background Cover Spin" // Cheers @Max/n0201 for the idea <3
-					desc="Enable the spinning cover art background animation"
-					checked={spinningArt}
-					onChange={(_: unknown, checked: boolean) => {
-						console.log(
-							"Background Cover Spin:",
-							checked ? "enabled" : "disabled",
-						);
-						settings.spinningArt = checked;
-						setspinningArt(checked);
-						if (window.updateRadiantLyricsGlobalBackground) {
-							window.updateRadiantLyricsGlobalBackground();
-						}
-						if (
-							settings.settingsAffectNowPlaying &&
-							window.updateRadiantLyricsNowPlayingBackground
-						) {
-							window.updateRadiantLyricsNowPlayingBackground();
-						}
-					}}
-				/>
-			)}
-			{CoverEverywhere && (
-				<LunaNumberSetting
-					title="Background Scale"
-					desc="Adjust the scale of the background cover (1=10% - 50=500%, default: 15)"
-					min={1}
-					max={50}
-					step={1}
-					value={backgroundScale}
-					onNumber={(value: number) => {
-						settings.backgroundScale = value;
-						setBackgroundScale(value);
-						if (window.updateRadiantLyricsGlobalBackground) {
-							window.updateRadiantLyricsGlobalBackground();
-						}
-						if (
-							settings.settingsAffectNowPlaying &&
-							window.updateRadiantLyricsNowPlayingBackground
-						) {
-							window.updateRadiantLyricsNowPlayingBackground();
-						}
-					}}
-				/>
-			)}
-			{CoverEverywhere && (
-				<LunaNumberSetting
-					title="Background Radius"
-					desc="Adjust the cover art corner radius (0-100%, default: 25)"
-					min={0}
-					max={100}
-					step={1}
-					value={backgroundRadius}
-					onNumber={(value: number) => {
-						settings.backgroundRadius = value;
-						setBackgroundRadius(value);
-						if (window.updateRadiantLyricsGlobalBackground) {
-							window.updateRadiantLyricsGlobalBackground();
-						}
-						if (
-							settings.settingsAffectNowPlaying &&
-							window.updateRadiantLyricsNowPlayingBackground
-						) {
-							window.updateRadiantLyricsNowPlayingBackground();
-						}
-					}}
-				/>
-			)}
-			{CoverEverywhere && (
-				<LunaNumberSetting
-					title="Background Contrast"
-					desc="Adjust the contrast of the spinning background (0-200, default: 120)"
-					min={0}
-					max={200}
-					step={1}
-					value={backgroundContrast}
-					onNumber={(value: number) => {
-						settings.backgroundContrast = value;
-						setBackgroundContrast(value);
-						if (window.updateRadiantLyricsGlobalBackground) {
-							window.updateRadiantLyricsGlobalBackground();
-						}
-						if (
-							settings.settingsAffectNowPlaying &&
-							window.updateRadiantLyricsNowPlayingBackground
-						) {
-							window.updateRadiantLyricsNowPlayingBackground();
-						}
-					}}
-				/>
-			)}
-			{CoverEverywhere && (
-				<LunaNumberSetting
-					title="Background Blur"
-					desc="Adjust the blur amount of the spinning background (0-200, default: 80)"
-					min={0}
-					max={200}
-					step={1}
-					value={backgroundBlur}
-					onNumber={(value: number) => {
-						console.log("Background Blur:", value);
-						settings.backgroundBlur = value;
-						setBackgroundBlur(value);
-						if (window.updateRadiantLyricsGlobalBackground) {
-							window.updateRadiantLyricsGlobalBackground();
-						}
-						if (
-							settings.settingsAffectNowPlaying &&
-							window.updateRadiantLyricsNowPlayingBackground
-						) {
-							window.updateRadiantLyricsNowPlayingBackground();
-						}
-					}}
-				/>
-			)}
-			{CoverEverywhere && (
-				<LunaNumberSetting
-					title="Background Brightness"
-					desc="Adjust the brightness of the spinning background (0-100, default: 40)"
-					min={0}
-					max={100}
-					step={1}
-					value={backgroundBrightness}
-					onNumber={(value: number) => {
-						console.log("Background Brightness:", value);
-						settings.backgroundBrightness = value;
-						setBackgroundBrightness(value);
-						if (window.updateRadiantLyricsGlobalBackground) {
-							window.updateRadiantLyricsGlobalBackground();
-						}
-						if (
-							settings.settingsAffectNowPlaying &&
-							window.updateRadiantLyricsNowPlayingBackground
-						) {
-							window.updateRadiantLyricsNowPlayingBackground();
-						}
-					}}
-				/>
-			)}
-			{CoverEverywhere && spinningArt && (
-				<LunaNumberSetting
-					title="Spin Speed"
-					desc="Adjust the rotation speed in seconds (10-120, default: 45) - Lower values = Faster rotation"
-					min={10}
-					max={120}
-					step={1}
-					value={spinSpeed}
-					onNumber={(value: number) => {
-						console.log("Spin Speed:", value);
-						settings.spinSpeed = value;
-						setSpinSpeed(value);
-						if (window.updateRadiantLyricsGlobalBackground) {
-							window.updateRadiantLyricsGlobalBackground();
-						}
-						if (
-							settings.settingsAffectNowPlaying &&
-							window.updateRadiantLyricsNowPlayingBackground
-						) {
-							window.updateRadiantLyricsNowPlayingBackground();
-						}
-					}}
-				/>
-			)}
-			{CoverEverywhere && (
-				<AnySwitch
-					title="Settings Affect Now Playing"
-					desc="Apply background settings to Now Playing view"
-					checked={settingsAffectNowPlaying}
-					onChange={(_: unknown, checked: boolean) => {
-						console.log(
-							"Settings Affect Now Playing:",
-							checked ? "enabled" : "disabled",
-						);
-						settings.settingsAffectNowPlaying = checked;
-						setSettingsAffectNowPlaying(checked);
-						// Update Now Playing background immediately when setting changes
-						if (window.updateRadiantLyricsNowPlayingBackground) {
-							window.updateRadiantLyricsNowPlayingBackground();
-						}
-					}}
-				/>
-			)}
+			<AnySwitch
+				title="Playback Reactive"
+				desc="Cover shader reacts to playback state by freezing/resuming"
+				checked={backdropPlaybackReactive}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.backdropPlaybackReactive = checked;
+					setBackdropPlaybackReactive(checked);
+					refreshBackdrop();
+				}}
+			/>
+			<AnySwitch
+				title="Cover Everywhere"
+				desc="Apply the cover art backdrop to the entire app, not just the Now Playing view, Heavily Inspired by Cover-Theme by @Inrixia"
+				checked={CoverEverywhere}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.CoverEverywhere = checked;
+					setCoverEverywhere(checked);
+					refreshBackdrop();
+				}}
+			/>
+			<AnySwitch
+				title="Performance Mode | Experimental"
+				desc="Caps the shader at 4 blur passes, disables dithering and renders at 1x pixel ratio to cut GPU load"
+				checked={performanceMode}
+				onChange={(_: unknown, checked: boolean) => {
+					settings.performanceMode = checked;
+					setPerformanceMode(checked);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Backdrop Opacity"
+				desc="How strongly the backdrop shows through (0-100% default = 75)"
+				min={0}
+				max={100}
+				step={1}
+				value={backdropOpacity}
+				onNumber={(value: number) => {
+					settings.backdropOpacity = value;
+					setBackdropOpacity(value);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Warp Intensity"
+				desc="Strength of the fluidity effect (0-100% default = 100)"
+				min={0}
+				max={100}
+				step={1}
+				value={backdropWarp}
+				onNumber={(value: number) => {
+					settings.backdropWarp = value;
+					setBackdropWarp(value);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Blur Passes"
+				desc="Kawase blur passes, higher is softer but costs more GPU (1-40 default = 5)"
+				min={1}
+				max={40}
+				step={1}
+				value={backdropBlurPasses}
+				onNumber={(value: number) => {
+					settings.backdropBlurPasses = value;
+					setBackdropBlurPasses(value);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Animation Speed"
+				desc="How fast the backdrop flows (0-500% default = 175)"
+				min={0}
+				max={500}
+				step={5}
+				value={backdropSpeed}
+				onNumber={(value: number) => {
+					settings.backdropSpeed = value;
+					setBackdropSpeed(value);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Contrast"
+				desc="Contrast of the backdrop (0-300%, 100 = stock default = 125)"
+				min={0}
+				max={300}
+				step={5}
+				value={backdropContrast}
+				onNumber={(value: number) => {
+					settings.backdropContrast = value;
+					setBackdropContrast(value);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Auto Darken Bright Covers"
+				desc="Prevents bright covers from making text unreadable (0-100% 0 = Off default = 80)"
+				min={0}
+				max={100}
+				step={1}
+				value={backdropDarken}
+				onNumber={(value: number) => {
+					settings.backdropDarken = value;
+					setBackdropDarken(value);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Saturation"
+				desc="Colour intensity of the backdrop (0-400% default = 125)"
+				min={0}
+				max={400}
+				step={5}
+				value={backdropSaturation}
+				onNumber={(value: number) => {
+					settings.backdropSaturation = value;
+					setBackdropSaturation(value);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Backdrop Scale"
+				desc="Zoom level of the effect (10-400% default = 100)"
+				min={10}
+				max={400}
+				step={5}
+				value={backdropScale}
+				onNumber={(value: number) => {
+					settings.backdropScale = value;
+					setBackdropScale(value);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Dithering"
+				desc="Breaks up color banding in smooth gradients (0-100 default = 15)"
+				min={0}
+				max={100}
+				step={1}
+				value={backdropDithering}
+				onNumber={(value: number) => {
+					settings.backdropDithering = value;
+					setBackdropDithering(value);
+					refreshBackdrop();
+				}}
+			/>
+
 		</LunaSettings>
 	);
 };

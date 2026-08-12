@@ -47,7 +47,11 @@ importers:
 
   plugins/element-hider-luna: {}
 
-  plugins/radiant-lyrics-luna: {}
+  plugins/radiant-lyrics-luna:
+    dependencies:
+      '@kawarp/core':
+        specifier: '*'
+        version: 1.2.0
 
 packages:
 
@@ -228,6 +232,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
+
+  '@kawarp/core@1.2.0':
+    resolution: {integrity: sha512-PmwhFeoDjpuKImSptQugb9INCwk/S/QHsQ5foXhKjUERpwEzZZ12Hyf5FggedhZ70SQQ9RDPKHEunys454qbqA==}
 
   '@types/clean-css@4.2.11':
     resolution: {integrity: sha512-Y8n81lQVTAfP2TOdtJJEsCoYl1AnOkqDqMvXb9/7pfgZZ7r8YrEyurrAvAoAjHOGXKRybay+5CsExqIH6liccw==}
@@ -432,6 +439,7 @@ packages:
   glob@11.0.2:
     resolution: {integrity: sha512-YT7U7Vye+t5fZ/QMkBFrTJ7ZQxInIUjwyAjVj84CYXqgBdv30MFUPGnBR6sQaVq6Is15wYJUsnzTuWaGRBhBAQ==}
     engines: {node: 20 || >=22}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   gopd@1.2.0:
@@ -498,7 +506,7 @@ packages:
     engines: {node: 20 || >=22}
 
   luna@https://codeload.github.com/Inrixia/TidaLuna/tar.gz/81369c7:
-    resolution: {tarball: https://codeload.github.com/Inrixia/TidaLuna/tar.gz/81369c7}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/Inrixia/TidaLuna/tar.gz/81369c7}
     version: 1.5.1-beta
 
   math-intrinsics@1.1.0:
@@ -692,6 +700,7 @@ packages:
   whatwg-encoding@2.0.0:
     resolution: {integrity: sha512-p41ogyeMUrw3jWclHWTQg1k05DSVXPLcVxRTYsXUk+ZooOCZLcoYgPZ/HL/D/N+uQPOtcp1me1WhBEaX02mhWg==}
     engines: {node: '>=12'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
@@ -829,6 +838,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  '@kawarp/core@1.2.0': {}
 
   '@types/clean-css@4.2.11':
     dependencies:

@@ -1,4 +1,5 @@
-/* Global Spinning Background Styles - PERFORMANCE OPTIMIZED */
+/* Cover-art backdrop container styles
+ */
 
 .global-background-container {
 	position: fixed;
@@ -9,37 +10,9 @@
 	z-index: -3;
 	pointer-events: none;
 	overflow: hidden;
-	/* Hardware acceleration */
-	transform: translateZ(0);
-	backface-visibility: hidden;
-}
-
-.global-spinning-black-bg {
-	position: absolute;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
+	/* Dark base the shader composites over at its configured opacity */
 	background: #000;
-	z-index: -2;
-	pointer-events: none;
-}
-
-.global-spinning-image {
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
-	width: 150vw;
-	height: 150vh;
-	object-fit: cover;
-	z-index: -1;
-	filter: blur(80px) brightness(0.4) contrast(1.2) saturate(1);
-	opacity: 1;
-	animation: spinGlobal 45s linear infinite;
-	will-change: transform;
-	/* Hardware acceleration */
-	transform-origin: center center;
+	transform: translateZ(0);
 	backface-visibility: hidden;
 }
 
@@ -55,7 +28,6 @@
 	background: transparent !important;
 }
 
-/* Now Playing Background Container Optimization */
 .now-playing-background-container {
 	position: absolute;
 	left: 0;
@@ -65,47 +37,16 @@
 	z-index: 0;
 	pointer-events: none;
 	overflow: hidden;
-	/* Hardware acceleration */
+	background: #000;
 	transform: translateZ(0);
 	backface-visibility: hidden;
 }
 
-/* Ensure now-playing content renders above the dynamic background */
+/* now-playing renders above the backdrop */
 [data-test="new-now-playing"] > header,
 [data-test="new-now-playing"] > [class*="_content_"] {
 	position: relative;
 	z-index: 1;
-}
-
-/* Optimized keyframe animations with GPU acceleration */
-@keyframes spinGlobal {
-	from {
-		transform: translate(-50%, -50%) rotate(0deg);
-	}
-	to {
-		transform: translate(-50%, -50%) rotate(360deg);
-	}
-}
-
-/* Reduced motion for users who prefer it */
-@media (prefers-reduced-motion: reduce) {
-	.global-spinning-image,
-	.now-playing-background-image {
-		/* biome-ignore lint: Accessibility override needs priority */
-		animation: none !important;
-		/* biome-ignore lint: Accessibility override needs priority */
-		transform: translate(-50%, -50%) !important;
-		/* biome-ignore lint: Accessibility override needs priority */
-		will-change: auto !important;
-	}
-}
-
-/* Performance mode: optimize effects but keep spinning */
-.performance-mode .global-spinning-image,
-.performance-mode .now-playing-background-image {
-	/* Keep animations but optimize filter effects */
-	/* biome-ignore lint: Intentional override of runtime styles */
-	filter: blur(10px) brightness(0.4) contrast(1.1) !important;
 }
 
 /* Make app chrome transparent for cover-everywhere background */
