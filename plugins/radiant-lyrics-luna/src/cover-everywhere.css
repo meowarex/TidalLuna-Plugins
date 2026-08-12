@@ -16,39 +16,6 @@
 	backface-visibility: hidden;
 }
 
-/* Hide Tidal's native now-playing background color overlay */
-[data-test="new-now-playing"] > [class*="_background_"] {
-	/* biome-ignore lint: Must override native album-art-derived background */
-	display: none !important;
-}
-
-/* Ensure the now-playing container itself is transparent */
-[class*="_nowPlayingContainer"] {
-	/* biome-ignore lint: Must override any inline background styles */
-	background: transparent !important;
-}
-
-.now-playing-background-container {
-	position: absolute;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
-	z-index: 0;
-	pointer-events: none;
-	overflow: hidden;
-	background: #000;
-	transform: translateZ(0);
-	backface-visibility: hidden;
-}
-
-/* now-playing renders above the backdrop */
-[data-test="new-now-playing"] > header,
-[data-test="new-now-playing"] > [class*="_content_"] {
-	position: relative;
-	z-index: 1;
-}
-
 /* Make app chrome transparent for cover-everywhere background */
 body,
 #wimp,

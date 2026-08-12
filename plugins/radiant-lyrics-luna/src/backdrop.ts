@@ -164,7 +164,11 @@ export class KawarpLayer {
 		const dpr = getDpr();
 		const rect = this.host.getBoundingClientRect();
 		const width = Math.max(1, Math.round(rect.width * dpr));
-		const height = Math.max(1, Math.round(rect.height * dpr));
+		// Aurora: render a single row of pixels and let CSS stretch it down the whole canvas (makes bands of color)
+		const height =
+			settings.backdropStyle === 1
+				? 1
+				: Math.max(1, Math.round(rect.height * dpr));
 		if (this.canvas.width === width && this.canvas.height === height) return;
 		this.canvas.width = width;
 		this.canvas.height = height;

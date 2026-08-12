@@ -49,6 +49,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	playerBarTintCustomColors: [] as string[],
 	// Master switch
 	backdropEnabled: true,
+	backdropStyle: 0,
 	backdropPlaybackReactive: true,
 	CoverEverywhere: true,
 	performanceMode: false,
@@ -81,6 +82,9 @@ export const Settings = () => {
 	);
 	const [backdropEnabled, setBackdropEnabled] = React.useState(
 		settings.backdropEnabled,
+	);
+	const [backdropStyle, setBackdropStyle] = React.useState(
+		settings.backdropStyle,
 	);
 	const [backdropPlaybackReactive, setBackdropPlaybackReactive] =
 		React.useState(settings.backdropPlaybackReactive);
@@ -919,6 +923,19 @@ export const Settings = () => {
 				onChange={(_: unknown, checked: boolean) => {
 					settings.backdropEnabled = checked;
 					setBackdropEnabled(checked);
+					refreshBackdrop();
+				}}
+			/>
+			<LunaNumberSetting
+				title="Backdrop Style" // This feature is the result of a bug caused by my ADHD <3
+				desc="0 = Fluid, 1 = Aurora"
+				min={0}
+				max={1}
+				step={1}
+				value={backdropStyle}
+				onNumber={(value: number) => {
+					settings.backdropStyle = value;
+					setBackdropStyle(value);
 					refreshBackdrop();
 				}}
 			/>
