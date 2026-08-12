@@ -7,5 +7,8 @@
 		"avatarUrl": "https://avatars.githubusercontent.com/u/90243579"
 	},
 	"main": "./src/index.ts",
-	"type": "module"
+	"type": "module",
+	"dependencies": {
+		"@kawarp/core": "*"
+	}
 }
