@@ -6,8 +6,6 @@ declare global {
 	interface Window {
 		updateRadiantLyricsStyles?: () => void;
 		updateRadiantLyricsTextGlow?: () => void;
-		updateStickyLyricsFeature?: () => void;
-		updateStickyLyricsSetting?: (checked: boolean) => void;
 		updateRadiantLyricsPlayerBarTint?: () => void;
 		updateRadiantLyricsBackdrop?: () => void;
 		updateQualityProgressColor?: () => void;
@@ -31,7 +29,6 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	bubbledLyrics: true,
 	romanizeLyrics: false,
 	aiSyllables: false,
-	stickyLyrics: false,
 	syllableStyle: 0, // MARKER: Syllable animations SETTINGS (WIP coming soon)
 	syllableLogging: false,
 	hideUIEnabled: true,
@@ -153,14 +150,6 @@ export const Settings = () => {
 	const [tintHoveredColorIndex, setTintHoveredColorIndex] = React.useState<
 		number | null
 	>(null);
-	const [stickyLyrics, setStickyLyrics] = React.useState(settings.stickyLyrics);
-	React.useEffect(() => {
-		window.updateStickyLyricsSetting = (checked: boolean) =>
-			setStickyLyrics(checked);
-		return () => {
-			window.updateStickyLyricsSetting = undefined;
-		};
-	}, []);
 	const [lyricsStyle, setLyricsStyle] = React.useState(settings.lyricsStyle);
 	React.useEffect(() => {
 		window.updateLyricsStyleSetting = (value: number) => setLyricsStyle(value);
@@ -317,19 +306,7 @@ export const Settings = () => {
 					}
 				}}
       />
-      <AnySwitch
-				title="Sticky Lyrics"
-				desc="auto-switches to Play Queue when lyrics aren't available (mirrored in lyrics dropdown)"
-				checked={stickyLyrics}
-				onChange={(_: unknown, checked: boolean) => {
-					settings.stickyLyrics = checked;
-					setStickyLyrics(checked);
-					if (window.updateStickyLyricsFeature) {
-						window.updateStickyLyricsFeature();
-					}
-				}}
-			/>
-			<AnySwitch
+      			<AnySwitch
 				title="Romanize Lyrics"
 				desc="Display romanized (latin) text for non-latin lyrics (e.g. Korean, Japanese, Chinese)"
 				checked={romanizeLyrics}
@@ -926,29 +903,6 @@ export const Settings = () => {
 					refreshBackdrop();
 				}}
 			/>
-			<LunaNumberSetting
-				title="Backdrop Style" // This feature is the result of a bug caused by my ADHD <3
-				desc="0 = Fluid, 1 = Aurora"
-				min={0}
-				max={1}
-				step={1}
-				value={backdropStyle}
-				onNumber={(value: number) => {
-					settings.backdropStyle = value;
-					setBackdropStyle(value);
-					refreshBackdrop();
-				}}
-			/>
-			<AnySwitch
-				title="Playback Reactive"
-				desc="Cover shader reacts to playback state by freezing/resuming"
-				checked={backdropPlaybackReactive}
-				onChange={(_: unknown, checked: boolean) => {
-					settings.backdropPlaybackReactive = checked;
-					setBackdropPlaybackReactive(checked);
-					refreshBackdrop();
-				}}
-			/>
 			<AnySwitch
 				title="Cover Everywhere"
 				desc="Apply the cover art backdrop to the entire app, not just the Now Playing view, Heavily Inspired by Cover-Theme by @Inrixia"
@@ -959,134 +913,161 @@ export const Settings = () => {
 					refreshBackdrop();
 				}}
 			/>
-			<AnySwitch
-				title="Performance Mode | Experimental"
-				desc="Caps the shader at 4 blur passes, disables dithering and renders at 1x pixel ratio to cut GPU load"
-				checked={performanceMode}
-				onChange={(_: unknown, checked: boolean) => {
-					settings.performanceMode = checked;
-					setPerformanceMode(checked);
-					refreshBackdrop();
-				}}
-			/>
-			<LunaNumberSetting
-				title="Backdrop Opacity"
-				desc="How strongly the backdrop shows through (0-100% default = 75)"
-				min={0}
-				max={100}
-				step={1}
-				value={backdropOpacity}
-				onNumber={(value: number) => {
-					settings.backdropOpacity = value;
-					setBackdropOpacity(value);
-					refreshBackdrop();
-				}}
-			/>
-			<LunaNumberSetting
-				title="Warp Intensity"
-				desc="Strength of the fluidity effect (0-100% default = 100)"
-				min={0}
-				max={100}
-				step={1}
-				value={backdropWarp}
-				onNumber={(value: number) => {
-					settings.backdropWarp = value;
-					setBackdropWarp(value);
-					refreshBackdrop();
-				}}
-			/>
-			<LunaNumberSetting
-				title="Blur Passes"
-				desc="Kawase blur passes, higher is softer but costs more GPU (1-40 default = 5)"
-				min={1}
-				max={40}
-				step={1}
-				value={backdropBlurPasses}
-				onNumber={(value: number) => {
-					settings.backdropBlurPasses = value;
-					setBackdropBlurPasses(value);
-					refreshBackdrop();
-				}}
-			/>
-			<LunaNumberSetting
-				title="Animation Speed"
-				desc="How fast the backdrop flows (0-500% default = 175)"
-				min={0}
-				max={500}
-				step={5}
-				value={backdropSpeed}
-				onNumber={(value: number) => {
-					settings.backdropSpeed = value;
-					setBackdropSpeed(value);
-					refreshBackdrop();
-				}}
-			/>
-			<LunaNumberSetting
-				title="Contrast"
-				desc="Contrast of the backdrop (0-300%, 100 = stock default = 125)"
-				min={0}
-				max={300}
-				step={5}
-				value={backdropContrast}
-				onNumber={(value: number) => {
-					settings.backdropContrast = value;
-					setBackdropContrast(value);
-					refreshBackdrop();
-				}}
-			/>
-			<LunaNumberSetting
-				title="Auto Darken Bright Covers"
-				desc="Prevents bright covers from making text unreadable (0-100% 0 = Off default = 80)"
-				min={0}
-				max={100}
-				step={1}
-				value={backdropDarken}
-				onNumber={(value: number) => {
-					settings.backdropDarken = value;
-					setBackdropDarken(value);
-					refreshBackdrop();
-				}}
-			/>
-			<LunaNumberSetting
-				title="Saturation"
-				desc="Colour intensity of the backdrop (0-400% default = 125)"
-				min={0}
-				max={400}
-				step={5}
-				value={backdropSaturation}
-				onNumber={(value: number) => {
-					settings.backdropSaturation = value;
-					setBackdropSaturation(value);
-					refreshBackdrop();
-				}}
-			/>
-			<LunaNumberSetting
-				title="Backdrop Scale"
-				desc="Zoom level of the effect (10-400% default = 100)"
-				min={10}
-				max={400}
-				step={5}
-				value={backdropScale}
-				onNumber={(value: number) => {
-					settings.backdropScale = value;
-					setBackdropScale(value);
-					refreshBackdrop();
-				}}
-			/>
-			<LunaNumberSetting
-				title="Dithering"
-				desc="Breaks up color banding in smooth gradients (0-100 default = 15)"
-				min={0}
-				max={100}
-				step={1}
-				value={backdropDithering}
-				onNumber={(value: number) => {
-					settings.backdropDithering = value;
-					setBackdropDithering(value);
-					refreshBackdrop();
-				}}
-			/>
+			{backdropEnabled && (
+				<>
+					<LunaNumberSetting
+						title="Backdrop Style" // This feature is the result of a bug caused by my ADHD <3
+						desc="0 = Fluid, 1 = Aurora"
+						min={0}
+						max={1}
+						step={1}
+						value={backdropStyle}
+						onNumber={(value: number) => {
+							settings.backdropStyle = value;
+							setBackdropStyle(value);
+							refreshBackdrop();
+						}}
+					/>
+					<AnySwitch
+						title="Playback Reactive"
+						desc="Cover shader reacts to playback state by freezing/resuming"
+						checked={backdropPlaybackReactive}
+						onChange={(_: unknown, checked: boolean) => {
+							settings.backdropPlaybackReactive = checked;
+							setBackdropPlaybackReactive(checked);
+							refreshBackdrop();
+						}}
+					/>
+					<AnySwitch
+						title="Performance Mode | Experimental"
+						desc="Caps the shader at 4 blur passes, disables dithering and renders at 1x pixel ratio to cut GPU load"
+						checked={performanceMode}
+						onChange={(_: unknown, checked: boolean) => {
+							settings.performanceMode = checked;
+							setPerformanceMode(checked);
+							refreshBackdrop();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Backdrop Opacity"
+						desc="How strongly the backdrop shows through (0-100% default = 75)"
+						min={0}
+						max={100}
+						step={1}
+						value={backdropOpacity}
+						onNumber={(value: number) => {
+							settings.backdropOpacity = value;
+							setBackdropOpacity(value);
+							refreshBackdrop();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Warp Intensity"
+						desc="Strength of the fluidity effect (0-100% default = 100)"
+						min={0}
+						max={100}
+						step={1}
+						value={backdropWarp}
+						onNumber={(value: number) => {
+							settings.backdropWarp = value;
+							setBackdropWarp(value);
+							refreshBackdrop();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Blur Passes"
+						desc="Kawase blur passes, higher is softer but costs more GPU (1-40 default = 5)"
+						min={1}
+						max={40}
+						step={1}
+						value={backdropBlurPasses}
+						onNumber={(value: number) => {
+							settings.backdropBlurPasses = value;
+							setBackdropBlurPasses(value);
+							refreshBackdrop();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Animation Speed"
+						desc="How fast the backdrop flows (0-500% default = 175)"
+						min={0}
+						max={500}
+						step={5}
+						value={backdropSpeed}
+						onNumber={(value: number) => {
+							settings.backdropSpeed = value;
+							setBackdropSpeed(value);
+							refreshBackdrop();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Contrast"
+						desc="Contrast of the backdrop (0-300%, 100 = stock default = 125)"
+						min={0}
+						max={300}
+						step={5}
+						value={backdropContrast}
+						onNumber={(value: number) => {
+							settings.backdropContrast = value;
+							setBackdropContrast(value);
+							refreshBackdrop();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Auto Darken Bright Covers"
+						desc="Prevents bright covers from making text unreadable (0-100% 0 = Off default = 80)"
+						min={0}
+						max={100}
+						step={1}
+						value={backdropDarken}
+						onNumber={(value: number) => {
+							settings.backdropDarken = value;
+							setBackdropDarken(value);
+							refreshBackdrop();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Saturation"
+						desc="Colour intensity of the backdrop (0-400% default = 125)"
+						min={0}
+						max={400}
+						step={5}
+						value={backdropSaturation}
+						onNumber={(value: number) => {
+							settings.backdropSaturation = value;
+							setBackdropSaturation(value);
+							refreshBackdrop();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Backdrop Scale"
+						desc="Zoom level of the effect (10-400% default = 100)"
+						min={10}
+						max={400}
+						step={5}
+						value={backdropScale}
+						onNumber={(value: number) => {
+							settings.backdropScale = value;
+							setBackdropScale(value);
+							refreshBackdrop();
+						}}
+					/>
+					<LunaNumberSetting
+						title="Dithering"
+						desc="Breaks up color banding in smooth gradients (0-100 default = 15)"
+						min={0}
+						max={100}
+						step={1}
+						value={backdropDithering}
+						onNumber={(value: number) => {
+							settings.backdropDithering = value;
+							setBackdropDithering(value);
+							refreshBackdrop();
+						}}
+					/>
 
+				</>
+			)}
 		</LunaSettings>
 	);
 };
