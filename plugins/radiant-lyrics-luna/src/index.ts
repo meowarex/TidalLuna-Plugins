@@ -187,6 +187,11 @@ const applyPlayerBarTintToElement = (): void => {
 		footerPlayer.style.removeProperty("left");
 		footerPlayer.style.removeProperty("width");
 	}
+	// Now Playing centres its artwork in a row running to the viewport bottom but the player bar overlays it so i do some complicaated thing to reserve the space <3
+	document.documentElement.style.setProperty(
+		"--rl-player-bar-inset",
+		`${Math.round(footerPlayer.getBoundingClientRect().height) + (settings.floatingPlayerBar ? settings.playerBarSpacing : 0)}px`,
+	);
 	applyIntegratedSeekbarChrome();
 };
 
@@ -1089,9 +1094,9 @@ unloads.add(() => {
 		if (btn?.parentNode) btn.parentNode.removeChild(btn);
 	}
 
-	// Clean up sticky lyrics elements
+	// Clean up lyrics menu elements
 	document
-		.querySelectorAll(".sticky-lyrics-trigger, .sticky-lyrics-dropdown")
+		.querySelectorAll(".rl-lyrics-menu-trigger, .rl-lyrics-menu")
 		.forEach((el) => {
 			el.remove();
 		});
@@ -1100,17 +1105,17 @@ unloads.add(() => {
 	cleanUpDynamicArt();
 });
 
-// MARKER: Sticky Lyrics Feature
+// MARKER: Lyrics Menu (dropdown on the lyrics toggle)
 
-const STICKY_ICON =
+const LYRICS_MENU_ICON =
 	'<svg viewBox="0 0 512 512" width="16" height="16"><path fill="currentColor" d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Zm66.85-254.84h0Z"/><path fill="currentColor" d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path fill="currentColor" d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>';
 
-const applyStickyIcon = (): void => {
+const applyLyricsMenuIcon = (): void => {
 	const trigger = document.querySelector(
-		".sticky-lyrics-trigger",
+		".rl-lyrics-menu-trigger",
 	) as HTMLElement;
 	if (!trigger) return;
-	trigger.innerHTML = STICKY_ICON;
+	trigger.innerHTML = LYRICS_MENU_ICON;
 	trigger.style.paddingLeft = "5px";
 };
 
@@ -1154,31 +1159,22 @@ const sylTrace = (...args: unknown[]) => {
 	},
 };
 
-// Called from Settings (mirrors dropdown checkbox)
-const updateStickyLyricsFeature = (): void => {
-	const checkbox = document.querySelector(
-		'input[data-setting="stickyLyrics"]',
-	) as HTMLInputElement;
-	if (checkbox) checkbox.checked = settings.stickyLyrics;
-};
-(window as any).updateStickyLyricsFeature = updateStickyLyricsFeature;
-
-let stickyDropdownEl: HTMLElement | null = null;
-let stickyDropdownOpen = false;
+let lyricsMenuEl: HTMLElement | null = null;
+let lyricsMenuOpen = false;
 
 const positionDropdown = (): void => {
-	if (!stickyDropdownEl) return;
+	if (!lyricsMenuEl) return;
 	const toggle = document.querySelector('[data-test="toggle-lyrics"]') as HTMLElement;
 	if (!toggle) return;
 	const rect = toggle.getBoundingClientRect();
-	stickyDropdownEl.style.top = `${rect.bottom}px`;
-	stickyDropdownEl.style.left = `${rect.left}px`;
-	stickyDropdownEl.style.width = `${rect.width}px`;
-	stickyDropdownEl.style.display = "block";
+	lyricsMenuEl.style.top = `${rect.bottom}px`;
+	lyricsMenuEl.style.left = `${rect.left}px`;
+	lyricsMenuEl.style.width = `${rect.width}px`;
+	lyricsMenuEl.style.display = "block";
 };
 
-const openStickyDropdown = (toggle: HTMLElement): void => {
-	stickyDropdownOpen = true;
+const openLyricsMenu = (toggle: HTMLElement): void => {
+	lyricsMenuOpen = true;
 	document.body.classList.add("rl-dropdown-open");
 	let positioned = false;
 	const onWidened = (e: TransitionEvent) => {
@@ -1199,41 +1195,35 @@ const openStickyDropdown = (toggle: HTMLElement): void => {
 	}, 200);
 };
 
-const closeStickyDropdown = (): void => {
-	stickyDropdownOpen = false;
+const closeLyricsMenu = (): void => {
+	lyricsMenuOpen = false;
 	document.body.classList.remove("rl-dropdown-open");
-	if (stickyDropdownEl) stickyDropdownEl.style.display = "none";
+	if (lyricsMenuEl) lyricsMenuEl.style.display = "none";
 };
 
-const ensureStickyDropdown = (): HTMLElement => {
-	if (stickyDropdownEl) return stickyDropdownEl;
+const ensureLyricsMenu = (): HTMLElement => {
+	if (lyricsMenuEl) return lyricsMenuEl;
 
 	const dropdown = document.createElement("div");
-	dropdown.className = "sticky-lyrics-dropdown";
+	dropdown.className = "rl-lyrics-menu";
 	dropdown.style.display = "none";
 
 	dropdown.innerHTML = `
-		<div class="sticky-lyrics-dropdown-row">
-			<span class="sticky-lyrics-label">Sticky Lyrics</span>
-			<label class="sticky-lyrics-switch">
-				<input type="checkbox" data-setting="stickyLyrics" ${settings.stickyLyrics ? "checked" : ""}>
-				<span class="sticky-lyrics-slider"></span>
-			</label>
-		</div>		<div class="sticky-lyrics-dropdown-row">
-			<span class="sticky-lyrics-label">Romanization</span>
-			<label class="sticky-lyrics-switch">
+		<div class="rl-lyrics-menu-row">
+			<span class="rl-lyrics-menu-label">Romanization</span>
+			<label class="rl-lyrics-menu-switch">
 				<input type="checkbox" data-setting="romanizeLyrics" ${settings.romanizeLyrics ? "checked" : ""}>
-				<span class="sticky-lyrics-slider"></span>
+				<span class="rl-lyrics-menu-slider"></span>
 			</label>
 		</div>
-		<div class="sticky-lyrics-dropdown-row">
-			<span class="sticky-lyrics-label">AI Syllables | WIP</span>
-			<label class="sticky-lyrics-switch">
+		<div class="rl-lyrics-menu-row">
+			<span class="rl-lyrics-menu-label">AI Syllables | WIP</span>
+			<label class="rl-lyrics-menu-switch">
 				<input type="checkbox" data-setting="aiSyllables" ${settings.aiSyllables ? "checked" : ""}>
-				<span class="sticky-lyrics-slider"></span>
+				<span class="rl-lyrics-menu-slider"></span>
 			</label>
 		</div>
-		<div class="sticky-lyrics-dropdown-row rl-style-row">
+		<div class="rl-lyrics-menu-row rl-style-row">
 			<div class="rl-seg-control">
 				<button type="button" class="rl-seg-btn${settings.lyricsStyle === 0 ? " rl-seg-active" : ""}" data-style="0">Line</button>
 				<button type="button" class="rl-seg-btn${settings.lyricsStyle === 1 ? " rl-seg-active" : ""}" data-style="1">Word</button>
@@ -1241,17 +1231,6 @@ const ensureStickyDropdown = (): HTMLElement => {
 			</div>
 		</div>
 	`;
-
-	const stickyCheckbox = dropdown.querySelector(
-		'input[data-setting="stickyLyrics"]',
-	) as HTMLInputElement;
-	stickyCheckbox.addEventListener("change", () => {
-		settings.stickyLyrics = stickyCheckbox.checked;
-		(window as any).updateStickyLyricsSetting?.(stickyCheckbox.checked);
-		if (settings.stickyLyrics) {
-			handleStickyLyricsTrackChange();
-		}
-	});
 
 	// AI Generated Syllables (Radiant AI [RL API])
 	const synthCheckbox = dropdown.querySelector(
@@ -1293,15 +1272,15 @@ const ensureStickyDropdown = (): HTMLElement => {
 	}
 
 	document.body.appendChild(dropdown);
-	stickyDropdownEl = dropdown;
+	lyricsMenuEl = dropdown;
 
 	const outsideHandler = (e: MouseEvent): void => {
-		const trigger = document.querySelector(".sticky-lyrics-trigger");
+		const trigger = document.querySelector(".rl-lyrics-menu-trigger");
 		if (
 			(!trigger || !trigger.contains(e.target as Node)) &&
 			!dropdown.contains(e.target as Node)
 		) {
-			closeStickyDropdown();
+			closeLyricsMenu();
 		}
 	};
 	document.addEventListener("click", outsideHandler);
@@ -1310,26 +1289,26 @@ const ensureStickyDropdown = (): HTMLElement => {
 		document.removeEventListener("click", outsideHandler);
 		document.body.classList.remove("rl-dropdown-open");
 		dropdown.remove();
-		stickyDropdownEl = null;
-		stickyDropdownOpen = false;
+		lyricsMenuEl = null;
+		lyricsMenuOpen = false;
 	});
 
 	return dropdown;
 };
 
-const createStickyLyricsDropdown = (): void => {
+const createLyricsMenu = (): void => {
 	const lyricsToggle = document.querySelector(
 		'[data-test="toggle-lyrics"]',
 	) as HTMLElement;
 	if (!lyricsToggle) return;
-	if (lyricsToggle.querySelector(".sticky-lyrics-trigger")) return;
+	if (lyricsToggle.querySelector(".rl-lyrics-menu-trigger")) return;
 
-	ensureStickyDropdown();
+	ensureLyricsMenu();
 
 	const trigger = document.createElement("div");
-	trigger.className = "sticky-lyrics-trigger";
-	trigger.setAttribute("title", "Sticky Lyrics");
-	trigger.innerHTML = STICKY_ICON;
+	trigger.className = "rl-lyrics-menu-trigger";
+	trigger.setAttribute("title", "Lyrics Options");
+	trigger.innerHTML = LYRICS_MENU_ICON;
 
 	for (const evtName of [
 		"pointerdown",
@@ -1353,13 +1332,13 @@ const createStickyLyricsDropdown = (): void => {
 			const isActive = lyricsToggle.getAttribute("aria-pressed") === "true";
 			if (!isActive) {
 				lyricsToggle.click();
-				safeTimeout(unloads, () => openStickyDropdown(lyricsToggle), 150);
+				safeTimeout(unloads, () => openLyricsMenu(lyricsToggle), 150);
 				return;
 			}
-			if (stickyDropdownOpen) {
-				closeStickyDropdown();
+			if (lyricsMenuOpen) {
+				closeLyricsMenu();
 			} else {
-				openStickyDropdown(lyricsToggle);
+				openLyricsMenu(lyricsToggle);
 			}
 		},
 		true,
@@ -1367,50 +1346,15 @@ const createStickyLyricsDropdown = (): void => {
 
 	lyricsToggle.appendChild(trigger);
 
-	if (stickyDropdownOpen) {
+	if (lyricsMenuOpen) {
 		positionDropdown();
 	}
 };
 
-// Sticky Lyrics nav for injected lyrics tab
-const tryActivateStickyLyricsTab = (): boolean => {
-	if (!settings.stickyLyrics) return false;
-
-	const lyricsToggle = document.querySelector(
-		'[data-test="toggle-lyrics"]',
-	) as HTMLElement;
-	if (!lyricsToggle || lyricsToggle.getAttribute("aria-disabled") === "true") {
-		tryActivateSimilarTracksTab();
-		return false;
-	}
-
-	if (syntheticNativeLyrics) {
-		notifyNativeLyricsStateChanged();
-	}
-
-	if (lyricsToggle.getAttribute("aria-pressed") === "true") return true;
-
-	lyricsToggle.click();
-	return true;
-};
-
-const tryActivateSimilarTracksTab = (): void => {
-	const btn = document.querySelector(
-		'[data-test="toggle-similar-tracks"]',
-	) as HTMLElement;
-	if (!btn) return;
-	if (btn.getAttribute("aria-pressed") === "true") return;
-	btn.click();
-};
-
+// Nav for injected lyrics tab
 const syncNativeLyricsAvailability = (): void => {
 	if (!syntheticNativeLyrics) return;
 	notifyNativeLyricsStateChanged();
-};
-
-const handleStickyLyricsTrackChange = (): void => {
-	if (!settings.stickyLyrics) return;
-	tryActivateStickyLyricsTab();
 };
 
 // Track change sequencing (used by onTrackChange)
@@ -1418,35 +1362,19 @@ let isTrackChangeRunning = false;
 let trackChangeRunSeq = 0;
 
 // Observer: create dropdown when lyrics toggle appears & detect track changes
-function setupStickyLyricsObserver(): void {
+function setupLyricsMenuObserver(): void {
 	// Create dropdown if lyrics toggle already exists
 	const existing = document.querySelector('[data-test="toggle-lyrics"]');
-	if (existing && !existing.querySelector(".sticky-lyrics-trigger")) {
-		createStickyLyricsDropdown();
+	if (existing && !existing.querySelector(".rl-lyrics-menu-trigger")) {
+		createLyricsMenu();
 	}
 
 	// Re-create dropdown whenever lyrics toggle reappears
 	observe<HTMLElement>(unloads, '[data-test="toggle-lyrics"]', () => {
 		const toggle = document.querySelector('[data-test="toggle-lyrics"]');
 		syncNativeLyricsAvailability();
-		if (toggle && !toggle.querySelector(".sticky-lyrics-trigger")) {
-			createStickyLyricsDropdown();
-			if (settings.stickyLyrics) {
-				tryActivateStickyLyricsTab();
-			}
-		}
-	});
-
-	// When lyrics toggle becomes disabled → similar tracks; enabled → lyrics
-	observe<HTMLElement>(unloads, '[data-test="toggle-lyrics"][aria-disabled="true"]', () => {
-		if (settings.stickyLyrics) {
-			tryActivateSimilarTracksTab();
-		}
-	});
-
-	observe<HTMLElement>(unloads, '[data-test="toggle-lyrics"]:not([aria-disabled])', () => {
-		if (settings.stickyLyrics) {
-			tryActivateStickyLyricsTab();
+		if (toggle && !toggle.querySelector(".rl-lyrics-menu-trigger")) {
+			createLyricsMenu();
 		}
 	});
 
@@ -1467,12 +1395,6 @@ function setupStickyLyricsObserver(): void {
 		}
 	});
 
-	// sticky lyrics track changes
-	onGlobalTrackChange(() => {
-		if (settings.stickyLyrics) {
-			handleStickyLyricsTrackChange();
-		}
-	});
 }
 
 // track change system (used everywhere)
@@ -4082,9 +4004,6 @@ const onTrackChange = async (): Promise<void> => {
 			safeTimeout(unloads, () => {
 				if (token !== trackChangeToken) return;
 				syncNativeLyricsAvailability();
-				if (settings.stickyLyrics) {
-					tryActivateStickyLyricsTab();
-				}
 				if (!nativeHasLyrics) {
 					// Track had no native lyrics but API found them —
 					// force navigate to lyrics view so the panel mounts
@@ -4284,5 +4203,5 @@ onGlobalTrackChange(() => {
 
 // Init observers
 setupHeaderObserver();
-setupStickyLyricsObserver();
+setupLyricsMenuObserver();
 setupTrackChangeListener();

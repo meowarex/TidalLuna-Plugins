@@ -46,16 +46,16 @@
 
 
 
-/* MARKER: Sticky Lyrics CSS */
+/* MARKER: Lyrics Menu CSS */
 
 /* Lyrics toggle button */
-[data-test="toggle-lyrics"]:has(.sticky-lyrics-trigger) {
+[data-test="toggle-lyrics"]:has(.rl-lyrics-menu-trigger) {
 	position: relative !important;
 	padding-right: 38px !important;
 }
 
 /* Trigger */
-.sticky-lyrics-trigger {
+.rl-lyrics-menu-trigger {
 	position: absolute;
 	right: 0;
 	top: 0;
@@ -73,7 +73,7 @@
 }
 
 /* Divider line */
-.sticky-lyrics-trigger::before {
+.rl-lyrics-menu-trigger::before {
 	content: "";
 	position: absolute;
 	left: 5px;
@@ -85,21 +85,21 @@
 }
 
 /* When Lyrics toggle is pressed — show divider & adjust icon */
-[data-test="toggle-lyrics"][aria-pressed="true"] .sticky-lyrics-trigger {
+[data-test="toggle-lyrics"][aria-pressed="true"] .rl-lyrics-menu-trigger {
 	color: rgb(30, 30, 30);
 	cursor: pointer;
 }
 
-[data-test="toggle-lyrics"][aria-pressed="true"] .sticky-lyrics-trigger::before {
+[data-test="toggle-lyrics"][aria-pressed="true"] .rl-lyrics-menu-trigger::before {
 	background: rgba(0, 0, 0, 0.15);
 }
 
-[data-test="toggle-lyrics"][aria-pressed="true"] .sticky-lyrics-trigger:hover {
+[data-test="toggle-lyrics"][aria-pressed="true"] .rl-lyrics-menu-trigger:hover {
 	color: rgba(0, 0, 0, 0.5);
 }
 
 /* Animate widening when dropdown opens */
-[data-test="toggle-lyrics"]:has(.sticky-lyrics-trigger) {
+[data-test="toggle-lyrics"]:has(.rl-lyrics-menu-trigger) {
 	transition: min-width 0.12s ease-out;
 }
 
@@ -111,7 +111,7 @@ body.rl-dropdown-open [data-test="toggle-lyrics"] {
 }
 
 /* Dropdown — right-aligned under the Lyrics button */
-.sticky-lyrics-dropdown {
+.rl-lyrics-menu {
 	position: fixed;
 	background: rgb(255, 255, 255);
 	border-radius: 0 0 12px 12px;
@@ -120,10 +120,10 @@ body.rl-dropdown-open [data-test="toggle-lyrics"] {
 	z-index: 10000;
 	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 	clip-path: inset(0 -20px -20px -20px);
-	animation: stickyLyricsDropdownIn 0.12s ease-out;
+	animation: rlLyricsMenuIn 0.12s ease-out;
 }
 
-@keyframes stickyLyricsDropdownIn {
+@keyframes rlLyricsMenuIn {
 	from {
 		opacity: 0;
 		transform: translateY(-4px);
@@ -135,7 +135,7 @@ body.rl-dropdown-open [data-test="toggle-lyrics"] {
 }
 
 /* Row containing label + toggle */
-.sticky-lyrics-dropdown-row {
+.rl-lyrics-menu-row {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -143,11 +143,11 @@ body.rl-dropdown-open [data-test="toggle-lyrics"] {
 }
 
 /* Breathing room between stacked rows */
-.sticky-lyrics-dropdown-row + .sticky-lyrics-dropdown-row {
+.rl-lyrics-menu-row + .rl-lyrics-menu-row {
 	margin-top: 8px;
 }
 
-.sticky-lyrics-label {
+.rl-lyrics-menu-label {
 	font-size: 11px;
 	font-weight: 600;
 	color: rgba(0, 0, 0, 0.8);
@@ -155,7 +155,7 @@ body.rl-dropdown-open [data-test="toggle-lyrics"] {
 }
 
 /* Toggle switch */
-.sticky-lyrics-switch {
+.rl-lyrics-menu-switch {
 	position: relative;
 	display: inline-block;
 	width: 34px;
@@ -163,13 +163,13 @@ body.rl-dropdown-open [data-test="toggle-lyrics"] {
 	flex-shrink: 0;
 }
 
-.sticky-lyrics-switch input {
+.rl-lyrics-menu-switch input {
 	opacity: 0;
 	width: 0;
 	height: 0;
 }
 
-.sticky-lyrics-slider {
+.rl-lyrics-menu-slider {
 	position: absolute;
 	cursor: pointer;
 	top: 0;
@@ -181,7 +181,7 @@ body.rl-dropdown-open [data-test="toggle-lyrics"] {
 	border-radius: 18px;
 }
 
-.sticky-lyrics-slider::before {
+.rl-lyrics-menu-slider::before {
 	position: absolute;
 	content: "";
 	height: 14px;
@@ -194,11 +194,11 @@ body.rl-dropdown-open [data-test="toggle-lyrics"] {
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
-.sticky-lyrics-switch input:checked + .sticky-lyrics-slider {
+.rl-lyrics-menu-switch input:checked + .rl-lyrics-menu-slider {
 	background-color: rgb(30, 30, 30);
 }
 
-.sticky-lyrics-switch input:checked + .sticky-lyrics-slider::before {
+.rl-lyrics-menu-switch input:checked + .rl-lyrics-menu-slider::before {
 	transform: translateX(16px);
 	background-color: rgb(255, 255, 255);
 }
@@ -951,3 +951,8 @@ body.rl-owns-lyric-scroll [class*="_syncButtonContainer_"] {
 /* Removes the veil for the play queue */
 ._container_b3e8f28,._container_b3e8f28._nowPlayingVisible_6285d60 {
   background: rgba(0, 0, 0, 0.402);}
+
+/* MARKER: Now Playing artwork centering */
+[class*="_artworkWrapper_"] {
+	padding-bottom: var(--rl-player-bar-inset, 98px);
+}
