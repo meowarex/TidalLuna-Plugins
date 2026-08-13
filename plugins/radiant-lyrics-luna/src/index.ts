@@ -1217,7 +1217,7 @@ const ensureLyricsMenu = (): HTMLElement => {
 			</label>
 		</div>
 		<div class="rl-lyrics-menu-row">
-			<span class="rl-lyrics-menu-label">AI Syllables | WIP</span>
+			<span class="rl-lyrics-menu-label">AI Syllables WIP</span>
 			<label class="rl-lyrics-menu-switch">
 				<input type="checkbox" data-setting="aiSyllables" ${settings.aiSyllables ? "checked" : ""}>
 				<span class="rl-lyrics-menu-slider"></span>
