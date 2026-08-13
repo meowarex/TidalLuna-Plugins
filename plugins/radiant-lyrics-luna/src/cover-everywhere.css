@@ -1,5 +1,4 @@
-/* Cover-art backdrop container styles
- */
+/* Backdrop containers */
 
 /* Stock backdrop projected app wide */
 .rl-stock-background-container {
@@ -109,7 +108,7 @@
 	z-index: -3;
 	pointer-events: none;
 	overflow: hidden;
-	/* Dark base the shader composites over at its configured opacity */
+	/* Dark base under the shader */
 	background: #000;
 	transform: translateZ(0);
 	backface-visibility: hidden;

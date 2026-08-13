@@ -29,48 +29,39 @@ const getDpr = (): number =>
 
 // Claude did all the auto darken stuff cause i'm not bothered to make this stuff a second time.. (so ignore comment bloat)
 
-// Auto-darken samples the album art at this size to judge how bright it is.
-// 16x16 is 256 pixels and the GPU does the downscale.
+// Sample size for auto-darken (GPU does the downscale)
 const SAMPLE_SIZE = 16;
-// Never crush the backdrop to black, however blinding the cover art is
+// Never go fully black
 const MIN_BRIGHTNESS = 0.15;
-// Darken strength maps onto a luminance ceiling: how bright the backdrop is
-// allowed to read before it gets pulled down. Strength 1 barely touches
-// anything, 100 keeps even white covers well below the lyrics.
+// Darken strength -> luminance ceiling
 const CEILING_AT_MIN_STRENGTH = 0.9;
 const CEILING_AT_MAX_STRENGTH = 0.15;
-// Seconds to coast between full speed and a standstill. Linear, so the
-// deceleration is constant rather than dropping off a cliff and then crawling.
+// Seconds to coast to a stop (linear)
 const RAMP_SECONDS = 1.8;
-// kawarp's album-art crossfade defaults to 1000ms - keep rendering a little
-// past that so a track change still resolves while playback is paused
+// Render past the cover crossfade (1000ms)
 const CROSSFADE_RENDER_MS = 1400;
 
-/**
- * Mean Rec. 709 luma of an image, 0-1.
- *
- * Measured on the source art rather than the rendered canvas. The shader output
- * is in constant motion, so sampling it gives a brightness that drifts with the
- * animation; the cover art is fixed, so one reading per track is exact and
- * stays put. A blur preserves mean luminance, so this is also a faithful
- * predictor of how bright the finished backdrop lands.
- */
+/** Mean luma of the art (measure source, not the moving canvas) */
 let sampleCtx: CanvasRenderingContext2D | null = null;
-const measureLuminance = (source: CanvasImageSource): number | null => {
+const ensureSampler = (): CanvasRenderingContext2D | null => {
 	if (!sampleCtx) {
 		const sampler = document.createElement("canvas");
 		sampler.width = SAMPLE_SIZE;
 		sampler.height = SAMPLE_SIZE;
 		sampleCtx = sampler.getContext("2d", { willReadFrequently: true });
 	}
-	if (!sampleCtx) return null;
+	return sampleCtx;
+};
+
+const measureLuminance = (source: CanvasImageSource): number | null => {
+	if (!ensureSampler() || !sampleCtx) return null;
 	try {
 		sampleCtx.clearRect(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
 		sampleCtx.drawImage(source, 0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
 		const { data } = sampleCtx.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
 		let sum = 0;
 		for (let i = 0; i < data.length; i += 4) {
-			// Green dominates how bright a colour reads to the eye
+			// Green reads brightest
 			sum +=
 				(0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
 		}
@@ -79,6 +70,72 @@ const measureLuminance = (source: CanvasImageSource): number | null => {
 		return null;
 	}
 };
+
+export type Rgb = [number, number, number];
+
+const WHITE: Rgb = [1, 1, 1];
+// Scale colours up to this (keeps hue)
+const PALETTE_TARGET = 0.9;
+// Too dark to use
+const MIN_CHANNEL = 0.15;
+// Too grey to use
+const MIN_SATURATION = 0.08;
+
+/** 3 dominant colours from the art (mono covers -> white) */
+export const samplePalette = (source: CanvasImageSource): [Rgb, Rgb, Rgb] => {
+	if (!ensureSampler() || !sampleCtx) return [WHITE, WHITE, WHITE];
+	try {
+		sampleCtx.clearRect(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
+		sampleCtx.drawImage(source, 0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
+		const { data } = sampleCtx.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
+
+		// Coarse buckets so shades merge
+		const buckets = new Map<number, { n: number; r: number; g: number; b: number }>();
+		for (let i = 0; i < data.length; i += 4) {
+			const r = data[i] / 255;
+			const g = data[i + 1] / 255;
+			const b = data[i + 2] / 255;
+			const max = Math.max(r, g, b);
+			if (max < MIN_CHANNEL) continue;
+			if (max - Math.min(r, g, b) < MIN_SATURATION) continue;
+			const key =
+				((r * 7) | 0) * 64 + ((g * 7) | 0) * 8 + ((b * 7) | 0);
+			const hit = buckets.get(key);
+			if (hit) {
+				hit.n++;
+				hit.r += r;
+				hit.g += g;
+				hit.b += b;
+			} else {
+				buckets.set(key, { n: 1, r, g, b });
+			}
+		}
+
+		const ranked = [...buckets.values()]
+			.sort((a, b) => b.n - a.n)
+			.slice(0, 3)
+			// Average so it's not grid-snapped
+			.map((c): Rgb => [c.r / c.n, c.g / c.n, c.b / c.n])
+			// Dark covers give dark colours, so lift them
+			.map((c): Rgb => {
+				const max = Math.max(c[0], c[1], c[2]);
+				if (max <= 0) return WHITE;
+				const scale = PALETTE_TARGET / max;
+				return [c[0] * scale, c[1] * scale, c[2] * scale];
+			});
+
+		if (ranked.length === 0) return [WHITE, WHITE, WHITE];
+		// Cycle what we found (white would desaturate)
+		return [
+			ranked[0],
+			ranked[1] ?? ranked[0],
+			ranked[2] ?? ranked[1] ?? ranked[0],
+		];
+	} catch {
+		return [WHITE, WHITE, WHITE];
+	}
+};
+
 
 export class KawarpLayer {
 	private host: HTMLElement;
@@ -90,21 +147,21 @@ export class KawarpLayer {
 	private appliedOptions = "";
 	private running = false;
 	private failed = false;
-	// Luminance of the current cover art - measured once when it loads
+	// Measured once per cover
 	private coverLuminance: number | null = null;
 	private brightness = 1;
 	private playing = true;
 	private rafId: number | null = null;
 	private shaderTime = 0;
 	private lastFrame = 0;
-	// Current speed multiplier, eased between 0 and 1
+	// Eased 0-1
 	private speedFactor = 1;
 	private transitionUntil = 0;
 
 	constructor(host: HTMLElement, id: string, zIndex: string) {
 		this.host = host;
 		this.canvas = document.createElement("canvas");
-		// Same id shape BetterLyrics uses, so its own detection selector matches
+		// detection selector
 		this.canvas.id = `better-lyrics-kawarp-${id}`;
 		this.canvas.className = "rl-kawarp-canvas";
 		this.canvas.style.zIndex = zIndex;
@@ -130,7 +187,7 @@ export class KawarpLayer {
 	}
 
 	private onContextLost = (event: Event): void => {
-		// Preventing default is what allows a restore to be delivered
+		// Needed or no restore fires
 		event.preventDefault();
 		this.running = false;
 		this.kawarp = null;
@@ -166,7 +223,7 @@ export class KawarpLayer {
 		const width = Math.max(1, Math.round(rect.width * dpr));
 		// Aurora: render a single row of pixels and let CSS stretch it down the whole canvas (makes bands of color)
 		const height =
-			settings.backdropStyle === 1
+			settings.backdropStyle === 3
 				? 1
 				: Math.max(1, Math.round(rect.height * dpr));
 		if (this.canvas.width === width && this.canvas.height === height) return;
@@ -180,9 +237,7 @@ export class KawarpLayer {
 		return this.canvas.parentElement === container;
 	}
 
-	/**
-	 * Whether this canvas is actually on screen.
-	 */
+	/** Actually on screen? */
 	isVisible(): boolean {
 		if (!this.canvas.isConnected) return false;
 		if (typeof this.canvas.checkVisibility === "function") {
@@ -228,7 +283,7 @@ export class KawarpLayer {
 			const res = await fetch(src);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const blob = await res.blob();
-			// A newer track won the race
+			// Newer track won
 			if (token !== this.loadToken || this.kawarp !== engine) return;
 			// Decode once
 			const bitmap = await createImageBitmap(blob);

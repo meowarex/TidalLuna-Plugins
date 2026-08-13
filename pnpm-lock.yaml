@@ -52,6 +52,9 @@ importers:
       '@kawarp/core':
         specifier: '*'
         version: 1.2.0
+      ogl:
+        specifier: '*'
+        version: 1.0.11
 
 packages:
 
@@ -541,6 +544,9 @@ packages:
 
   oby@15.1.2:
     resolution: {integrity: sha512-6QD9iEoPzV+pMDdcg3RtFWhgDX8pS5hZouVHvgXGDy3Q9RxFfnI3CYv9i62keeuX+qk6iN2z5E9FD3q3OckZ6A==}
+
+  ogl@1.0.11:
+    resolution: {integrity: sha512-kUpC154AFfxi16pmZUK4jk3J+8zxwTWGPo03EoYA8QPbzikHoaC82n6pNTbd+oEaJonaE8aPWBlX7ad9zrqLsA==}
 
   opener@1.5.2:
     resolution: {integrity: sha512-ur5UIdyw5Y7yEj9wLzhqXiy6GZ3Mwx0yGI+5sMn2r0N0v3cKJvUmFH5yPP+WXh9e0xfyzyJX95D8l088DNFj7A==}
@@ -1161,6 +1167,8 @@ snapshots:
   object-inspect@1.13.4: {}
 
   oby@15.1.2: {}
+
+  ogl@1.0.11: {}
 
   opener@1.5.2: {}
 

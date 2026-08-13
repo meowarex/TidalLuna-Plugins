@@ -20,6 +20,7 @@ import {
 	romanizeLyrics as romanizeLyricsApi,
 } from "./api";
 import { KawarpLayer } from "./backdrop";
+import { OilLayer } from "./backdrop-oil";
 import { Settings, settings } from "./Settings";
 
 import backdropStylesCss from "file://backdrop-styles.css?minify";
@@ -689,9 +690,12 @@ let globalBackgroundContainer: HTMLElement | null = null;
 let nowPlayingBackgroundContainer: HTMLElement | null = null;
 let currentCoverSrc: string | null = null;
 
+/** Either renderer */
+type BackdropLayer = KawarpLayer | OilLayer;
+
 const kawarpLayers: {
-	global: KawarpLayer | null;
-	nowPlaying: KawarpLayer | null;
+	global: BackdropLayer | null;
+	nowPlaying: BackdropLayer | null;
 } = { global: null, nowPlaying: null };
 
 const disposeKawarpLayer = (slot: "global" | "nowPlaying"): void => {
@@ -711,7 +715,7 @@ const pauseHiddenSince: { global: number; nowPlaying: number } = {
 
 const setLayerRunning = (
 	slot: "global" | "nowPlaying",
-	layer: KawarpLayer | null,
+	layer: BackdropLayer | null,
 	shouldRun: boolean,
 	now: number,
 ): void => {
@@ -767,7 +771,7 @@ const syncBackdropActivity = (): void => {
 
 /** cover art @ resolution worth sampling */
 const getCoverArtSrc = (): string | null => {
-	const targetRes = settings.performanceMode ? "640x640" : "1280x1280";
+	const targetRes = "160x160";
 	const img = document.querySelector(
 		'[data-test="current-media-imagery"] img',
 	) as HTMLImageElement | null;
@@ -785,15 +789,19 @@ const ensureLayer = (
 	slot: "global" | "nowPlaying",
 	container: HTMLElement,
 	zIndex: string,
-): KawarpLayer | null => {
+): BackdropLayer | null => {
+	// Oil is a whole different renderer
+	const wantsOil = settings.backdropStyle === 2;
 	let layer = kawarpLayers[slot];
-	if (layer && !layer.isMountedIn(container)) {
-		// Tidal rebuilt the container
+	if (layer && (!layer.isMountedIn(container) || wantsOil !== (layer instanceof OilLayer))) {
+		// Container rebuilt or renderer changed
 		disposeKawarpLayer(slot);
 		layer = null;
 	}
 	if (!layer) {
-		layer = new KawarpLayer(container, slot, zIndex);
+		layer = wantsOil
+			? new OilLayer(container, slot, zIndex)
+			: new KawarpLayer(container, slot, zIndex);
 		kawarpLayers[slot] = layer;
 	}
 	return layer;

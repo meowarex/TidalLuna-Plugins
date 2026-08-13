@@ -61,6 +61,15 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	backdropScale: 100,
 	// Readability on bright covers <3
 	backdropDarken: 80,
+	// Oil's own controls
+	backdropOilOpacity: 75,
+	backdropOilWarp: 75,
+	backdropOilSpeed: 175,
+	backdropOilBrightness: 15,
+	backdropOilContrast: 95,
+	backdropOilSaturation: 125,
+	backdropOilShimmerSpeed: 50,
+	backdropOilFollowCursor: false,
 });
 
 export const Settings = () => {
@@ -112,6 +121,30 @@ export const Settings = () => {
 	);
 	const [backdropDarken, setBackdropDarken] = React.useState(
 		settings.backdropDarken,
+	);
+	const [backdropOilOpacity, setBackdropOilOpacity] = React.useState(
+		settings.backdropOilOpacity,
+	);
+	const [backdropOilWarp, setBackdropOilWarp] = React.useState(
+		settings.backdropOilWarp,
+	);
+	const [backdropOilSpeed, setBackdropOilSpeed] = React.useState(
+		settings.backdropOilSpeed,
+	);
+	const [backdropOilBrightness, setBackdropOilBrightness] = React.useState(
+		settings.backdropOilBrightness,
+	);
+	const [backdropOilContrast, setBackdropOilContrast] = React.useState(
+		settings.backdropOilContrast,
+	);
+	const [backdropOilSaturation, setBackdropOilSaturation] = React.useState(
+		settings.backdropOilSaturation,
+	);
+	const [backdropOilShimmerSpeed, setBackdropOilShimmerSpeed] = React.useState(
+		settings.backdropOilShimmerSpeed,
+	);
+	const [backdropOilFollowCursor, setBackdropOilFollowCursor] = React.useState(
+		settings.backdropOilFollowCursor,
 	);
 	const [floatingPlayerBar, setFloatingPlayerBar] = React.useState(
 		settings.floatingPlayerBar,
@@ -197,6 +230,9 @@ export const Settings = () => {
 	const refreshBackdrop = () => {
 		window.updateRadiantLyricsBackdrop?.();
 	};
+
+	// Oil is a separate renderer (kawarp is exclusive)
+	const isOil = backdropStyle === 2;
 
 	// Derive props and override onChange to accept a broader first param type
 	type BaseSwitchProps = React.ComponentProps<typeof LunaSwitchSetting>;
@@ -917,9 +953,9 @@ export const Settings = () => {
 				<>
 					<LunaNumberSetting
 						title="Backdrop Style" // This feature is the result of a bug caused by my ADHD <3
-						desc="0 = Fluid, 1 = Aurora"
+						desc="Water | Oil | Aurora"
 						min={0}
-						max={1}
+						max={3}
 						step={1}
 						value={backdropStyle}
 						onNumber={(value: number) => {
@@ -948,123 +984,258 @@ export const Settings = () => {
 							refreshBackdrop();
 						}}
 					/>
-					<LunaNumberSetting
-						title="Backdrop Opacity"
-						desc="How strongly the backdrop shows through (0-100% default = 75)"
-						min={0}
-						max={100}
-						step={1}
-						value={backdropOpacity}
-						onNumber={(value: number) => {
-							settings.backdropOpacity = value;
-							setBackdropOpacity(value);
-							refreshBackdrop();
-						}}
-					/>
-					<LunaNumberSetting
-						title="Warp Intensity"
-						desc="Strength of the fluidity effect (0-100% default = 100)"
-						min={0}
-						max={100}
-						step={1}
-						value={backdropWarp}
-						onNumber={(value: number) => {
-							settings.backdropWarp = value;
-							setBackdropWarp(value);
-							refreshBackdrop();
-						}}
-					/>
-					<LunaNumberSetting
-						title="Blur Passes"
-						desc="Kawase blur passes, higher is softer but costs more GPU (1-40 default = 5)"
-						min={1}
-						max={40}
-						step={1}
-						value={backdropBlurPasses}
-						onNumber={(value: number) => {
-							settings.backdropBlurPasses = value;
-							setBackdropBlurPasses(value);
-							refreshBackdrop();
-						}}
-					/>
-					<LunaNumberSetting
-						title="Animation Speed"
-						desc="How fast the backdrop flows (0-500% default = 175)"
-						min={0}
-						max={500}
-						step={5}
-						value={backdropSpeed}
-						onNumber={(value: number) => {
-							settings.backdropSpeed = value;
-							setBackdropSpeed(value);
-							refreshBackdrop();
-						}}
-					/>
-					<LunaNumberSetting
-						title="Contrast"
-						desc="Contrast of the backdrop (0-300%, 100 = stock default = 125)"
-						min={0}
-						max={300}
-						step={5}
-						value={backdropContrast}
-						onNumber={(value: number) => {
-							settings.backdropContrast = value;
-							setBackdropContrast(value);
-							refreshBackdrop();
-						}}
-					/>
-					<LunaNumberSetting
-						title="Auto Darken Bright Covers"
-						desc="Prevents bright covers from making text unreadable (0-100% 0 = Off default = 80)"
-						min={0}
-						max={100}
-						step={1}
-						value={backdropDarken}
-						onNumber={(value: number) => {
-							settings.backdropDarken = value;
-							setBackdropDarken(value);
-							refreshBackdrop();
-						}}
-					/>
-					<LunaNumberSetting
-						title="Saturation"
-						desc="Colour intensity of the backdrop (0-400% default = 125)"
-						min={0}
-						max={400}
-						step={5}
-						value={backdropSaturation}
-						onNumber={(value: number) => {
-							settings.backdropSaturation = value;
-							setBackdropSaturation(value);
-							refreshBackdrop();
-						}}
-					/>
-					<LunaNumberSetting
-						title="Backdrop Scale"
-						desc="Zoom level of the effect (10-400% default = 100)"
-						min={10}
-						max={400}
-						step={5}
-						value={backdropScale}
-						onNumber={(value: number) => {
-							settings.backdropScale = value;
-							setBackdropScale(value);
-							refreshBackdrop();
-						}}
-					/>
-					<LunaNumberSetting
-						title="Dithering"
-						desc="Breaks up color banding in smooth gradients (0-100 default = 15)"
-						min={0}
-						max={100}
-						step={1}
-						value={backdropDithering}
-						onNumber={(value: number) => {
-							settings.backdropDithering = value;
-							setBackdropDithering(value);
-							refreshBackdrop();
-						}}
-					/>
+					{!isOil && (
+						<LunaNumberSetting
+							title="Backdrop Opacity"
+							desc="How strongly the backdrop shows through (0-100% default = 75)"
+							min={0}
+							max={100}
+							step={1}
+							value={backdropOpacity}
+							onNumber={(value: number) => {
+								settings.backdropOpacity = value;
+								setBackdropOpacity(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{!isOil && (
+						<LunaNumberSetting
+							title="Warp Intensity"
+							desc="Strength of the fluidity effect (0-100% default = 100)"
+							min={0}
+							max={100}
+							step={1}
+							value={backdropWarp}
+							onNumber={(value: number) => {
+								settings.backdropWarp = value;
+								setBackdropWarp(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{!isOil && (
+						<LunaNumberSetting
+							title="Blur Passes"
+							desc="Kawase blur passes, higher is softer but costs more GPU (1-40 default = 5)"
+							min={1}
+							max={40}
+							step={1}
+							value={backdropBlurPasses}
+							onNumber={(value: number) => {
+								settings.backdropBlurPasses = value;
+								setBackdropBlurPasses(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{!isOil && (
+						<LunaNumberSetting
+							title="Animation Speed"
+							desc="How fast the backdrop flows (0-500% default = 175)"
+							min={0}
+							max={500}
+							step={5}
+							value={backdropSpeed}
+							onNumber={(value: number) => {
+								settings.backdropSpeed = value;
+								setBackdropSpeed(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{!isOil && (
+						<LunaNumberSetting
+							title="Contrast"
+							desc="Contrast of the backdrop (0-300%, 100 = stock default = 125)"
+							min={0}
+							max={300}
+							step={5}
+							value={backdropContrast}
+							onNumber={(value: number) => {
+								settings.backdropContrast = value;
+								setBackdropContrast(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{!isOil && (
+						<LunaNumberSetting
+							title="Auto Darken Bright Covers"
+							desc="Prevents bright covers from making text unreadable (0-100% 0 = Off default = 80)"
+							min={0}
+							max={100}
+							step={1}
+							value={backdropDarken}
+							onNumber={(value: number) => {
+								settings.backdropDarken = value;
+								setBackdropDarken(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{isOil && (
+						<LunaNumberSetting
+							title="Backdrop Opacity"
+							desc="How strongly the backdrop shows through (0-100% default = 75)"
+							min={0}
+							max={100}
+							step={1}
+							value={backdropOilOpacity}
+							onNumber={(value: number) => {
+								settings.backdropOilOpacity = value;
+								setBackdropOilOpacity(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{isOil && (
+						<LunaNumberSetting
+							title="Warp Intensity"
+							desc="Strength of the fluidity effect (0-100% default = 75)"
+							min={0}
+							max={100}
+							step={1}
+							value={backdropOilWarp}
+							onNumber={(value: number) => {
+								settings.backdropOilWarp = value;
+								setBackdropOilWarp(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{isOil && (
+						<LunaNumberSetting
+							title="Animation Speed"
+							desc="How fast the backdrop flows (0-500% default = 175)"
+							min={0}
+							max={500}
+							step={5}
+							value={backdropOilSpeed}
+							onNumber={(value: number) => {
+								settings.backdropOilSpeed = value;
+								setBackdropOilSpeed(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{isOil && (
+						<LunaNumberSetting
+							title="Brightness"
+							desc="How bright the waves render (0-100, default: 15)"
+							min={0}
+							max={100}
+							step={1}
+							value={backdropOilBrightness}
+							onNumber={(value: number) => {
+								settings.backdropOilBrightness = value;
+								setBackdropOilBrightness(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{isOil && (
+						<LunaNumberSetting
+							title="Contrast"
+							desc="Contrast of the backdrop (0-300%, 100 = unchanged)"
+							min={0}
+							max={300}
+							step={5}
+							value={backdropOilContrast}
+							onNumber={(value: number) => {
+								settings.backdropOilContrast = value;
+								setBackdropOilContrast(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{isOil && (
+						<LunaNumberSetting
+							title="Saturation"
+							desc="Colour intensity of the backdrop (0-400%)"
+							min={0}
+							max={400}
+							step={5}
+							value={backdropOilSaturation}
+							onNumber={(value: number) => {
+								settings.backdropOilSaturation = value;
+								setBackdropOilSaturation(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{isOil && !backdropOilFollowCursor && (
+						<LunaNumberSetting
+							title="Shimmer Speed"
+							desc="How fast the shimmer floats (0-100, default: 50)"
+							min={0}
+							max={100}
+							step={1}
+							value={backdropOilShimmerSpeed}
+							onNumber={(value: number) => {
+								settings.backdropOilShimmerSpeed = value;
+								setBackdropOilShimmerSpeed(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{isOil && (
+						<AnySwitch
+							title="Shimmer Follows Cursor"
+							desc="Point the shimmer at your cursor instead of floating"
+							checked={backdropOilFollowCursor}
+							onChange={(_: unknown, checked: boolean) => {
+								settings.backdropOilFollowCursor = checked;
+								setBackdropOilFollowCursor(checked);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{!isOil && (
+						<LunaNumberSetting
+							title="Saturation"
+							desc="Colour intensity of the backdrop (0-400% default = 125)"
+							min={0}
+							max={400}
+							step={5}
+							value={backdropSaturation}
+							onNumber={(value: number) => {
+								settings.backdropSaturation = value;
+								setBackdropSaturation(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{!isOil && (
+						<LunaNumberSetting
+							title="Backdrop Scale"
+							desc="Zoom level of the effect (10-400% default = 100)"
+							min={10}
+							max={400}
+							step={5}
+							value={backdropScale}
+							onNumber={(value: number) => {
+								settings.backdropScale = value;
+								setBackdropScale(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
+					{!isOil && (
+						<LunaNumberSetting
+							title="Dithering"
+							desc="Breaks up color banding in smooth gradients (0-100 default = 15)"
+							min={0}
+							max={100}
+							step={1}
+							value={backdropDithering}
+							onNumber={(value: number) => {
+								settings.backdropDithering = value;
+								setBackdropDithering(value);
+								refreshBackdrop();
+							}}
+						/>
+					)}
 
 				</>
 			)}
