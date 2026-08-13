@@ -727,6 +727,9 @@ const setLayerRunning = (
 };
 
 const syncBackdropActivity = (): void => {
+	// Stock backdrop keeps current (no shader loop)
+	if (stockContainer) applyStockCoverEverywhere();
+
 	const nowPlaying = kawarpLayers.nowPlaying;
 	const global = kawarpLayers.global;
 	const nowPlayingVisible = nowPlaying?.isVisible() ?? false;
@@ -858,10 +861,15 @@ function updateCoverArtBackground(method: number = 0): void {
 	}
 
 	// Teardown <3
+	document.body.classList.toggle("rl-backdrop-active", settings.backdropEnabled);
 	if (!settings.backdropEnabled) {
 		cleanUpDynamicArt();
+		// Cover Everywhere still applies (Stock Tidal Backdrop)
+		if (settings.CoverEverywhere) applyStockCoverEverywhere();
+		else cleanUpStockCoverEverywhere();
 		return;
 	}
+	cleanUpStockCoverEverywhere();
 
 	const coverArtImageSrc = getCoverArtSrc();
 	if (!coverArtImageSrc) {
@@ -874,6 +882,77 @@ function updateCoverArtBackground(method: number = 0): void {
 	applyNowPlayingBackdrop(coverArtImageSrc);
 	syncBackdropActivity();
 }
+
+// MARKER: Stock Backdrop (Cover Everywhere without the shader)
+
+const STOCK_MARKUP =
+	'<div class="rl-stock-rotator"><div class="rl-stock-overscan">' +
+	'<img class="rl-stock-art" alt=""><img class="rl-stock-art" alt="">' +
+	'</div></div><div class="rl-stock-scrim"></div>';
+const STOCK_ART_RES = "320x320";
+
+let stockBgStyleTag: StyleTag | null = null;
+let stockContainer: HTMLElement | null = null;
+
+const applyStockCoverEverywhere = (): void => {
+	// Same sheet the shader uses
+	stockBgStyleTag ??= new StyleTag(
+		"RadiantLyrics-stock-backdrop",
+		unloads,
+		coverEverywhereCss,
+	);
+
+	if (!stockContainer?.isConnected) {
+		// Sweep first
+		cleanUpStockContainers();
+		stockContainer = document.createElement("div");
+		stockContainer.className = "rl-stock-background-container";
+		stockContainer.innerHTML = STOCK_MARKUP;
+		document.body.appendChild(stockContainer);
+	}
+
+	const source = document.querySelector<HTMLImageElement>(
+		'[data-test="footer-player"] [data-test="current-media-imagery"] img',
+	);
+	const layers = [
+		...stockContainer.querySelectorAll<HTMLImageElement>(".rl-stock-art"),
+	];
+	// Which layer is showing lives in DOM (no state to track)
+	const shown =
+		layers.find((l) => l.classList.contains("rl-stock-art-active")) ?? layers[1];
+	const next = layers.find((l) => l !== shown);
+
+	const cover = source?.src.replace(/\d+x\d+/, STOCK_ART_RES);
+	if (next && cover && cover !== shown.src) {
+		next.src = cover;
+		// Swap only once decoded (otherwise the crossfade reveals a blank layer)
+		const reveal = () => {
+			next.classList.add("rl-stock-art-active");
+			shown.classList.remove("rl-stock-art-active");
+		};
+		if (next.complete) reveal();
+		else next.addEventListener("load", reveal, { once: true });
+	}
+
+	// Tidal halts its own spin while paused
+	stockContainer.classList.toggle(
+		"rl-stock-paused",
+		!reduxPlaybackIsPlaying(),
+	);
+};
+
+const cleanUpStockContainers = (): void => {
+	document
+		.querySelectorAll(".rl-stock-background-container")
+		.forEach((el) => el.remove());
+};
+
+const cleanUpStockCoverEverywhere = (): void => {
+	stockContainer = null;
+	cleanUpStockContainers();
+	stockBgStyleTag?.remove();
+	stockBgStyleTag = null;
+};
 
 const cleanUpGlobalBackground = function (): void {
 	// Release WebGL context before canvas is orphaned (otherwise death occurs)
@@ -912,10 +991,17 @@ const updateRadiantLyricsBackdrop = function (): void {
 		document.body.classList.remove("performance-mode");
 	}
 
+	// Gates the rules that hide Tidal now-playing background
+	document.body.classList.toggle("rl-backdrop-active", settings.backdropEnabled);
+
 	if (!settings.backdropEnabled) {
 		cleanUpDynamicArt();
+		// Cover Everywhere still applies (Stock Tidal Backdrop)
+		if (settings.CoverEverywhere) applyStockCoverEverywhere();
+		else cleanUpStockCoverEverywhere();
 		return;
 	}
+	cleanUpStockCoverEverywhere();
 
 	if (!settings.CoverEverywhere) cleanUpGlobalBackground();
 
@@ -965,6 +1051,8 @@ updateCoverArtBackground(1);
 // Cleanups
 unloads.add(() => {
 	cleanUpDynamicArt();
+	cleanUpStockCoverEverywhere();
+	document.body.classList.remove("rl-backdrop-active");
 
 	// Clean up floating player bar inline styles
 	const footerPlayer = document.querySelector(

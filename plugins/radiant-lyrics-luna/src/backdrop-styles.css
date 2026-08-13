@@ -15,13 +15,13 @@
 }
 
 /* Hide Tidal now-playing background color */
-[data-test="new-now-playing"] > [class*="_background_"] {
+body.rl-backdrop-active [data-test="new-now-playing"] > [class*="_background_"] {
 	/* biome-ignore lint: Must override native album-art-derived background */
 	display: none !important;
 }
 
 /* Ensure now-playing container is transparent */
-[class*="_nowPlayingContainer"] {
+body.rl-backdrop-active [class*="_nowPlayingContainer"] {
 	/* biome-ignore lint: Must override any inline background styles */
 	background: transparent !important;
 }
