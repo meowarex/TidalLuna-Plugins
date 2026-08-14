@@ -53,7 +53,7 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	// Backdrop is rendered entirely by kawarp (yay!)
 	backdropOpacity: 75,
 	backdropWarp: 100,
-	backdropBlurPasses: 5,
+	backdropBlurPasses: 6,
 	backdropSpeed: 175,
 	backdropContrast: 125,
 	backdropSaturation: 125,
