@@ -43,18 +43,14 @@ const CROSSFADE_RENDER_MS = 1400;
 
 /** Mean luma of the art (measure source, not the moving canvas) */
 let sampleCtx: CanvasRenderingContext2D | null = null;
-const ensureSampler = (): CanvasRenderingContext2D | null => {
+const measureLuminance = (source: CanvasImageSource): number | null => {
 	if (!sampleCtx) {
 		const sampler = document.createElement("canvas");
 		sampler.width = SAMPLE_SIZE;
 		sampler.height = SAMPLE_SIZE;
 		sampleCtx = sampler.getContext("2d", { willReadFrequently: true });
 	}
-	return sampleCtx;
-};
-
-const measureLuminance = (source: CanvasImageSource): number | null => {
-	if (!ensureSampler() || !sampleCtx) return null;
+	if (!sampleCtx) return null;
 	try {
 		sampleCtx.clearRect(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
 		sampleCtx.drawImage(source, 0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
@@ -70,72 +66,6 @@ const measureLuminance = (source: CanvasImageSource): number | null => {
 		return null;
 	}
 };
-
-export type Rgb = [number, number, number];
-
-const WHITE: Rgb = [1, 1, 1];
-// Scale colours up to this (keeps hue)
-const PALETTE_TARGET = 0.9;
-// Too dark to use
-const MIN_CHANNEL = 0.15;
-// Too grey to use
-const MIN_SATURATION = 0.08;
-
-/** 3 dominant colours from the art (mono covers -> white) */
-export const samplePalette = (source: CanvasImageSource): [Rgb, Rgb, Rgb] => {
-	if (!ensureSampler() || !sampleCtx) return [WHITE, WHITE, WHITE];
-	try {
-		sampleCtx.clearRect(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
-		sampleCtx.drawImage(source, 0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
-		const { data } = sampleCtx.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
-
-		// Coarse buckets so shades merge
-		const buckets = new Map<number, { n: number; r: number; g: number; b: number }>();
-		for (let i = 0; i < data.length; i += 4) {
-			const r = data[i] / 255;
-			const g = data[i + 1] / 255;
-			const b = data[i + 2] / 255;
-			const max = Math.max(r, g, b);
-			if (max < MIN_CHANNEL) continue;
-			if (max - Math.min(r, g, b) < MIN_SATURATION) continue;
-			const key =
-				((r * 7) | 0) * 64 + ((g * 7) | 0) * 8 + ((b * 7) | 0);
-			const hit = buckets.get(key);
-			if (hit) {
-				hit.n++;
-				hit.r += r;
-				hit.g += g;
-				hit.b += b;
-			} else {
-				buckets.set(key, { n: 1, r, g, b });
-			}
-		}
-
-		const ranked = [...buckets.values()]
-			.sort((a, b) => b.n - a.n)
-			.slice(0, 3)
-			// Average so it's not grid-snapped
-			.map((c): Rgb => [c.r / c.n, c.g / c.n, c.b / c.n])
-			// Dark covers give dark colours, so lift them
-			.map((c): Rgb => {
-				const max = Math.max(c[0], c[1], c[2]);
-				if (max <= 0) return WHITE;
-				const scale = PALETTE_TARGET / max;
-				return [c[0] * scale, c[1] * scale, c[2] * scale];
-			});
-
-		if (ranked.length === 0) return [WHITE, WHITE, WHITE];
-		// Cycle what we found (white would desaturate)
-		return [
-			ranked[0],
-			ranked[1] ?? ranked[0],
-			ranked[2] ?? ranked[1] ?? ranked[0],
-		];
-	} catch {
-		return [WHITE, WHITE, WHITE];
-	}
-};
-
 
 export class KawarpLayer {
 	private host: HTMLElement;
@@ -223,7 +153,7 @@ export class KawarpLayer {
 		const width = Math.max(1, Math.round(rect.width * dpr));
 		// Aurora: render a single row of pixels and let CSS stretch it down the whole canvas (makes bands of color)
 		const height =
-			settings.backdropStyle === 3
+			settings.backdropStyle === 1
 				? 1
 				: Math.max(1, Math.round(rect.height * dpr));
 		if (this.canvas.width === width && this.canvas.height === height) return;
