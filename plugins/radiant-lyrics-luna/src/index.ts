@@ -20,7 +20,6 @@ import {
 	romanizeLyrics as romanizeLyricsApi,
 } from "./api";
 import { KawarpLayer } from "./backdrop";
-import { OilLayer } from "./backdrop-oil";
 import { Settings, settings } from "./Settings";
 
 import backdropStylesCss from "file://backdrop-styles.css?minify";
@@ -690,12 +689,9 @@ let globalBackgroundContainer: HTMLElement | null = null;
 let nowPlayingBackgroundContainer: HTMLElement | null = null;
 let currentCoverSrc: string | null = null;
 
-/** Either renderer */
-type BackdropLayer = KawarpLayer | OilLayer;
-
 const kawarpLayers: {
-	global: BackdropLayer | null;
-	nowPlaying: BackdropLayer | null;
+	global: KawarpLayer | null;
+	nowPlaying: KawarpLayer | null;
 } = { global: null, nowPlaying: null };
 
 const disposeKawarpLayer = (slot: "global" | "nowPlaying"): void => {
@@ -715,7 +711,7 @@ const pauseHiddenSince: { global: number; nowPlaying: number } = {
 
 const setLayerRunning = (
 	slot: "global" | "nowPlaying",
-	layer: BackdropLayer | null,
+	layer: KawarpLayer | null,
 	shouldRun: boolean,
 	now: number,
 ): void => {
@@ -789,19 +785,15 @@ const ensureLayer = (
 	slot: "global" | "nowPlaying",
 	container: HTMLElement,
 	zIndex: string,
-): BackdropLayer | null => {
-	// Oil is a whole different renderer
-	const wantsOil = settings.backdropStyle === 2;
+): KawarpLayer | null => {
 	let layer = kawarpLayers[slot];
-	if (layer && (!layer.isMountedIn(container) || wantsOil !== (layer instanceof OilLayer))) {
-		// Container rebuilt or renderer changed
+	if (layer && !layer.isMountedIn(container)) {
+		// Tidal rebuilt the container
 		disposeKawarpLayer(slot);
 		layer = null;
 	}
 	if (!layer) {
-		layer = wantsOil
-			? new OilLayer(container, slot, zIndex)
-			: new KawarpLayer(container, slot, zIndex);
+		layer = new KawarpLayer(container, slot, zIndex);
 		kawarpLayers[slot] = layer;
 	}
 	return layer;

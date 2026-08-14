@@ -9,7 +9,6 @@
 	"main": "./src/index.ts",
 	"type": "module",
 	"dependencies": {
-		"@kawarp/core": "*",
-		"ogl": "*"
+		"@kawarp/core": "*"
 	}
 }
