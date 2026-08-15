@@ -67,6 +67,25 @@ const measureLuminance = (source: CanvasImageSource): number | null => {
 	}
 };
 
+
+// Load a cover as an <img>. Works on for Lunar (Fetch didn't work..)
+
+const loadCoverElement = async (src: string): Promise<HTMLImageElement> => {
+	const attempt = (anonymous: boolean) =>
+		new Promise<HTMLImageElement>((resolve, reject) => {
+			const img = new Image();
+			if (anonymous) img.crossOrigin = "anonymous";
+			img.onload = () => resolve(img);
+			img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+			img.src = src;
+		});
+	try {
+		return await attempt(true);
+	} catch {
+		return await attempt(false);
+	}
+};
+
 export class KawarpLayer {
 	private host: HTMLElement;
 	private canvas: HTMLCanvasElement;
@@ -232,15 +251,27 @@ export class KawarpLayer {
 			}
 			this.updateBrightness();
 		} catch {
+			// Fallback for Lunar
 			try {
 				if (token !== this.loadToken || this.kawarp !== engine) return;
-				// Fallback for data:/blob: sources & i guess CORS
-				this.coverLuminance = null;
-				await engine.loadImage(src);
+				const img = await loadCoverElement(src);
+				if (token !== this.loadToken || this.kawarp !== engine) return;
+				this.coverLuminance = measureLuminance(img);
+				engine.loadImageElement(img);
+				this.transitionUntil = performance.now() + CROSSFADE_RENDER_MS;
+				this.ensureLoop();
 				this.updateBrightness();
 			} catch {
-				// Keep previous frame & later retry
-				if (token === this.loadToken) this.currentSrc = null;
+				try {
+					if (token !== this.loadToken || this.kawarp !== engine) return;
+					// Last resort (Darkening is unavailable)
+					this.coverLuminance = null;
+					await engine.loadImage(src);
+					this.updateBrightness();
+				} catch {
+					// Keep previous frame & later retry
+					if (token === this.loadToken) this.currentSrc = null;
+				}
 			}
 		}
 	}

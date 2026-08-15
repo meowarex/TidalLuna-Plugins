@@ -1137,6 +1137,18 @@ const sylTrace = (...args: unknown[]) => {
 			`[Radiant Lyrics] Syllable logging ${value ? "enabled" : "disabled"}`,
 		);
 	},
+	// Playback clock calibration in ms (i assume Lunar will break playback one day since MPV is wierd so i added this for that)
+	get offset() {
+		return settings.lyricsOffsetMs;
+	},
+	set offset(value: number) {
+		const ms = Math.round(Number(value));
+		if (!Number.isFinite(ms)) return;
+		settings.lyricsOffsetMs = ms;
+		console.log(
+			`[Radiant Lyrics] Lyrics offset: ${ms > 0 ? "+" : ""}${ms} ms (${ms === 0 ? "no shift" : ms > 0 ? "earlier" : "later"})`,
+		);
+	},
 	// MARKER: Syllable animations (WIP coming soon)
 	get style() {
 		return settings.syllableStyle;
@@ -1480,7 +1492,8 @@ const getReduxState = (preferOriginal = false): any => {
 	if (preferOriginal && originalReduxGetState) {
 		return originalReduxGetState();
 	}
-	return redux.store.getState() as any;
+	// Read through the real store (Lunar)
+	return reduxStore.getState() as any;
 };
 
 const getNativeTrackEntity = (trackId: string): any | null =>
@@ -1615,21 +1628,30 @@ const overlaySyntheticNativeLyricsState = (state: any): any => {
 	return cachedOvlState ?? state;
 };
 
-const installNativeLyricsOverlay = (): void => {
-	if (nativeLyricsOverlayInstalled) return;
-	const original = redux.store.getState.bind(redux.store);
+const installNativeLyricsOverlay = (): boolean => {
+	if (nativeLyricsOverlayInstalled) return true;
+	// Lunar hands @luna/libs `redux.store` out as a restricted clone so Lunar needs babysitting..
+	const rawGetState = reduxStore.getState;
+	const original = rawGetState.bind(reduxStore);
+	(reduxStore as any).getState = () => overlaySyntheticNativeLyricsState(original());
+	if (reduxStore.getState === rawGetState) {
+		trace.warn(
+			"could not install native lyrics overlay — redux getState is not writable on this client",
+		);
+		return false;
+	}
 	originalReduxGetState = original;
-	(redux.store as any).getState = () => overlaySyntheticNativeLyricsState(original());
 	nativeLyricsOverlayInstalled = true;
 	unloads.add(() => {
 		if (originalReduxGetState) {
-			(redux.store as any).getState = originalReduxGetState;
+			(reduxStore as any).getState = originalReduxGetState;
 		}
 		nativeLyricsOverlayInstalled = false;
 		originalReduxGetState = null;
 		syntheticNativeLyrics = null;
 		invalidateOverlayCache();
 	});
+	return true;
 };
 
 const setNowPlayingActiveView = (view: string): boolean => {
@@ -1680,7 +1702,7 @@ const registerSyntheticNativeLyrics = (
 	trackInfo: TrackInfo,
 	response: LyricsApiResponse,
 ): boolean => {
-	installNativeLyricsOverlay();
+	if (!installNativeLyricsOverlay()) return false;
 	const track = getNativeTrackEntity(trackInfo.trackId);
 	if (!track) return false;
 
@@ -2065,7 +2087,22 @@ const trackInfoFromReduxProductId = (productId: string): TrackInfo | null => {
 	return { trackId: productId, title, artist, isrc };
 };
 
-// playback time in ms (interpolated between currentTime updates)
+// MARKER: Playback clock
+
+// Two raw position sources exist and behave very differently per client..
+//   PlayState.currentTime -> activePlayer.currentTime
+//   playbackControls.latestCurrentTime -> redux mirror
+
+// Electron (official client): activePlayer.currentTime is backed by a media element
+// Lunar: audio is decoded natively and activePlayer.currentTime is only refreshed roughly once a second AND isn't monotonic
+// So.. pick the clock per client <3
+const IS_NATIVE_CLIENT = /TidaLunar/i.test(navigator.userAgent);
+
+// currentTime is present at runtime but missing from the pinned luna typings
+const playerCurrentTime = (): number =>
+	(PlayState as unknown as { currentTime: number }).currentTime;
+
+// Original interpolation (Electron)
 let lastPlayerTime = 0;
 let lastPlayerTimeAt = 0;
 let wasPlaying = false;
@@ -2105,12 +2142,12 @@ const getRemotePlaybackMs = (state = getReduxState()): number => {
 	return playerTime * 1000;
 };
 
-const getPlaybackMs = (): number => {
+const getLegacyPlaybackMs = (): number => {
 	const state = getReduxState();
 	if (isRemotePlayback(state)) {
 		return getRemotePlaybackMs(state);
 	}
-	const playerTime = PlayState.currentTime;
+	const playerTime = playerCurrentTime();
 	const playing = PlayState.playing;
 	const now = performance.now();
 
@@ -2136,9 +2173,75 @@ const getPlaybackMs = (): number => {
 	return playerTime * 1000;
 };
 
+// Monotonic clock (Lunar)
+
+// Never coast further than this past the last raw update.
+const MAX_EXTRAPOLATION_MS = 1200;
+// Movement larger than this is real seek or track change (not drift)
+const SEEK_THRESHOLD_MS = 750;
+
+let clockAnchorMs = 0; // raw source position at the last anchor
+let clockAnchorAt = 0; // performance.now() at the last anchor
+let clockLastOut = 0; // last value handed to the tick loop
+let clockWasPlaying = false;
+
+const nativeRawPlaybackMs = (state = getReduxState()): number => {
+	const latest = Number(state?.playbackControls?.latestCurrentTime);
+	if (Number.isFinite(latest)) return latest * 1000;
+	const current = Number(playerCurrentTime());
+	return Number.isFinite(current) ? current * 1000 : 0;
+};
+
+const nativeIsPlaying = (state = getReduxState()): boolean =>
+	isRemotePlayback(state) ? reduxPlaybackIsPlaying(state) : PlayState.playing;
+
+const getNativePlaybackMs = (): number => {
+	const state = getReduxState();
+	const raw = nativeRawPlaybackMs(state);
+	const playing = nativeIsPlaying(state);
+	const now = performance.now();
+
+	// Re-anchor hard on play/pause and on genuine seeks. These *should* surface to the tick loop as a scrub so it resyncs.. maybe.
+	if (
+		playing !== clockWasPlaying ||
+		Math.abs(raw - clockLastOut) > SEEK_THRESHOLD_MS
+	) {
+		clockWasPlaying = playing;
+		clockAnchorMs = raw;
+		clockAnchorAt = now;
+		clockLastOut = raw;
+	} else {
+		// Follow the raw source whenever it advances & interpolate between updates
+		if (raw !== clockAnchorMs) {
+			clockAnchorMs = raw;
+			clockAnchorAt = now;
+		}
+		if (!playing) {
+			clockLastOut = clockAnchorMs;
+		} else {
+			const out = clockAnchorMs + Math.min(now - clockAnchorAt, MAX_EXTRAPOLATION_MS);
+			// Stop Sub seek corrections dragging the lyrics backwards (Why Lunar lyrics flickered)
+			clockLastOut = Math.max(out, clockLastOut);
+		}
+	}
+	return clockLastOut;
+};
+
+const getPlaybackMs = (): number =>
+	// Calibration for Lunar (if oneday the audio breaks timings)
+	(IS_NATIVE_CLIENT ? getNativePlaybackMs() : getLegacyPlaybackMs()) +
+	settings.lyricsOffsetMs;
+
 /** Re Sync Lyrics to getPlaybackMs (PlayState/Redux on Connect). */
 const snapPlaybackInterpolationToPlayer = (): void => {
 	const state = getReduxState();
+	if (IS_NATIVE_CLIENT) {
+		clockAnchorMs = nativeRawPlaybackMs(state);
+		clockAnchorAt = performance.now();
+		clockLastOut = clockAnchorMs;
+		clockWasPlaying = nativeIsPlaying(state);
+		return;
+	}
 	if (isRemotePlayback(state)) {
 		const pc = state?.playbackControls;
 		const raw = Number(pc?.latestCurrentTime);
@@ -2147,7 +2250,7 @@ const snapPlaybackInterpolationToPlayer = (): void => {
 		wasRemotePlaying = reduxPlaybackIsPlaying(state);
 		return;
 	}
-	lastPlayerTime = PlayState.currentTime;
+	lastPlayerTime = playerCurrentTime();
 	lastPlayerTimeAt = performance.now();
 	wasPlaying = PlayState.playing;
 };
@@ -3568,7 +3671,8 @@ const startTickLoop = (): void => {
 	sylLog("[RL-Syllable] Tick loop started");
 
 	let lastLogTime = 0;
-	let lastTickMs = 0;
+	// -1 so the first tick can't be read as a scrub (the guard below checks >= 0)
+	let lastTickMs = -1;
 
 	tickLoopUnload = safeInterval(
 		unloads,
@@ -4003,10 +4107,11 @@ const onTrackChange = async (): Promise<void> => {
 		} else {
 			safeTimeout(unloads, () => {
 				if (token !== trackChangeToken) return;
+				const alreadyOnLyricsTab = currentTrackWantsLyricsPanel();
 				syncNativeLyricsAvailability();
-				if (!nativeHasLyrics) {
-					// Track had no native lyrics but API found them —
-					// force navigate to lyrics view so the panel mounts
+				if (!nativeHasLyrics && !alreadyOnLyricsTab) {
+					// Track had no native lyrics but API found them
+					// force navigate to lyrics view so the panel mounts.
 					setNowPlayingActiveView("lyrics");
 				}
 			}, 0);

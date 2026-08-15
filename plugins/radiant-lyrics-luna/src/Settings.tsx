@@ -31,6 +31,8 @@ export const settings = await ReactiveStore.getPluginStorage("RadiantLyrics", {
 	aiSyllables: false,
 	syllableStyle: 0, // MARKER: Syllable animations SETTINGS (WIP coming soon)
 	syllableLogging: false,
+	// Playback clock calibration in ms (i assume Lunar will break playback one day since MPV is wierd so i added this for that)
+	lyricsOffsetMs: 0,
 	hideUIEnabled: true,
 	playerBarVisible: false,
 	qualityProgressColor: true,
